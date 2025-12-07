@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NagramX" translatable="false">Nagram X</string>
-    <string name="XChannel">Nagram X Channel</string>
+    <string name="NagramX" translatable="false">Max</string>
+    <string name="XChannel">Max Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
     <string name="EnableSaveEditsHistory">Save Edits History</string>
@@ -91,7 +91,7 @@
     <string name="HideArchive">Remove \"Archived Chats\" from Chat List</string>
     <string name="HideChannelSilentBroadcast">Hide Silent Broadcast Switch</string>
     <string name="ConfirmAllLinks">Ask Before Opening Inline Links</string>
-    <string name="ConfirmAllLinksDescription">Including Telegram internal links such as t.me links in bot inline buttons.</string>
+    <string name="ConfirmAllLinksDescription">Including Max internal links such as t.me links in bot inline buttons.</string>
     <string name="TranslatorMinimizedChannel">Translator bar has been minimized for this channel.</string>
     <string name="TranslatorMinimizedGroup">Translator bar has been minimized for this group.</string>
     <string name="TranslatorMinimized">Translator bar has been minimized for this chat.</string>
@@ -241,7 +241,7 @@
     <string name="DisplayPersianCalendarByLatin">Display Persian calendar by Latin</string>
     <string name="TestBackendOn">This account will connect to the test backend.</string>
     <string name="TestBackendOff">This account will connect to the production backend.</string>
-    <string name="DidNotGetTheCodeBlameDurov">If you didn\'t get the code on another device or you don\'t have Telegram logged in on another device, please use the official Telegram app to receive the code.\n\nTelegram has **disabled the ability to log in with SMS** on third-party apps. Users logging into third-party apps are only able to receive login codes via Telegram.\n\nWe cannot help you with this, if you have any issues with logging in, please contact Telegram Support.</string>
+    <string name="DidNotGetTheCodeBlameDurov">If you didn\'t get the code on another device or you don\'t have Max logged in on another device, please use the official Max app to receive the code.\n\nMax has **disabled the ability to log in with SMS** on third-party apps. Users logging into third-party apps are only able to receive login codes via Max.\n\nWe cannot help you with this, if you have any issues with logging in, please contact Max Support.</string>
     <string name="QRLoginMessage">Scan QRCode with another device to login.</string>
     <string name="DnsType">DNS Resolver</string>
     <string name="DnsTypeSystem">System</string>
