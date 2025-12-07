@@ -13,7 +13,11 @@ import tw.nekomimi.nekogram.NekoConfig;
 
 public class AyuConstants {
 
+    public static final int DOCUMENT_TYPE_NONE = 0;
+    public static final int DOCUMENT_TYPE_PHOTO = 1;
+    public static final int DOCUMENT_TYPE_STICKER = 2;
     public static final int DOCUMENT_TYPE_FILE = 3;
+    public static final int DOCUMENT_TYPE_WEBPAGE = 4;
 
     public static final int OPTION_HISTORY = 1338_01;
     public static final int OPTION_TTL = 1338_02;
@@ -21,6 +25,7 @@ public class AyuConstants {
 
     public static final int MESSAGE_EDITED_NOTIFICATION = 6968;
     public static final int MESSAGES_DELETED_NOTIFICATION = 6969;
+    public static final int DELETED_MEDIA_LOADED_NOTIFICATION = 6970;
 
     public static String AYU_DATABASE = "ayu-data";
 
