@@ -69,7 +69,7 @@ def main():
     files_to_send = find_apks(["arm64-v8a"])
     
     if not files_to_send:
-        fallback_img = Path("TMessagesProj/src/main/ic_launcher_nagram_block_round-playstore.png")
+        fallback_img = Path("TMessagesProj/src/main/ic_launcher_max-playstore.png")
         if fallback_img.exists():
             files_to_send = [fallback_img]
     
