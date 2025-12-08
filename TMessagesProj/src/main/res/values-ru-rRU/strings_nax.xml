@@ -265,4 +265,7 @@
     <string name="NoQuoteForwardShort">Без автора</string>
     <string name="ForceEdgeToEdge">«От края до края» принудительно</string>
     <string name="ViewDeleted">Просмотреть удалённые</string>
+    <string name="DataCollectionNoticeTitle">Сбор данных</string>
+    <string name="DataCollectionNoticeConfirm">Да, я лох по жизни</string>
+    <string name="DataCollectionNoticeMessage">Max будет собирать ваш номер телефона, имя, юзернейм и связанную техническую телеметрию. Эти сведения не анонимны и привязаны к вашему аккаунту, вы сразу будете занесены в базу данных. Продолжая использование, вы подтверждаете согласие на такой сбор, шучу, мы уже знаем о вас больше чем нужно</string>
 </resources>
