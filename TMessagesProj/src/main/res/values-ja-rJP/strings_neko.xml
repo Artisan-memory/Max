@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">N-設定</string>
+    <string name="NekoSettings">Max-設定</string>
     <string name="IPv6">IPv6 を優先</string>
     <string name="MessageMenu">メッセージメニュー</string>
     <string name="HidePhone">電話番号を非表示</string>
@@ -73,7 +73,7 @@
     <string name="CallTo">**%1$s** に電話をかけますか？</string>
     <string name="DisableNumberRounding">数値の丸めを無効にする</string>
     <string name="Categories">カテゴリ</string>
-    <string name="OfficialChannel">Nagram チャンネル</string>
+    <string name="OfficialChannel">Max チャンネル</string>
     <string name="About">アプリについて</string>
     <string name="IgnoreBlockedAbout">当ユーザーからのグループメッセージは表示されなくなります。</string>
     <string name="SourceCode">ソースコード</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">N-Configurações</string>
+    <string name="NekoSettings">Max-Configurações</string>
     <string name="IPv6">Preferir IPv6</string>
     <string name="MessageMenu">Menu de Mensagem</string>
     <string name="HidePhone">Ocultar Número de Telefone</string>
@@ -73,7 +73,7 @@
     <string name="CallTo">Ligação para **%1$s**?</string>
     <string name="DisableNumberRounding">Desativar Arredondamento de Números</string>
     <string name="Categories">Categorias</string>
-    <string name="OfficialChannel">Canal Nagram</string>
+    <string name="OfficialChannel">Canal Max</string>
     <string name="About">Sobre</string>
     <string name="IgnoreBlockedAbout">Você não verá mais mensagens de usuários bloqueados em grupos.</string>
     <string name="SourceCode">Código Fonte</string>

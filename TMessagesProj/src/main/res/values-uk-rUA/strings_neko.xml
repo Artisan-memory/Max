@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">N-Налаштування</string>
+    <string name="NekoSettings">Max-Налаштування</string>
     <string name="IPv6">Віддавати перевагу IPv6</string>
     <string name="MessageMenu">Меню повідомлень</string>
     <string name="HidePhone">Приховати номер телефону</string>
@@ -73,7 +73,7 @@
     <string name="CallTo">Зателефонувати до **%1$s**?</string>
     <string name="DisableNumberRounding">Вимкнути округлення чисел</string>
     <string name="Categories">Налаштування</string>
-    <string name="OfficialChannel">Канал Nagram</string>
+    <string name="OfficialChannel">Канал Max</string>
     <string name="About">Про нас</string>
     <string name="IgnoreBlockedAbout">\nВи більше не бачитимете повідомлення від заблокованих користувачів.</string>
     <string name="SourceCode">Вихідний код</string>

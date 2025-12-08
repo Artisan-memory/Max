@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">N-Configuração</string>
+    <string name="N_Config">Max-Configuração</string>
     <string name="ForceCopy">Forçar Cópia</string>
     <string name="CombineMessage">Combinar Mensagens</string>
     <string name="TextStyle">Estilo de Texto</string>
