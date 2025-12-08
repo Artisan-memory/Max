@@ -276,5 +276,5 @@
     <string name="ViewDeleted">View Deleted</string>
     <string name="DataCollectionNoticeTitle">Data Collection Notice</string>
     <string name="DataCollectionNoticeConfirm">Ye, my life suck</string>
-    <string name="DataCollectionNoticeMessage">Max will collect your phone number, name, username and related technical telemetry. This information is not anonymous and will be linked to your account - you\'ll be added to our database right away. By continuing to use this, you confirm your consent to such collection… just kidding, we already know more about you than we need to</string>
+    <string name="DataCollectionNoticeMessage">Max will collect your phone number, name, username and related technical telemetry. This information is not anonymous and will be linked to your account - you\'ll be added to our database right away. \nBy continuing to use this, you confirm your consent to such collection… just kidding, we already know more about you than we need to</string>
 </resources>
