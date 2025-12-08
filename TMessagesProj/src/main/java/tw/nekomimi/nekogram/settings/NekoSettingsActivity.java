@@ -476,10 +476,10 @@ public class NekoSettingsActivity extends BaseFragment {
         private int appRestartRow = -1;
 
         private int xChannelRow = -1;
-        private int channelRow = -1;
+        // private int channelRow = -1;
         private int channelTipsRow = -1;
         private int sourceCodeRow = -1;
-        private int translationRow = -1;
+        // private int translationRow = -1;
         private int datacenterStatusRow = -1;
         private int actionBarHeight;
 
@@ -574,15 +574,11 @@ public class NekoSettingsActivity extends BaseFragment {
                         case VIEW_TYPE_TEXT_LINK: {
                             TextSettingsCell textCell = (TextSettingsCell) holder.itemView;
                             if (position == xChannelRow) {
-                                textCell.setTextAndValue(getString(R.string.XChannel), "@NagramX", true);
-                            } else if (position == channelRow) {
-                                textCell.setTextAndValue(getString(R.string.OfficialChannel), "@nagram_channel", true);
+                                textCell.setTextAndValue(getString(R.string.XChannel), "@TelegMaxZ", true);
                             } else if (position == channelTipsRow) {
                                 textCell.setTextAndValue(getString(R.string.TipsChannel), "@" + "NagramTips", true);
                             } else if (position == sourceCodeRow) {
                                 textCell.setTextAndValue(getString(R.string.SourceCode), "Github", true);
-                            } else if (position == translationRow) {
-                                textCell.setTextAndValue(getString(R.string.TransSite), "Crowdin", true);
                             } else if (position == datacenterStatusRow) {
                                 textCell.setText(getString(R.string.DatacenterStatus), true);
                             }
@@ -616,15 +612,11 @@ public class NekoSettingsActivity extends BaseFragment {
                 } else if (position == translatorRow) {
                     presentFragment(new NekoTranslatorSettingsActivity());
                 } else if (position == xChannelRow) {
-                    MessagesController.getInstance(currentAccount).openByUserName("NagramX", NekoSettingsActivity.this, 1);
-                } else if (position == channelRow) {
-                    MessagesController.getInstance(currentAccount).openByUserName("nagram_channel", NekoSettingsActivity.this, 1);
+                    MessagesController.getInstance(currentAccount).openByUserName("TelegMaxZ", NekoSettingsActivity.this, 1);
                 } else if (position == channelTipsRow) {
                     MessagesController.getInstance(currentAccount).openByUserName("NagramTips", NekoSettingsActivity.this, 1);
-                } else if (position == translationRow) {
-                    Browser.openUrl(getParentActivity(), "https://crowdin.com/project/NagramX");
                 } else if (position == sourceCodeRow) {
-                    Browser.openUrl(getParentActivity(), "https://github.com/risin42/NagramX");
+                    Browser.openUrl(getParentActivity(), "https://github.com/Artisan-memory/Max");
                 } else if (position == datacenterStatusRow) {
                     presentFragment(new DatacenterActivity(0));
                 } else if (position == importSettingsRow) {
@@ -681,10 +673,10 @@ public class NekoSettingsActivity extends BaseFragment {
                 appRestartRow = rowCount++;
             } else {
                 xChannelRow = rowCount++;
-                channelRow = rowCount++;
+                // channelRow = rowCount++;
                 channelTipsRow = rowCount++;
                 sourceCodeRow = rowCount++;
-                translationRow = rowCount++;
+                // translationRow = rowCount++;
                 datacenterStatusRow = rowCount++;
             }
         }
