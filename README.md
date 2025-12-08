@@ -3,7 +3,7 @@
 [![МАКС ловит везде](https://img.shields.io/badge/МАКС_ловит-ВЕЗДЕ-red)]()
 
 
-## ⚔️ Почему МАКС?
+## ⚔️ Почему [МАКС](https://t.me/TelegMaxZ)?
 
 | Функция               | <img src="https://telegram.org/img/t_logo.png" width="30"> Telegram | <img src="https://static.whatsapp.net/rsrc.php/v3/yP/r/rYZqPCBaG70.png" width="30"> WhatsApp | <img src="https://upload.wikimedia.org/wikipedia/commons/7/75/Max_logo_2025.png" width="30"> МАКС |
 |-----------------------|----------------|----------------|----------------|
