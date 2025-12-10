@@ -1553,6 +1553,17 @@ public class ChatActivityEnterView extends FrameLayout implements
             float locCx = rectF.centerX();
             float locCy = rectF.centerY();
             canvas.save();
+
+            final float transformToResume = Utilities.clamp(transformToSeekbar * 2f, 1, 0);
+            final int wasAlpha = lockPaint.getAlpha();
+            final int saveToLayer = canvas.saveLayerAlpha(
+                    locCx - dp(24),
+                    locCy - dp(24),
+                    locCx + dp(24),
+                    locCy + dp(24), (int) (wasAlpha * (1f - transformToResume)), Canvas.ALL_SAVE_FLAG);
+            lockOutlinePaint.setAlpha(255);
+            lockPaint.setAlpha(255);
+
             canvas.translate(0, dpf2(2) * (1f - moveProgress));
             canvas.rotate(lockRotation, locCx, locCy);
 
@@ -1575,13 +1586,10 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
 
             Drawable resumeDrawable = null;
-            float transformToResume = Utilities.clamp(transformToSeekbar * 2f, 1, 0);
             if (transformToResume > 0) {
                 resumeDrawable = isInVideoMode ? vidDrawable : micDrawable;
             }
 
-            int wasAlpha = lockPaint.getAlpha();
-            lockPaint.setAlpha((int) (wasAlpha * (1f - transformToResume)));
             if (transformToPauseProgress > 0) {
                 if (periodBackgroundDrawable == null) {
                     canvas.drawRoundRect(rectF, dpf2(3), dpf2(3), lockBackgroundPaint);
@@ -1603,6 +1611,8 @@ public class ChatActivityEnterView extends FrameLayout implements
                 canvas.drawRoundRect(rectF, dpf2(3), dpf2(3), lockPaint);
             }
             lockPaint.setAlpha(wasAlpha);
+            lockOutlinePaint.setAlpha(wasAlpha);
+            canvas.restoreToCount(saveToLayer);
 
             if (resumeDrawable != null) {
                 final float _s = 0.9285f;
@@ -2663,6 +2673,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                     int x = getWidth() / 2 + dp(4 + 5);
                     int y = getHeight() / 2 - dp(13 - 5);
                     canvas.drawCircle(x, y, dp(5), dotPaint);
+
                 }
             }
         };
@@ -3730,7 +3741,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         expandStickersButton.setScaleX(0.1f);
         expandStickersButton.setScaleY(0.1f);
         expandStickersButton.setAlpha(0.0f);
-        expandStickersButton.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
+        expandStickersButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
         sendButtonContainer.addView(expandStickersButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.RIGHT | Gravity.BOTTOM));
         expandStickersButton.setOnClickListener(v -> {
             if (expandStickersButton.getVisibility() != VISIBLE || expandStickersButton.getAlpha() != 1.0f || waitingForKeyboardOpen || (keyboardVisible && messageEditText != null && messageEditText.isFocused())) {
@@ -8591,7 +8602,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                     }
                 }
             }
-        } else if (emojiView != null && emojiViewVisible && (stickersTabOpen || emojiTabOpen && searchingType == 2) && !AndroidUtilities.isInMultiwindow) {
+        } else if (emojiView != null && emojiViewVisible && (stickersTabOpen || emojiTabOpen && searchingType == 2) && !AndroidUtilities.isInMultiwindow && !isLiveComment) {
             if (animated) {
                 if (runningAnimationType == 4) {
                     return;
@@ -8658,9 +8669,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 }
 
                 createExpandStickersButton();
-                if (!isLiveComment) {
-                    expandStickersButton.setVisibility(VISIBLE);
-                }
+                expandStickersButton.setVisibility(VISIBLE);
                 runningAnimation = new AnimatorSet();
                 runningAnimationType = 4;
 
@@ -8731,9 +8740,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 expandStickersButton.setScaleX(1.0f);
                 expandStickersButton.setScaleY(1.0f);
                 expandStickersButton.setAlpha(1.0f);
-                if (!isLiveComment) {
-                    expandStickersButton.setVisibility(VISIBLE);
-                }
+                expandStickersButton.setVisibility(VISIBLE);
                 if (attachLayout != null) {
                     if (getVisibility() == VISIBLE) {
                         delegate.onAttachButtonShow();
@@ -11603,6 +11610,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 }
             }
         };
+        emojiView.shouldDrawStickerSettings = true;
         if (!shouldDrawBackground) {
             emojiView.updateColors();
         }
@@ -12247,7 +12255,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 }
             }
             if (windowInsetsInAppController != null) {
-                windowInsetsInAppController.requestInAppKeyboardHeight(currentHeight + AndroidUtilities.navigationBarHeight);
+                windowInsetsInAppController.requestInAppKeyboardHeightIncludeNavbar(currentHeight);
             }
         } else {
             if (emojiButton != null) {
@@ -12680,7 +12688,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             if (botKeyboardView != null) {
                 botKeyboardView.setPanelHeight(newHeight);
                 if (windowInsetsInAppController != null && newHeight > 0) {
-                    windowInsetsInAppController.requestInAppKeyboardHeight(newHeight + AndroidUtilities.navigationBarHeight);
+                    windowInsetsInAppController.requestInAppKeyboardHeightIncludeNavbar(newHeight);
                 }
             }
 
@@ -13159,7 +13167,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
         }
 
         if (windowInsetsInAppController != null) {
-            windowInsetsInAppController.requestInAppKeyboardHeight(newHeight + AndroidUtilities.navigationBarHeight);
+            windowInsetsInAppController.requestInAppKeyboardHeightIncludeNavbar(newHeight);
         }
     }
 
@@ -13256,7 +13264,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             }
 
             if (windowInsetsInAppController != null) {
-                windowInsetsInAppController.requestInAppKeyboardHeight(stickersExpandedHeight + AndroidUtilities.navigationBarHeight);
+                windowInsetsInAppController.requestInAppKeyboardHeightIncludeNavbar(stickersExpandedHeight);
             }
 
         } else {
@@ -13335,7 +13343,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             }
 
             if (windowInsetsInAppController != null) {
-                windowInsetsInAppController.requestInAppKeyboardHeight(origHeight + AndroidUtilities.navigationBarHeight);
+                windowInsetsInAppController.requestInAppKeyboardHeightIncludeNavbar(origHeight);
             }
         }
         if (expandStickersButton != null) {

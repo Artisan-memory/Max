@@ -28,6 +28,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 
+import com.radolyn.ayugram.proprietary.AyuMessageUtils;
+import com.radolyn.ayugram.utils.AyuState;
+
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.messenger.AndroidUtilities;
@@ -93,26 +96,43 @@ public class MessageHelper extends BaseController {
     public static String getPathToMessage(MessageObject messageObject) {
         String path = messageObject.messageOwner.attachPath;
         if (!TextUtils.isEmpty(path)) {
-            File temp = new File(path);
-            if (!temp.exists()) {
+            File f = new File(path);
+            if (!f.exists()) {
                 path = null;
             }
         }
         if (TextUtils.isEmpty(path)) {
             path = FileLoader.getInstance(UserConfig.selectedAccount).getPathToMessage(messageObject.messageOwner).toString();
-            File temp = new File(path);
-            if (!temp.exists()) {
+            File f = new File(path);
+            if (!f.exists() || f.getAbsolutePath().endsWith("/cache")) {
                 path = null;
+            }
+            if (TextUtils.isEmpty(path)) {
+                String fileName = f.getName();
+                if (!TextUtils.isEmpty(fileName)) {
+                    File found = AyuMessageUtils.findExistingFileByBaseNameFast(fileName);
+                    if (found == null || !found.exists()) {
+                        fileName = "ttl_" + messageObject.getDialogId() + "_" + messageObject.getId() + "_" + fileName;
+                        found = AyuMessageUtils.findExistingFileByBaseNameFast(fileName);
+                    }
+                    if (found != null && found.exists()) {
+                        path = found.getAbsolutePath();
+                    }
+                }
             }
         }
         if (TextUtils.isEmpty(path)) {
-            path = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(messageObject.getDocument(), true).toString();
-            File temp = new File(path);
-            if (!temp.exists()) {
-                return null;
+            File f = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(messageObject.getDocument(), true);
+            if (f.exists() && !f.getAbsolutePath().endsWith("/cache")) {
+                path = f.getAbsolutePath();
+            } else {
+                f = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(messageObject.getDocument());
+                if (f.exists()) {
+                    path = f.getAbsolutePath();
+                }
             }
         }
-        return path;
+        return path != null && !path.endsWith("/cache") ? path : null;
     }
 
     public void resetMessageContent(long dialog_id, MessageObject messageObject) {
@@ -570,6 +590,9 @@ public class MessageHelper extends BaseController {
                 }
                 Runnable deleteAction = () -> {
                     for (ArrayList<Integer> list : lists) {
+                        for (int msgId : list) {
+                            AyuState.permitDeleteMessage(dialogId, msgId);
+                        }
                         getMessagesController().deleteMessages(list, null, null, dialogId, 0, true, 0);
                     }
                 };
@@ -591,12 +614,21 @@ public class MessageHelper extends BaseController {
         req.limit = 100;
         req.q = "";
         req.offset_id = offsetId;
-        req.from_id = fromId;
-        req.flags |= 1;
         req.filter = new TLRPC.TL_inputMessagesFilterEmpty();
+        long dialogId = DialogObject.getPeerDialogId(peer);
+        boolean isMonoForum = getMessagesStorage().isMonoForum(dialogId);
+        if (!isMonoForum) {
+            req.from_id = fromId;
+            req.flags |= 1;
+        }
         if (replyMessageId != 0) {
-            req.top_msg_id = replyMessageId;
-            req.flags |= 2;
+            if (isMonoForum) {
+                req.saved_peer_id = getMessagesController().getInputPeer(replyMessageId);
+                req.flags |= 4;
+            } else {
+                req.top_msg_id = replyMessageId;
+                req.flags |= 2;
+            }
         }
         req.hash = hash;
         getConnectionsManager().sendRequest(req, (response, error) -> {
