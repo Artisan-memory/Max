@@ -491,7 +491,9 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         @NonNull
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new RecyclerListView.Holder(new AyuMessageCell(context, currentAccount));
+            AyuMessageCell cell = new AyuMessageCell(context, currentAccount);
+            cell.setShowAyuDeletedMark(false);
+            return new RecyclerListView.Holder(cell);
         }
 
         @Override
@@ -537,7 +539,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
                 msg.media = messageObject.messageOwner.media;
             } else if (editedMessage.documentType == AyuConstants.DOCUMENT_TYPE_FILE) {
                 File originalPath = FileLoader.getInstance(currentAccount).getPathToMessage(messageObject.messageOwner);
-                if (!messageObject.messageOwner.ayuDeleted && originalPath.exists() && Objects.equals(editedMessage.mediaPath, originalPath.getAbsolutePath())) {
+                if (!messageObject.isAyuDeleted() && originalPath.exists() && Objects.equals(editedMessage.mediaPath, originalPath.getAbsolutePath())) {
                     msg.media.document = messageObject.messageOwner.media.document;
                     localFileFound = true;
                 } else { // try to find local file for media that was saved

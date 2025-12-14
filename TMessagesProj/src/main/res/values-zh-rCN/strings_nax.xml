@@ -37,7 +37,6 @@
     <string name="ArticleTranslationProvider">文章翻译源</string>
     <string name="EnableSeparateArticleTranslator">单独设置文章翻译源</string>
     <string name="DisableCrashlyticsCollection">禁用 Firebase Crashlytics 崩溃报告</string>
-    <string name="ShowStickersRowToplevel">在主设置中显示贴纸</string>
     <string name="HideShareButtonInChannel">隐藏右侧分享按钮</string>
     <string name="DeleteCloudBackup">清除云数据</string>
     <string name="DeleteCloudBackupFailed">云备份数据清除失败</string>
@@ -265,4 +264,9 @@
     <string name="NoQuoteForwardShort">无引用</string>
     <string name="ForceEdgeToEdge">强制无边框显示</string>
     <string name="ViewDeleted">查看已删除消息</string>
+    <string name="PasskeyLogin">Passkey 登录</string>
+    <string name="PasskeyInfo2">此功能仅适用于允许用户管理特权应用的信任设置的密码管理器，例如 **Bitwarden** 和 **KeePassDX**。</string>
+    <string name="PasskeyUnsupportedTitle">不支持的密码管理器</string>
+    <string name="PasskeyUnsupportedMessage">尝试使用其他密码管理器，例如 **Bitwarden** 或 **KeePassDX**。</string>
+    <string name="PasskeyNoCredentialAvailable">没有可用的有效凭证。</string>
 </resources>

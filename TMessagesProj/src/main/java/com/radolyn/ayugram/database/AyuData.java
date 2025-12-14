@@ -74,15 +74,23 @@ public class AyuData {
         }
     };
 
+    private static final Migration MIGRATION_24_25 = new Migration(24, 25) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE DeletedMessage ADD COLUMN forwards INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE EditedMessage ADD COLUMN forwards INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     static {
         create();
     }
 
-    public static void create() {
+    public static synchronized void create() {
         database = Room.databaseBuilder(ApplicationLoader.applicationContext, AyuDatabase.class, AyuConstants.AYU_DATABASE)
                 .allowMainThreadQueries()
                 .fallbackToDestructiveMigrationOnDowngrade()
-                .addMigrations(MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+                .addMigrations(MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
                 .build();
 
         editedMessageDao = database.editedMessageDao();
@@ -101,8 +109,18 @@ public class AyuData {
         return deletedMessageDao;
     }
 
-    public static void clean() {
-        database.close();
+    public static synchronized void clean() {
+        if (database != null) {
+            try {
+                database.close();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
+
+        database = null;
+        editedMessageDao = null;
+        deletedMessageDao = null;
 
         ApplicationLoader.applicationContext.deleteDatabase(AyuConstants.AYU_DATABASE);
     }
