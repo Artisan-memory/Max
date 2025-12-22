@@ -1,4 +1,4 @@
-package com.radolyn.ayugram.ui;
+package tw.nekomimi.nekogram.ui;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
@@ -14,7 +14,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -32,22 +31,23 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.radolyn.ayugram.AyuConstants;
 import com.radolyn.ayugram.database.entities.DeletedMessageFull;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 import com.radolyn.ayugram.proprietary.AyuMessageUtils;
+import com.radolyn.ayugram.ui.AyuMessageCell;
+import com.radolyn.ayugram.ui.AyuMessageDelegateFragment;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FileLoader;
-import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MessageObject;
-import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
-import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
+import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
@@ -72,8 +72,7 @@ import org.telegram.ui.Components.inset.WindowInsetsStateHolder;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Comparator;
 import java.util.Locale;
 
 import kotlin.Unit;
@@ -81,13 +80,13 @@ import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.translate.TranslatorKt;
-import tw.nekomimi.nekogram.ui.MessageDetailsActivity;
 import tw.nekomimi.nekogram.utils.AlertUtil;
 import xyz.nextalone.nagram.NaConfig;
+import xyz.nextalone.nagram.helper.BookmarksHelper;
 
-public class AyuViewDeleted extends AyuMessageDelegateFragment {
+public class BookmarksActivity extends AyuMessageDelegateFragment {
     private static final int OPTION_SHOW_IN_CHAT = 1;
-    private static final int OPTION_DELETE_FROM_DATABASE = 2;
+    private static final int OPTION_DELETE_BOOKMARK = 2;
     private static final int OPTION_COPY = 3;
     private static final int OPTION_COPY_PHOTO = 4;
     private static final int OPTION_COPY_PHOTO_AS_STICKER = 5;
@@ -95,22 +94,15 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
     private static final int OPTION_SAVE_TO_GALLERY = 7;
     private static final int OPTION_SAVE_TO_DOWNLOADS = 8;
     private static final int OPTION_TRANSLATE = 9;
+
     private final long dialogId;
-    private final boolean isEncrypted;
-    private final ArrayList<DeletedMessageFull> deletedMessages = new ArrayList<>();
-    private final ArrayList<DeletedMessageFull> filteredMessages = new ArrayList<>();
-    private final ArrayList<MessageObject> messageObjects = new ArrayList<>();
-    private final SparseArray<DeletedMessageFull> messageIdMap = new SparseArray<>();
-    private final int pageSize = 50;
-    private final int pageSizeEncrypted = Integer.MAX_VALUE;
+    private final ArrayList<MessageObject> bookmarkedMessages = new ArrayList<>();
+    private final ArrayList<MessageObject> filteredMessages = new ArrayList<>();
+
     private int rowCount;
     private RecyclerListView listView;
-    private LinearLayoutManager layoutManager;
     private ChatActivitySideControlsButtonsLayout sideControlsButtonsLayout;
     private boolean pagedownButtonManuallyHidden;
-    private boolean loading;
-    private boolean noMoreOlder;
-    private int oldestId = Integer.MAX_VALUE;
     private ActionBarPopupWindow scrimPopupWindow;
     private ChatActionCell floatingDateView;
     private TextView emptyView;
@@ -121,9 +113,8 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
     private final Runnable updateFloatingDateRunnable = this::updateFloatingDateView;
     private final WindowInsetsStateHolder windowInsetsStateHolder = new WindowInsetsStateHolder(this::checkInsets);
 
-    public AyuViewDeleted(long dialogId) {
+    public BookmarksActivity(long dialogId) {
         this.dialogId = dialogId;
-        this.isEncrypted = DialogObject.isEncryptedDialog(dialogId);
     }
 
     private void checkInsets() {
@@ -188,21 +179,11 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         @Override
         public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-            if (!loading && !noMoreOlder) {
-                int first = layoutManager.findFirstVisibleItemPosition();
-                if (first <= 2 && !isEncrypted) {
-                    loadOlder();
-                }
-            }
             updateFloatingDateView();
             updatePagedownButtonVisibility(true);
             updateVisibleMessageCells();
         }
     };
-
-    private static boolean hasContent(DeletedMessageFull messageFull) {
-        return messageFull != null && messageFull.message != null && (!TextUtils.isEmpty(messageFull.message.text) || !TextUtils.isEmpty(messageFull.message.mediaPath) || messageFull.message.documentSerialized != null);
-    }
 
     private void updateVisibleMessageCells() {
         if (listView == null || fragmentView == null) {
@@ -237,38 +218,55 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         }
     }
 
-    private void updateDeleted() {
-        updateDeleted(null);
+    private static boolean hasAyuDeletedContent(DeletedMessageFull messageFull) {
+        return messageFull != null && messageFull.message != null && (!TextUtils.isEmpty(messageFull.message.text) || !TextUtils.isEmpty(messageFull.message.mediaPath) || messageFull.message.documentSerialized != null);
     }
 
-    private void updateDeleted(Runnable onComplete) {
+    private void updateBookmarks() {
+        updateBookmarks(null);
+    }
+
+    private void updateBookmarks(Runnable onComplete) {
+        int accountId = getCurrentAccount();
         long userId = getUserConfig().getClientUserId();
         Utilities.globalQueue.postRunnable(() -> {
-            List<DeletedMessageFull> latest = AyuMessagesController.getInstance().getLatestMessages(userId, dialogId, isEncrypted ? pageSizeEncrypted : pageSize);
-            if (latest == null) {
-                latest = new ArrayList<>();
-            }
-            if (!isEncrypted) {
-                Collections.reverse(latest);
-            }
-            ArrayList<DeletedMessageFull> filtered = new ArrayList<>(latest.size());
-            for (DeletedMessageFull m : latest) {
-                if (hasContent(m)) {
-                    filtered.add(m);
+            int[] messageIds = BookmarksHelper.getBookmarkedMessageIds(accountId, dialogId);
+            ArrayList<MessageObject> loaded = new ArrayList<>(messageIds.length);
+
+            for (int messageId : messageIds) {
+                TLRPC.Message message = MessagesStorage.getInstance(accountId).getMessage(dialogId, messageId);
+                MessageObject messageObject = null;
+                if (message != null) {
+                    messageObject = new MessageObject(accountId, message, false, true);
+                    if (messageObject.messageOwner.media != null) {
+                        messageObject.messageOwner.media.ttl_seconds = 0;
+                    }
+                } else {
+                    DeletedMessageFull deleted = AyuMessagesController.getInstance().getMessage(userId, dialogId, messageId);
+                    if (hasAyuDeletedContent(deleted)) {
+                        var base = deleted.message;
+                        var tl = new TLRPC.TL_message();
+                        AyuMessageUtils.map(base, tl, accountId);
+                        AyuMessageUtils.mapMedia(base, tl, accountId);
+                        tl.ayuDeleted = true;
+                        messageObject = new MessageObject(accountId, tl, false, true);
+                    }
+                }
+                if (messageObject == null) {
+                    messageObject = createMissingMessagePlaceholder(accountId, userId, messageId);
+                }
+                if (messageObject != null) {
+                    messageObject.forceAvatar = true;
+                    loaded.add(messageObject);
                 }
             }
+
+            loaded.sort(Comparator.comparingInt(MessageObject::getId));
+
             AndroidUtilities.runOnUIThread(() -> {
-                deletedMessages.clear();
-                messageIdMap.clear();
-                deletedMessages.addAll(filtered);
-                for (int i = 0; i < filtered.size(); i++) {
-                    DeletedMessageFull m = filtered.get(i);
-                    messageIdMap.put(m.message.messageId, m);
-                }
+                bookmarkedMessages.clear();
+                bookmarkedMessages.addAll(loaded);
                 applySearchFilter();
-                if (!deletedMessages.isEmpty()) {
-                    oldestId = deletedMessages.get(0).message.messageId;
-                }
                 if (onComplete != null) {
                     onComplete.run();
                 }
@@ -276,14 +274,107 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         });
     }
 
+    private MessageObject createMissingMessagePlaceholder(int accountId, long userId, int messageId) {
+        if (messageId == 0) {
+            return null;
+        }
+
+        TLRPC.TL_message tl = new TLRPC.TL_message();
+        tl.id = messageId;
+        tl.dialog_id = dialogId;
+        tl.date = ConnectionsManager.getInstance(accountId).getCurrentTime();
+        tl.out = true;
+
+        tl.from_id = new TLRPC.TL_peerUser();
+        tl.from_id.user_id = userId;
+
+        tl.peer_id = createPeerId(dialogId);
+
+        String link = buildMessageLink(dialogId, messageId);
+        tl.message = link == null ? getString(R.string.ShowInChat) : (getString(R.string.ShowInChat) + "\n" + link);
+        if (link != null) {
+            int offset = tl.message.indexOf(link);
+            if (offset >= 0) {
+                TLRPC.TL_messageEntityUrl entity = new TLRPC.TL_messageEntityUrl();
+                entity.offset = offset;
+                entity.length = link.length();
+                tl.entities.add(entity);
+            }
+        }
+
+        return new MessageObject(accountId, tl, false, true);
+    }
+
+    private TLRPC.Peer createPeerId(long dialogId) {
+        TLRPC.Peer peerId = null;
+        var peer = getMessagesController().getUserOrChat(dialogId);
+        if (peer instanceof TLRPC.User user) {
+            TLRPC.TL_peerUser p = new TLRPC.TL_peerUser();
+            p.user_id = user.id;
+            peerId = p;
+        } else if (peer instanceof TLRPC.Chat chat) {
+            if (ChatObject.isChannel(chat)) {
+                TLRPC.TL_peerChannel p = new TLRPC.TL_peerChannel();
+                p.channel_id = chat.id;
+                peerId = p;
+            } else {
+                TLRPC.TL_peerChat p = new TLRPC.TL_peerChat();
+                p.chat_id = chat.id;
+                peerId = p;
+            }
+        }
+
+        if (peerId != null) {
+            return peerId;
+        }
+
+        if (DialogObject.isEncryptedDialog(dialogId)) {
+            TLRPC.TL_peerUser p = new TLRPC.TL_peerUser();
+            p.user_id = getUserConfig().getClientUserId();
+            return p;
+        } else if (dialogId > 0) {
+            TLRPC.TL_peerUser p = new TLRPC.TL_peerUser();
+            p.user_id = dialogId;
+            return p;
+        } else {
+            TLRPC.TL_peerChat p = new TLRPC.TL_peerChat();
+            p.chat_id = -dialogId;
+            return p;
+        }
+    }
+
+    private String buildMessageLink(long dialogId, int messageId) {
+        if (messageId == 0 || DialogObject.isEncryptedDialog(dialogId)) {
+            return null;
+        }
+
+        var peer = getMessagesController().getUserOrChat(dialogId);
+        if (peer instanceof TLRPC.Chat chat) {
+            if (!TextUtils.isEmpty(chat.username)) {
+                return "https://t.me/" + chat.username + "/" + messageId;
+            }
+            if (ChatObject.isChannel(chat)) {
+                return "https://t.me/c/" + chat.id + "/" + messageId;
+            }
+            return "tg://openmessage?chat_id=" + chat.id + "&message_id=" + messageId;
+        } else if (peer instanceof TLRPC.User user) {
+            return "tg://openmessage?user_id=" + user.id + "&message_id=" + messageId;
+        }
+
+        if (dialogId > 0) {
+            return "tg://openmessage?user_id=" + dialogId + "&message_id=" + messageId;
+        }
+        return "https://t.me/c/" + (-dialogId) + "/" + messageId;
+    }
+
     @Override
     public View createView(Context context) {
         var peer = getMessagesController().getUserOrChat(dialogId);
         String name = switch (peer) {
-            case null -> getString(R.string.ViewDeleted);
+            case null -> getString(R.string.BookmarksManager);
             case TLRPC.User user -> user.first_name;
             case TLRPC.Chat chat -> chat.title;
-            default -> getString(R.string.ViewDeleted);
+            default -> getString(R.string.BookmarksManager);
         };
 
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
@@ -360,7 +451,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         listView.setItemAnimator(null);
         listView.setLayoutAnimation(null);
 
-        layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false) {
+        LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false) {
             @Override
             public boolean supportsPredictiveItemAnimations() {
                 return false;
@@ -370,7 +461,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         listView.setLayoutManager(layoutManager);
         listView.setVerticalScrollBarEnabled(true);
-        listView.setAdapter(new ListAdapter(context, UserConfig.selectedAccount));
+        listView.setAdapter(new ListAdapter(context, getCurrentAccount()));
         listView.setSelectorType(9);
         listView.setSelectorDrawableColor(0);
         listView.setClipToPadding(false);
@@ -408,7 +499,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
                 super.onDraw(canvas);
             }
         };
-        emptyView.setText(getString(R.string.NoMessages));
+        emptyView.setText(getString(R.string.NoBookmarks));
         emptyView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         emptyView.setTypeface(AndroidUtilities.bold());
         emptyView.setTextColor(Theme.getColor(Theme.key_chat_serviceText, getResourceProvider()));
@@ -434,7 +525,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         updateEmptyView();
 
-        updateDeleted(() -> {
+        updateBookmarks(() -> {
             if (rowCount > 0 && listView != null) {
                 listView.scrollToPosition(rowCount - 1);
                 listView.post(this::updateVisibleMessageCells);
@@ -445,93 +536,45 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         return fragmentView;
     }
 
-    private void loadOlder() {
-        if (loading) return;
-        loading = true;
-        long userId = getUserConfig().getClientUserId();
-        int currentOldestId = oldestId;
+    @Override
+    public void onResume() {
+        super.onResume();
 
-        int firstPos = layoutManager.findFirstVisibleItemPosition();
-        View firstView = layoutManager.findViewByPosition(firstPos);
-        int top = firstView != null ? firstView.getTop() : 0;
+        if (fragmentView instanceof SizeNotifierFrameLayout) {
+            ((SizeNotifierFrameLayout) fragmentView).onResume();
+        }
 
-        Utilities.globalQueue.postRunnable(() -> {
-            List<DeletedMessageFull> olderDesc = AyuMessagesController.getInstance().getOlderMessagesBefore(userId, dialogId, currentOldestId, isEncrypted ? pageSizeEncrypted : pageSize);
-            if (olderDesc == null || olderDesc.isEmpty()) {
-                AndroidUtilities.runOnUIThread(() -> {
-                    noMoreOlder = true;
-                    loading = false;
-                });
-                return;
+        Bulletin.addDelegate(this, new Bulletin.Delegate() {
+            @Override
+            public int getBottomOffset(int tag) {
+                return windowInsetsStateHolder.getCurrentNavigationBarInset();
             }
-
-            Collections.reverse(olderDesc);
-            List<DeletedMessageFull> older = new ArrayList<>(olderDesc.size());
-            for (DeletedMessageFull m : olderDesc) {
-                if (hasContent(m)) {
-                    older.add(m);
-                }
-            }
-
-            int newOldestId = older.isEmpty() ? olderDesc.get(0).message.messageId : older.get(0).message.messageId;
-
-            AndroidUtilities.runOnUIThread(() -> {
-                int insertCount = older.size();
-                deletedMessages.addAll(0, older);
-                for (int i = 0; i < insertCount; i++) {
-                    DeletedMessageFull m = older.get(i);
-                    messageIdMap.put(m.message.messageId, m);
-                }
-                oldestId = newOldestId;
-
-                if (TextUtils.isEmpty(searchQuery)) {
-                    filteredMessages.addAll(0, older);
-                    ArrayList<MessageObject> olderObjects = new ArrayList<>(insertCount);
-                    for (int i = 0; i < insertCount; i++) {
-                        olderObjects.add(createMessageObject(older.get(i), true));
-                    }
-                    messageObjects.addAll(0, olderObjects);
-                    rowCount = filteredMessages.size();
-                    if (listView != null && listView.getAdapter() != null) {
-                        listView.getAdapter().notifyItemRangeInserted(0, insertCount);
-                    }
-                    updateActionBarCount();
-                    updateEmptyView();
-                } else {
-                    applySearchFilter();
-                }
-
-                if (layoutManager != null) {
-                    layoutManager.scrollToPositionWithOffset(firstPos + (TextUtils.isEmpty(searchQuery) ? insertCount : 0), top);
-                }
-                loading = false;
-
-                if (!TextUtils.isEmpty(searchQuery)) updateActionBarCount();
-                updatePagedownButtonVisibility(false);
-                AndroidUtilities.runOnUIThread(updateFloatingDateRunnable);
-                updateVisibleMessageCells();
-            });
         });
+
+        updateActionBarCount();
+        updateBookmarks();
     }
 
     @Override
-    public boolean onFragmentCreate() {
-        super.onFragmentCreate();
+    public void onPause() {
+        super.onPause();
 
-        NotificationCenter.getInstance(UserConfig.selectedAccount).addObserver(this, AyuConstants.MESSAGES_DELETED_NOTIFICATION);
-        NotificationCenter.getInstance(UserConfig.selectedAccount).addObserver(this, AyuConstants.DELETED_MEDIA_LOADED_NOTIFICATION);
-        NotificationCenter.getInstance(UserConfig.selectedAccount).addObserver(this, NotificationCenter.voiceTranscriptionUpdate);
+        if (fragmentView instanceof SizeNotifierFrameLayout) {
+            ((SizeNotifierFrameLayout) fragmentView).onPause();
+        }
 
-        return true;
+        Bulletin.removeDelegate(this);
+
+        if (scrimPopupWindow != null) {
+            scrimPopupWindow.dismiss();
+            scrimPopupWindow = null;
+        }
     }
 
     @Override
     public void onFragmentDestroy() {
         super.onFragmentDestroy();
 
-        NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, AyuConstants.MESSAGES_DELETED_NOTIFICATION);
-        NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, AyuConstants.DELETED_MEDIA_LOADED_NOTIFICATION);
-        NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, NotificationCenter.voiceTranscriptionUpdate);
         Bulletin.removeDelegate(this);
 
         if (scrimPopupWindow != null) {
@@ -558,64 +601,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         }
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        if (fragmentView instanceof SizeNotifierFrameLayout) {
-            ((SizeNotifierFrameLayout) fragmentView).onResume();
-        }
-
-        Bulletin.addDelegate(this, new Bulletin.Delegate() {
-            @Override
-            public int getBottomOffset(int tag) {
-                return windowInsetsStateHolder.getCurrentNavigationBarInset();
-            }
-        });
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-
-        if (fragmentView instanceof SizeNotifierFrameLayout) {
-            ((SizeNotifierFrameLayout) fragmentView).onPause();
-        }
-
-        Bulletin.removeDelegate(this);
-
-        if (scrimPopupWindow != null) {
-            scrimPopupWindow.dismiss();
-            scrimPopupWindow = null;
-        }
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    @Override
-    public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == AyuConstants.MESSAGES_DELETED_NOTIFICATION) {
-            long did = (long) args[0];
-            if (did == dialogId) {
-                AndroidUtilities.runOnUIThread(() -> {
-                    updateDeleted();
-                    applySearchFilter();
-                    updateActionBarCount();
-                }, 500);
-            }
-        } else if (id == AyuConstants.DELETED_MEDIA_LOADED_NOTIFICATION) {
-            try {
-                Utilities.globalQueue.postRunnable(() -> {
-                    File file = (File) args[1];
-                    AyuMessageUtils.saveDownloadedMedia(file);
-                });
-            } catch (Exception e) {
-                FileLog.e(e);
-            }
-        } else if (id == NotificationCenter.voiceTranscriptionUpdate) {
-            handleVoiceTranscriptionUpdate(args);
-        }
-    }
-
     private void createMenu(View v, float x, float y, int position) {
         final MessageObject msg = (v instanceof ChatMessageCell) ? ((ChatMessageCell) v).getMessageObject() : null;
         if (msg == null || getParentActivity() == null) {
@@ -630,8 +615,12 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         icons.add(R.drawable.msg_openin);
         options.add(OPTION_SHOW_IN_CHAT);
 
+        items.add(getString(R.string.RemoveBookmark));
+        icons.add(R.drawable.msg_unfave);
+        options.add(OPTION_DELETE_BOOKMARK);
+
         String textToCopy = msg.messageOwner != null ? msg.messageOwner.message : null;
-        if (textToCopy != null && !textToCopy.isEmpty()) {
+        if (!TextUtils.isEmpty(textToCopy)) {
             items.add(getString(R.string.Copy));
             icons.add(R.drawable.msg_copy);
             options.add(OPTION_COPY);
@@ -674,10 +663,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             options.add(OPTION_TRANSLATE);
         }
 
-        items.add(getString(R.string.Delete));
-        icons.add(R.drawable.msg_delete);
-        options.add(OPTION_DELETE_FROM_DATABASE);
-
         items.add(getString(R.string.MessageDetails));
         icons.add(R.drawable.msg_info);
         options.add(OPTION_DETAILS);
@@ -692,7 +677,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             cell.setTextAndIcon(items.get(a), icons.get(a));
             final Integer option = options.get(a);
             popupLayout.addView(cell);
-            final int pos = position;
             cell.setOnClickListener(v1 -> {
                 if (option == OPTION_SHOW_IN_CHAT) {
                     Bundle args = new Bundle();
@@ -712,24 +696,22 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
                     args.putInt("message_id", msg.getId());
                     NotificationCenter.getInstance(getCurrentAccount()).postNotificationName(NotificationCenter.closeChats);
                     presentFragment(new ChatActivity(args), false, false);
-                } else if (option == OPTION_DELETE_FROM_DATABASE) {
-                    long userId = getUserConfig().getClientUserId();
-                    long dialogId = msg.getDialogId();
-                    int messageId = msg.getId();
-                    Utilities.globalQueue.postRunnable(() -> AyuMessagesController.getInstance().delete(userId, dialogId, messageId));
-                    if (pos >= 0 && pos < filteredMessages.size()) {
-                        DeletedMessageFull toRemove = filteredMessages.get(pos);
-                        deletedMessages.remove(toRemove);
-                        messageIdMap.remove(toRemove.message.messageId);
-                        applySearchFilter();
-                    } else {
-                        updateDeleted();
+                } else if (option == OPTION_DELETE_BOOKMARK) {
+                    BookmarksHelper.removeBookmark(getCurrentAccount(), dialogId, msg.getId());
+                    if (position >= 0 && position < filteredMessages.size()) {
+                        MessageObject toRemove = filteredMessages.get(position);
+                        filteredMessages.remove(position);
+                        bookmarkedMessages.remove(toRemove);
+                        rowCount = filteredMessages.size();
                         notifyAdapterDataChanged();
                         updateActionBarCount();
+                        updateEmptyView();
+                    } else {
+                        updateBookmarks();
                     }
                 } else if (option == OPTION_COPY) {
                     String text = msg.messageOwner != null ? msg.messageOwner.message : null;
-                    if (text != null && !text.isEmpty()) {
+                    if (!TextUtils.isEmpty(text)) {
                         AndroidUtilities.addToClipboard(text);
                         BulletinFactory.of(this).createCopyBulletin(getString(R.string.MessageCopied)).show();
                     }
@@ -778,6 +760,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
                 } else if (option == OPTION_TRANSLATE) {
                     toggleOrTranslate((ChatMessageCell) v, msg, null);
                 }
+
                 if (scrimPopupWindow != null) {
                     scrimPopupWindow.dismiss();
                 }
@@ -972,16 +955,8 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         if (actionBar == null) {
             return;
         }
-        long userId = getUserConfig().getClientUserId();
-        Utilities.globalQueue.postRunnable(() -> {
-            int count = AyuMessagesController.getInstance().getDeletedCount(userId, dialogId);
-            AndroidUtilities.runOnUIThread(() -> {
-                if (actionBar != null) {
-                    String label = getString(R.string.EventLogFilterDeletedMessages);
-                    actionBar.setSubtitle(label + " (" + count + ")");
-                }
-            });
-        });
+        int count = bookmarkedMessages.size();
+        actionBar.setSubtitle(getString(R.string.BookmarksManager) + " (" + count + "/" + BookmarksHelper.MAX_PER_CHAT + ")");
     }
 
     private void updateFloatingDateView() {
@@ -1085,26 +1060,22 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
     private void applySearchFilter() {
         filteredMessages.clear();
         if (TextUtils.isEmpty(searchQuery)) {
-            filteredMessages.addAll(deletedMessages);
+            filteredMessages.addAll(bookmarkedMessages);
         } else {
             String q = searchQuery.toLowerCase(Locale.getDefault());
-            for (DeletedMessageFull full : deletedMessages) {
-                String text = full.message != null ? full.message.text : null;
+            for (MessageObject msg : bookmarkedMessages) {
+                String text = msg.messageOwner != null ? msg.messageOwner.message : null;
                 if (!TextUtils.isEmpty(text) && text.toLowerCase(Locale.getDefault()).contains(q)) {
-                    filteredMessages.add(full);
+                    filteredMessages.add(msg);
                     continue;
                 }
-                if (full.message != null && full.message.mediaPath != null && full.message.mediaPath.toLowerCase(Locale.getDefault()).contains(q)) {
-                    filteredMessages.add(full);
-                    continue;
-                }
-                if (full.message != null && full.message.fwdName != null && full.message.fwdName.toLowerCase(Locale.getDefault()).contains(q)) {
-                    filteredMessages.add(full);
+                String attachPath = msg.messageOwner != null ? msg.messageOwner.attachPath : null;
+                if (!TextUtils.isEmpty(attachPath) && attachPath.toLowerCase(Locale.getDefault()).contains(q)) {
+                    filteredMessages.add(msg);
                 }
             }
         }
         rowCount = filteredMessages.size();
-        rebuildMessageObjects();
         notifyAdapterDataChanged();
         updateActionBarCount();
         updateEmptyView();
@@ -1129,6 +1100,11 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             emptyView.setVisibility(View.GONE);
             listView.setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    public void didReceivedNotification(int id, int account, Object... args) {
+
     }
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
@@ -1167,19 +1143,9 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             if (holder.getItemViewType() == 1) {
                 var cell = (AyuMessageCell) holder.itemView;
-                var deleted = filteredMessages.get(position);
-                MessageObject msg;
-                if (position >= 0 && position < messageObjects.size()) {
-                    msg = messageObjects.get(position);
-                    if (msg == null) {
-                        msg = createMessageObject(deleted, true);
-                        messageObjects.set(position, msg);
-                    }
-                } else {
-                    msg = createMessageObject(deleted, true);
-                }
-                msg.forceAvatar = !msg.isOutOwner();
-                cell.setAyuDelegate(AyuViewDeleted.this);
+                var msg = filteredMessages.get(position);
+                msg.forceAvatar = true;
+                cell.setAyuDelegate(BookmarksActivity.this);
                 cell.setMessageObject(msg, null, false, false, false);
                 cell.setAlpha(1f);
                 cell.setId(position);
@@ -1191,98 +1157,4 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             return position >= 0 && position < filteredMessages.size() ? 1 : 0;
         }
     }
-
-    private MessageObject createMessageObject(DeletedMessageFull deletedMessageFull, boolean resolveReply) {
-        int currentAccount = getCurrentAccount();
-        var base = deletedMessageFull.message;
-        var tl = new TLRPC.TL_message();
-        AyuMessageUtils.map(base, tl, currentAccount);
-        AyuMessageUtils.mapMedia(base, tl, currentAccount);
-
-        if (resolveReply && base.replyMessageId != 0) {
-            boolean found = false;
-            ArrayList<MessageObject> messages = MessagesController.getInstance(currentAccount).dialogMessage.get(base.dialogId);
-            if (messages != null) {
-                for (int i = 0; i < messages.size(); i++) {
-                    MessageObject m = messages.get(i);
-                    if (m.getId() == base.replyMessageId) {
-                        tl.replyMessage = m.messageOwner;
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!found) {
-                DeletedMessageFull m = messageIdMap.get(base.replyMessageId);
-                if (m != null) {
-                    tl.replyMessage = createMessageObject(m, false).messageOwner;
-                }
-            }
-        }
-
-        tl.ayuDeleted = true;
-        return new MessageObject(getCurrentAccount(), tl, false, true);
-    }
-
-    private void rebuildMessageObjects() {
-        messageObjects.clear();
-        for (int i = 0; i < filteredMessages.size(); i++) {
-            messageObjects.add(createMessageObject(filteredMessages.get(i), true));
-        }
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    private void handleVoiceTranscriptionUpdate(Object... args) {
-        if (listView == null || listView.getAdapter() == null || messageObjects.isEmpty()) {
-            return;
-        }
-
-        MessageObject updated = args != null && args.length > 0 && args[0] instanceof MessageObject ? (MessageObject) args[0] : null;
-        long transcriptionId = 0;
-        String transcriptionText = null;
-        if (args != null && args.length > 1 && args[1] != null) {
-            transcriptionId = (Long) args[1];
-            transcriptionText = (String) args[2];
-        }
-
-        int indexToUpdate = -1;
-        for (int i = 0; i < messageObjects.size(); i++) {
-            MessageObject local = messageObjects.get(i);
-            if (local == null || local.messageOwner == null) {
-                continue;
-            }
-            if (updated == local) {
-                indexToUpdate = i;
-                break;
-            }
-            if (transcriptionId != 0 && local.messageOwner.voiceTranscriptionId == transcriptionId) {
-                indexToUpdate = i;
-                break;
-            }
-            if (updated != null && updated.getId() == local.getId() && updated.getDialogId() == local.getDialogId()) {
-                indexToUpdate = i;
-                break;
-            }
-        }
-
-        if (indexToUpdate >= 0) {
-            MessageObject local = messageObjects.get(indexToUpdate);
-            if (local != null && local.messageOwner != null) {
-                if (transcriptionText != null) {
-                    local.messageOwner.voiceTranscription = transcriptionText;
-                }
-                if (args.length > 3 && args[3] != null) {
-                    local.messageOwner.voiceTranscriptionOpen = (Boolean) args[3];
-                }
-                if (args.length > 4 && args[4] != null) {
-                    local.messageOwner.voiceTranscriptionFinal = (Boolean) args[4];
-                }
-            }
-            listView.getAdapter().notifyItemChanged(indexToUpdate);
-        } else {
-            listView.getAdapter().notifyDataSetChanged();
-        }
-    }
-
 }
