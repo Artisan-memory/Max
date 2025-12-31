@@ -427,6 +427,8 @@ public class ChatActivityEnterView extends FrameLayout implements
         default boolean onceVoiceAvailable() {
             return false;
         }
+        default void setVideoRecordingCameraFront(boolean front) { // nax
+        }
     }
 
     public final static int RECORD_STATE_ENTER = 0;
@@ -601,6 +603,7 @@ public class ChatActivityEnterView extends FrameLayout implements
     private long sentFromPreview;
     private ActionBarPopupWindow sendPopupWindow;
     private ActionBarPopupWindow.ActionBarPopupWindowLayout sendPopupLayout;
+    private ActionBarPopupWindow cameraSelectionPopup; // nax
     private ImageView cancelBotButton;
     private ChatActivityEnterViewAnimatedIconView emojiButton;
     @Nullable
@@ -871,10 +874,16 @@ public class ChatActivityEnterView extends FrameLayout implements
     private AnimatedArrowDrawable stickersArrow;
     private boolean removeEmojiViewAfterAnimation;
 
+    private Boolean pendingCameraFront = null; // nax
+
     private Runnable onFinishInitCameraRunnable = new Runnable() {
         @Override
         public void run() {
             if (delegate != null) {
+                if (pendingCameraFront != null) {
+                    delegate.setVideoRecordingCameraFront(pendingCameraFront);
+                    pendingCameraFront = null;
+                }
                 delegate.needStartRecordVideo(0, true, 0, 0, 0, 0, 0);
             }
         }
@@ -888,7 +897,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             if (delegate == null || parentActivity == null) {
                 return;
             }
-            delegate.onPreAudioVideoRecord();
+            /*delegate.onPreAudioVideoRecord();
             calledRecordRunnable = true;
             recordAudioVideoRunnableStarted = false;
             if (slideText != null) {
@@ -896,7 +905,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                 slideText.setTranslationY(0);
             }
             audioToSendPath = null;
-            audioToSend = null;
+            audioToSend = null;*/
             if (isInVideoMode()) {
                 if (Build.VERSION.SDK_INT >= 23) {
                     boolean hasAudio = parentActivity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
@@ -915,6 +924,35 @@ public class ChatActivityEnterView extends FrameLayout implements
                         return;
                     }
                 }
+                // 0 = front, 1 = rear, 2 = ask
+                int cameraMode = NaConfig.INSTANCE.getCameraInVideoMessages().Int();
+                if (cameraMode == 2 && pendingCameraFront == null) {
+                    recordAudioVideoRunnableStarted = false;
+                    calledRecordRunnable = false;
+                    showCameraSelectionPopup(audioVideoButtonContainer, () -> {
+                        pendingCameraFront = true;
+                        proceedWithVideoRecording();
+                    }, () -> {
+                        pendingCameraFront = false;
+                        proceedWithVideoRecording();
+                    });
+                    return;
+                } else if (cameraMode != 2) {
+                    pendingCameraFront = (cameraMode == 0);
+                }
+            }
+
+            delegate.onPreAudioVideoRecord();
+            calledRecordRunnable = true;
+            recordAudioVideoRunnableStarted = false;
+            if (slideText != null) {
+                slideText.setAlpha(1.0f);
+                slideText.setTranslationY(0);
+            }
+            audioToSendPath = null;
+            audioToSend = null;
+
+            if (isInVideoMode()) {
                 if (!CameraController.getInstance().isCameraInitied()) {
                     CameraController.getInstance().initCamera(onFinishInitCameraRunnable);
                 } else {
@@ -2909,6 +2947,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                         if (slideToCancelProgress < 0.7f) {
                             if (hasRecordVideo && isInVideoMode()) {
                                 CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+                                pendingCameraFront = null;
                                 delegate.needStartRecordVideo(2, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
                                 sendButton.setEffect(effectId = 0);
                             } else {
@@ -2937,6 +2976,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                     if (alpha < 0.45) {
                         if (hasRecordVideo && isInVideoMode()) {
                             CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+                            pendingCameraFront = null;
                             delegate.needStartRecordVideo(2, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
                             sendButton.setEffect(effectId = 0);
                         } else {
@@ -2971,6 +3011,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                                     return true;
                                 }
                                 CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+                                pendingCameraFront = null;
                                 delegate.needStartRecordVideo(NekoConfig.confirmAVMessage.Bool() ? 3 : 1, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
                                 sendButton.setEffect(effectId = 0);
                             } else if (!sendVoiceEnabled) {
@@ -3055,14 +3096,15 @@ public class ChatActivityEnterView extends FrameLayout implements
                         setSlideToCancelProgress(alpha);
                     }
 
-                    if (alpha == 0) {
-                        if (hasRecordVideo && isInVideoMode()) {
-                            CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
-                            delegate.needStartRecordVideo(2, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
-                            sendButton.setEffect(effectId = 0);
-                        } else {
-                            delegate.needStartRecordAudio(0);
-                            MediaController.getInstance().stopRecording(0, false, 0, voiceOnce, 0);
+                        if (alpha == 0) {
+                            if (hasRecordVideo && isInVideoMode()) {
+                                CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+                                pendingCameraFront = null;
+                                delegate.needStartRecordVideo(2, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
+                                sendButton.setEffect(effectId = 0);
+                            } else {
+                                delegate.needStartRecordAudio(0);
+                                MediaController.getInstance().stopRecording(0, false, 0, voiceOnce, 0);
                         }
                         recordingAudioVideo = false;
                         updateRecordInterface(RECORD_STATE_CANCEL_BY_GESTURE, true);
@@ -3515,6 +3557,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         });
     }
 
+    @SuppressLint("AppCompatCustomView")
     private void createGiftButton() {
         if (giftButton != null || parentFragment == null) {
             return;
@@ -3722,6 +3765,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         textFieldContainer.addView(doneButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT, Gravity.BOTTOM | Gravity.RIGHT));
     }
 
+    @SuppressLint("AppCompatCustomView")
     private void createExpandStickersButton() {
         if (expandStickersButton != null) {
             return;
@@ -3854,6 +3898,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         }
         if (videoToSendMessageObject != null) {
             CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+            pendingCameraFront = null;
             delegate.needStartRecordVideo(2, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
             sendButton.setEffect(effectId = 0);
         } else {
@@ -4553,10 +4598,11 @@ public class ChatActivityEnterView extends FrameLayout implements
     private ActionBarPopupWindow menuPopupWindow;
 
     private boolean checkMenuPermissions() {
-        if (Build.VERSION.SDK_INT < 23) {
-            return true;
-        }
-        if (isInVideoMode()) {
+        return checkMenuPermissions(isInVideoMode());
+    }
+
+    private boolean checkMenuPermissions(boolean isVideoMode) {
+        if (isVideoMode) {
             boolean hasAudio = parentActivity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
             boolean hasVideo = parentActivity.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
             if (!hasAudio || !hasVideo) {
@@ -4655,8 +4701,19 @@ public class ChatActivityEnterView extends FrameLayout implements
                         }
                     }
 
-                    isInVideoMode = true;
-                    if (checkMenuPermissions()) {
+                    if (checkMenuPermissions(true)) {
+                        int cameraMode = NaConfig.INSTANCE.getCameraInVideoMessages().Int();
+                        if (cameraMode == 2) {
+                            showCameraSelectionPopup(audioVideoButtonContainer, () -> {
+                                pendingCameraFront = true;
+                                proceedWithVideoRecording();
+                            }, () -> {
+                                pendingCameraFront = false;
+                                proceedWithVideoRecording();
+                            });
+                            return;
+                        }
+                        isInVideoMode = true;
                         recordAudioVideoRunnable.run();
                         delegate.onSwitchRecordMode(isInVideoMode);
                         setRecordVideoButtonVisible(isInVideoMode, true);
@@ -6325,6 +6382,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
     public void cancelRecordingAudioVideo() {
         if (hasRecordVideo && isInVideoMode()) {
             CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+            pendingCameraFront = null;
             delegate.needStartRecordVideo(5, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
             sendButton.setEffect(effectId = 0);
         } else {
@@ -6669,6 +6727,11 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             senderSelectPopupWindow.setPauseNotifications(false);
             senderSelectPopupWindow.dismiss();
         }
+        if (cameraSelectionPopup != null) {
+            cameraSelectionPopup.dismiss();
+            cameraSelectionPopup = null;
+            pendingCameraFront = null;
+        }
     }
 
     public void checkChannelRights() {
@@ -6733,6 +6796,11 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             senderSelectPopupWindow.setPauseNotifications(false);
             senderSelectPopupWindow.dismiss();
         }
+        if (cameraSelectionPopup != null) {
+            cameraSelectionPopup.dismiss();
+            cameraSelectionPopup = null;
+            pendingCameraFront = null;
+        }
     }
 
     private Runnable hideKeyboardRunnable;
@@ -6742,6 +6810,11 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
         if (senderSelectPopupWindow != null) {
             senderSelectPopupWindow.setPauseNotifications(false);
             senderSelectPopupWindow.dismiss();
+        }
+        if (cameraSelectionPopup != null) {
+            cameraSelectionPopup.dismiss();
+            cameraSelectionPopup = null;
+            pendingCameraFront = null;
         }
         if (keyboardVisible) {
             showKeyboardOnResume = true;
@@ -6977,16 +7050,16 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
         } else if (botKeyboardViewVisible && botButtonsMessageObject != null && botButtonsMessageObject.messageOwner.reply_markup != null && !TextUtils.isEmpty(botButtonsMessageObject.messageOwner.reply_markup.placeholder)) {
             messageEditText.setHintText(botButtonsMessageObject.messageOwner.reply_markup.placeholder, animated);
         } else if (parentFragment != null && parentFragment.isForumInViewAsMessagesMode()) {
+            String topicTitle;
             if (replyingTopMessage != null && replyingTopMessage.replyToForumTopic != null && replyingTopMessage.replyToForumTopic.title != null) {
-                messageEditText.setHintText(LocaleController.formatString(R.string.TypeMessageIn, replyingTopMessage.replyToForumTopic.title), animated);
+                topicTitle = replyingTopMessage.replyToForumTopic.title;
             } else {
                 final TLRPC.TL_forumTopic topic = MessagesController.getInstance(currentAccount).getTopicsController().findTopic(parentFragment.getCurrentChat().id, 1);
-                if (topic != null && topic.title != null) {
-                    messageEditText.setHintText(LocaleController.formatString(R.string.TypeMessageIn, topic.title), animated);
-                } else {
-                    messageEditText.setHintText(getString(R.string.TypeMessage), animated);
-                }
+                topicTitle = (topic != null && topic.title != null) ? topic.title : null;
             }
+            SpannableStringBuilder hintText = new SpannableStringBuilder(topicTitle != null ? LocaleController.formatString(R.string.TypeMessageIn, topicTitle) : getString(R.string.TypeMessage));
+            maybeAppendSendAsUnderMessageHint(hintText);
+            messageEditText.setHintText(hintText, animated);
         } else {
             boolean isChannel = false;
             boolean anonymously = false;
@@ -7012,48 +7085,55 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                         messageEditText.setHintText(getString(R.string.ChannelBroadcast), animated);
                     }
                 } else {
-                    TLRPC.Chat chat = accountInstance.getMessagesController().getChat(-dialog_id);
-                    TLRPC.User us = accountInstance.getMessagesController().getUser(dialog_id);
                     SpannableStringBuilder messageEditTextText = SpannableStringBuilder.valueOf(getString(R.string.TypeMessage));
-                    SpannableString sendAsText = null;
                     if (NaConfig.INSTANCE.getTypeMessageHintUseGroupName().Bool()) {
+                        TLRPC.Chat chat = accountInstance.getMessagesController().getChat(-dialog_id);
+                        TLRPC.User user = accountInstance.getMessagesController().getUser(dialog_id);
                         if (chat != null) {
                             messageEditTextText = SpannableStringBuilder.valueOf(chat.title);
-                        } else if (us != null && us != accountInstance.getUserConfig().getCurrentUser()) {
-                            messageEditTextText = SpannableStringBuilder.valueOf((us.first_name != null ? us.first_name : "") + " " + (us.last_name != null ? us.last_name : ""));
+                        } else if (user != null && user != accountInstance.getUserConfig().getCurrentUser()) {
+                            messageEditTextText = SpannableStringBuilder.valueOf((user.first_name != null ? user.first_name : "") + " " + (user.last_name != null ? user.last_name : ""));
                         }
                     }
-                    if (NaConfig.INSTANCE.getShowSendAsUnderMessageHint().Bool() && delegate != null) {
-                        TLRPC.ChatFull full = accountInstance.getMessagesController().getChatFull(-dialog_id);
-                        TLRPC.Peer defPeer = full != null ? full.default_send_as : null;
-                        if (defPeer == null && delegate.getSendAsPeers() != null && !delegate.getSendAsPeers().peers.isEmpty()) {
-                            defPeer = delegate.getSendAsPeers().peers.get(0).peer;
-                        }
-                        if (defPeer != null) {
-                            if (defPeer.channel_id != 0) {
-                                TLRPC.Chat ch = accountInstance.getMessagesController().getChat(defPeer.channel_id);
-                                sendAsText = new SpannableString(ch != null ? "\nas " + ch.title : "");
-                            } else {
-                                TLRPC.User user = accountInstance.getMessagesController().getUser(defPeer.user_id);
-                                sendAsText = new SpannableString(user != null ? "\nas " + UserObject.getUserName(user) : "");
-                            }
-                        } else {
-                            TLRPC.User user = UserConfig.getInstance(currentAccount).getCurrentUser();
-                            sendAsText = new SpannableString(user != null ? "\nas " + UserObject.getUserName(user) : "");
-                        }
-                    }
-                    SpannableStringBuilder builder;
-                    if (sendAsText != null) {
-                        messageEditTextText.setSpan(new RelativeSizeSpan(0.9f), 0, messageEditTextText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        sendAsText.setSpan(new RelativeSizeSpan(0.6f), 0, sendAsText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        builder = new SpannableStringBuilder(messageEditTextText);
-                        builder.append(sendAsText);
-                    } else {
-                        builder = new SpannableStringBuilder(messageEditTextText);
-                    }
-                    messageEditText.setHintText(builder, animated);
+                    maybeAppendSendAsUnderMessageHint(messageEditTextText);
+                    messageEditText.setHintText(messageEditTextText, animated);
                 }
             }
+        }
+    }
+
+    private void maybeAppendSendAsUnderMessageHint(SpannableStringBuilder hintText) {
+        SpannableString sendAsText = getSendAsUnderMessageHintText();
+        if (sendAsText == null) {
+            return;
+        }
+        hintText.setSpan(new RelativeSizeSpan(0.9f), 0, hintText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sendAsText.setSpan(new RelativeSizeSpan(0.6f), 0, sendAsText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        hintText.append(sendAsText);
+    }
+
+    private SpannableString getSendAsUnderMessageHintText() {
+        if (!NaConfig.INSTANCE.getShowSendAsUnderMessageHint().Bool() || delegate == null) {
+            return null;
+        }
+
+        TLRPC.ChatFull full = accountInstance.getMessagesController().getChatFull(-dialog_id);
+        TLRPC.Peer defPeer = full != null ? full.default_send_as : null;
+        if (defPeer == null && delegate.getSendAsPeers() != null && !delegate.getSendAsPeers().peers.isEmpty()) {
+            defPeer = delegate.getSendAsPeers().peers.get(0).peer;
+        }
+
+        if (defPeer != null) {
+            if (defPeer.channel_id != 0) {
+                TLRPC.Chat ch = accountInstance.getMessagesController().getChat(defPeer.channel_id);
+                return new SpannableString(ch != null ? "\nas " + ch.title : "");
+            } else {
+                TLRPC.User user = accountInstance.getMessagesController().getUser(defPeer.user_id);
+                return new SpannableString(user != null ? "\nas " + UserObject.getUserName(user) : "");
+            }
+        } else {
+            TLRPC.User user = UserConfig.getInstance(currentAccount).getCurrentUser();
+            return new SpannableString(user != null ? "\nas " + UserObject.getUserName(user) : "");
         }
     }
 
@@ -13505,6 +13585,7 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
         public void onCancelButtonPressed() {
             if (hasRecordVideo && isInVideoMode()) {
                 CameraController.getInstance().cancelOnInitRunnable(onFinishInitCameraRunnable);
+                pendingCameraFront = null;
                 delegate.needStartRecordVideo(5, true, 0, 0, voiceOnce ? 0x7FFFFFFF : 0, effectId, 0);
                 sendButton.setEffect(effectId = 0);
             } else {
@@ -14853,5 +14934,126 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
         }
         updateFieldRight(lastAttachVisible);
         checkSendButton(false);
+    }
+
+    private void proceedWithVideoRecording() {
+        if (delegate == null || parentActivity == null) {
+            pendingCameraFront = null;
+            return;
+        }
+        if (!checkMenuPermissions(true)) {
+            pendingCameraFront = null;
+            return;
+        }
+        isInVideoMode = true;
+        // initialize state that would have been set in recordAudioVideoRunnable
+        delegate.onPreAudioVideoRecord();
+        calledRecordRunnable = true;
+        recordAudioVideoRunnableStarted = false;
+        if (slideText != null) {
+            slideText.setAlpha(1.0f);
+            slideText.setTranslationY(0);
+        }
+        audioToSendPath = null;
+        audioToSend = null;
+        // initialize camera and start recording
+        if (!CameraController.getInstance().isCameraInitied()) {
+            CameraController.getInstance().initCamera(onFinishInitCameraRunnable);
+        } else {
+            onFinishInitCameraRunnable.run();
+        }
+        if (!recordingAudioVideo) {
+            recordingAudioVideo = true;
+            updateRecordInterface(RECORD_STATE_ENTER, true);
+            if (recordCircle != null) {
+                recordCircle.showWaves(false, false);
+            }
+            if (recordTimerView != null) {
+                recordTimerView.reset();
+            }
+        }
+        // setup recording mode
+        delegate.onSwitchRecordMode(isInVideoMode());
+        setRecordVideoButtonVisible(isInVideoMode(), true);
+        if (!NekoConfig.disableVibration.Bool()) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        sendButtonVisible = true;
+        startLockTransition();
+    }
+
+    private void showCameraSelectionPopup(View anchorView, Runnable onFrontSelected, Runnable onRearSelected) {
+        if (parentActivity == null) {
+            return;
+        }
+
+        final boolean[] cameraSelected = {false};
+
+        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(parentActivity);
+        popupLayout.setAnimationEnabled(false);
+
+        // front camera option
+        ActionBarMenuSubItem frontItem = new ActionBarMenuSubItem(getContext(), true, false);
+        frontItem.setTextAndIcon(getString(R.string.CameraInVideoMessagesFront), R.drawable.msg_openprofile_solar);
+        frontItem.setOnClickListener(v -> {
+            cameraSelected[0] = true;
+            if (cameraSelectionPopup != null && cameraSelectionPopup.isShowing()) {
+                cameraSelectionPopup.dismiss();
+            }
+            onFrontSelected.run();
+        });
+        frontItem.setMinimumWidth(dp(196));
+        popupLayout.addView(frontItem, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 0, 0, 0));
+        // rear camera option
+        ActionBarMenuSubItem rearItem = new ActionBarMenuSubItem(getContext(), false, true);
+        rearItem.setTextAndIcon(getString(R.string.CameraInVideoMessagesRear), R.drawable.msg_rear_camera_solar);
+        rearItem.setOnClickListener(v -> {
+            cameraSelected[0] = true;
+            if (cameraSelectionPopup != null && cameraSelectionPopup.isShowing()) {
+                cameraSelectionPopup.dismiss();
+            }
+            onRearSelected.run();
+        });
+        rearItem.setMinimumWidth(dp(196));
+        popupLayout.addView(rearItem, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48, 0, 0));
+        popupLayout.setupRadialSelectors(Theme.getColor(Theme.key_dialogButtonSelector));
+
+        cameraSelectionPopup = new ActionBarPopupWindow(popupLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT);
+        cameraSelectionPopup.setAnimationEnabled(false);
+        cameraSelectionPopup.setAnimationStyle(R.style.PopupContextAnimation2);
+        cameraSelectionPopup.setOutsideTouchable(true);
+        cameraSelectionPopup.setClippingEnabled(true);
+        cameraSelectionPopup.setInputMethodMode(ActionBarPopupWindow.INPUT_METHOD_NOT_NEEDED);
+        cameraSelectionPopup.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED);
+        cameraSelectionPopup.getContentView().setFocusableInTouchMode(true);
+        cameraSelectionPopup.setOnDismissListener(() -> {
+            if (!cameraSelected[0]) {
+                // reset state only when popup is dismissed without selection
+                calledRecordRunnable = false;
+                pendingCameraFront = null;
+            }
+            cameraSelectionPopup = null;
+        });
+
+        popupLayout.measure(MeasureSpec.makeMeasureSpec(dp(1000), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(1000), MeasureSpec.AT_MOST));
+        cameraSelectionPopup.setFocusable(true);
+        int[] location = new int[2];
+        anchorView.getLocationInWindow(location);
+        int popupWidth = popupLayout.getMeasuredWidth();
+        int popupHeight = popupLayout.getMeasuredHeight();
+
+        int y = location[1] - popupHeight - dp(2);
+        if (y < 0) {
+            y = location[1] + anchorView.getMeasuredHeight() + dp(2);
+        }
+        int x = location[0] + anchorView.getMeasuredWidth() - popupWidth + dp(8);
+
+        if (AndroidUtilities.displaySize.x > 0) {
+            x = Math.max(0, Math.min(x, AndroidUtilities.displaySize.x - popupWidth));
+        }
+        if (AndroidUtilities.displaySize.y > 0) {
+            y = Math.max(0, Math.min(y, AndroidUtilities.displaySize.y - popupHeight));
+        }
+        cameraSelectionPopup.showAtLocation(anchorView, Gravity.LEFT | Gravity.TOP, x, y);
+        cameraSelectionPopup.dimBehind();
+        if (!NekoConfig.disableVibration.Bool()) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
     }
 }

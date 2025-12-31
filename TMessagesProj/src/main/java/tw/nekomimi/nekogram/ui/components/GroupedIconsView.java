@@ -17,6 +17,7 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ChatActivity;
+import org.telegram.ui.Components.ScaleStateListAnimator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,17 +120,19 @@ public class GroupedIconsView extends FrameLayout {
 
     private void addOption(OptionConfig config) {
         var imageView = new ImageView(context);
+        imageView.setPadding(dp(8), dp(8), dp(8), dp(8));
         imageView.setScaleType(ImageView.ScaleType.CENTER);
         imageView.setImageDrawable(Objects.requireNonNull(ContextCompat.getDrawable(context, config.iconResId)).mutate());
         imageView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
         imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_actionBarDefaultSubmenuItemIcon), PorterDuff.Mode.MULTIPLY));
+        ScaleStateListAnimator.apply(imageView, .1f, 1.5f);
 
         var params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
 
-        params.setMargins(dp(14), dp(12), dp(14), dp(12));
+        params.setMargins(dp(6), dp(6), dp(6), dp(6));
         imageView.setLayoutParams(params);
 
         linearLayout.addView(imageView);

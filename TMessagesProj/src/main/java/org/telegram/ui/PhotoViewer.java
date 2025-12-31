@@ -10663,6 +10663,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     if (!menuItem.isSubItemVisible(gallery_menu_openin)) {
                         return;
                     }
+                    if (currentMessageObject != null && currentMessageObject.isGif() && NekoConfig.takeGIFasVideo.Bool()) {
+                        return;
+                    }
                     AlertDialog.Builder builder = new AlertDialog.Builder(parentActivity, resourcesProvider);
                     builder.setTitle(getString(R.string.NagramX));
                     builder.setMessage(getString(R.string.CantPlayVideo));
@@ -20467,6 +20470,15 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 }
                 if ((original != null ? 1 : 0) + alt_documents.size() <= 1) {
                     file = FileLoader.getInstance(currentAccount).getPathToMessage(currentMessageObject.messageOwner);
+                }
+                if (file == null || !file.exists()) {
+                    String p = MessageHelper.getPathToMessage(currentMessageObject);
+                    if (!TextUtils.isEmpty(p)) {
+                        File f = new File(p);
+                        if (f.exists()) {
+                            file = f;
+                        }
+                    }
                 }
                 if (file == null || !file.exists()) {
                     file = null;

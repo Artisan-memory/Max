@@ -37,6 +37,7 @@
     <string name="ArticleTranslationProvider">Сервіс перекладу статей</string>
     <string name="EnableSeparateArticleTranslator">Використовувати інший сервіс для статей</string>
     <string name="DisableCrashlyticsCollection">Вимкнути Firebase Crashlytics</string>
+    <string name="ShowStickersRowToplevel">Показувати наліпки у Головних Налаштуваннях</string>
     <string name="HideShareButtonInChannel">Сховати бокову кнопку «Поділитися»</string>
     <string name="DeleteCloudBackup">Видалити дані з хмари</string>
     <string name="DeleteCloudBackupFailed">Не вдалося очистити дані із хмари</string>
@@ -122,6 +123,7 @@
     <string name="GhostModeEnabled">Режим \"привид\" увімкнено</string>
     <string name="GhostModeDisabled">Режим \"привид\" вимкнено</string>
     <string name="GhostModeInDrawer">Показувати у бічному меню</string>
+    <string name="GhostModeStatusIndicator">Індикатор режиму «привид»</string>
     <string name="DontSendReadMessagePackets">Не читати повідомлення</string>
     <string name="DontReadStoriesPackets">Не читати історії</string>
     <string name="DontSendOnlinePackets">Не надсилати онлайн-статус</string>
@@ -278,4 +280,12 @@
     <string name="NoBookmarks">Закладок немає</string>
     <string name="ClearAllBookmarks">Очистити всі закладки</string>
     <string name="ClearAllBookmarksNotification">Усі закладки очищено.</string>
+    <string name="SortByUnread">Сортувати за непрочитаними</string>
+    <string name="MediaSettings">Медіа</string>
+    <string name="CameraInVideoMessages">Камера у відеоповідомленнях</string>
+    <string name="CameraInVideoMessagesFront">Фронтальна</string>
+    <string name="CameraInVideoMessagesRear">Задня камера</string>
+    <string name="CameraInVideoMessagesAsk">Запитувати</string>
+    <string name="CameraSettings">Камера</string>
+    <string name="SmoothRoundedMenu">Плавне закруглене контекстне меню</string>
 </resources>
