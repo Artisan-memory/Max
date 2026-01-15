@@ -108,7 +108,6 @@
     <string name="SaveToDownloadCount_many">Saving %1$d files to downloads</string>
     <string name="SaveToDownloadCount_other">Saving %1$d files to downloads</string>
     <string name="disableNotificationBubbles">Disable Notification Bubbles</string>
-    <string name="ReactionsDisabled">Disable</string>
     <string name="customSavePath">Custom Storage Path</string>
     <string name="customSavePathHint">Leave blank to save directly</string>
     <string name="channelLabel">channel</string>
@@ -243,7 +242,7 @@
     <string name="TabletMode">Tablet Mode</string>
     <string name="TabletModeDefault">Auto</string>
     <string name="ReplaceText">Replace Text</string>
-    <string name="TextOrigin">Origin</string>
+    <string name="TextOrigin">Original</string>
     <string name="TextReplace">Replace</string>
     <string name="ReplaceRegex">Use Regex</string>
     <string name="DisableTrending">Disable Trending</string>

@@ -79,6 +79,7 @@
     <string name="SourceCode">Вихідний код</string>
     <string name="ResetStickerSize">Скинути розмір наліпки</string>
     <string name="RestartAppToTakeEffect">Перезапустіть додаток для застосування змін.</string>
+    <string name="DisableAppBarShadow">Приховати розділювач верхньої панелі</string>
     <string name="MediaPreview">Попередній перегляд медіа в списку чатів</string>
     <string name="AutoPauseVideo">Призупинити відео</string>
     <string name="AutoPauseVideoAbout">При блокуванні екрана або згортанні програми.</string>
@@ -107,7 +108,6 @@
     <string name="SaveToDownloadCount_many">Збереження %1$d файлів у завантаження</string>
     <string name="SaveToDownloadCount_other">Збереження %1$d файлів у завантаження</string>
     <string name="disableNotificationBubbles">Вимкнути бульбашки сповіщень</string>
-    <string name="ReactionsDisabled">Вимкнути</string>
     <string name="customSavePath">Шлях зберігання завантажень</string>
     <string name="customSavePathHint">Залиште порожнім, щоб зберегти у стандартну папку</string>
     <string name="channelLabel">канал</string>

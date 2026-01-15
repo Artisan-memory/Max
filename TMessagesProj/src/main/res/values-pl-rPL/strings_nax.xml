@@ -31,6 +31,11 @@
     <string name="LlmSystemPromptNotice">Zdefiniuj rolę i zachowanie sztucznej inteligencji AI.\n\nTo pole określa charakter, osobowość i ograniczenia sztucznej inteligencji. Rozważ opisanie, jakim typem asystenta powinna być sztuczna inteligencja.\n\nMożna pozostawić puste.</string>
     <string name="LlmUserPrompt">Monituj użytkownika</string>
     <string name="LlmUserPromptNotice">Użyj @text jako symbolu zastępczego dla oryginalnej wiadomości, a @toLang dla języka docelowego (opcjonalnie).\n\nPrzykład: „Przetłumacz @text na @toLang bez żadnego wyjaśnienia”.\n\nPozostawienie tego pola pustego spowoduje użycie domyślnego monitu.</string>
+    <string name="LlmUseContext">Użyj kontekstu</string>
+    <string name="LlmUseContextNotice">Poprawia jakość tłumaczenia kosztem większej liczby tokenów.</string>
+    <string name="LlmContextSize">Wiadomości kontekstowe</string>
+    <string name="LlmUseContextInAutoTranslate">Użyj kontekstu w automatycznym tłumaczeniu</string>
+    <string name="LlmUseContextInAutoTranslateNotice">Może zwiększyć zużycie tokenów i opóźnienie.</string>
     <string name="LlmTemperature">Temperatura</string>
     <string name="AITranslatorSettings">Translator AI</string>
     <string name="TranslucentDeletedMessages">Przezroczyste usunięte wiadomości</string>
@@ -134,6 +139,8 @@
     <string name="MarkReadAfterSendNotice">Automatycznie odczytuje wiadomość, gdy wysyłasz nową lub klikasz reakcję.</string>
     <string name="SendWithoutSoundRowNotice">Automatyczne wysyłanie wiadomości bez dźwięku.</string>
     <string name="GhostReadMessage">Czytaj wiadomość w trybie duch</string>
+    <string name="GhostModeExcludeRead">Wyklucz czytanie</string>
+    <string name="GhostModeExcludeTyping">Wyklucz pisanie</string>
     <string name="SendWithSound">Wyślij z dźwiękiem</string>
     <string name="PerformanceClass">Klasa wydajności urządzenia</string>
     <string name="PerformanceClassHigh">Wysoki</string>
@@ -289,4 +296,16 @@
     <string name="CameraInVideoMessagesAsk">Zapytaj</string>
     <string name="CameraSettings">Kamera</string>
     <string name="SmoothRoundedMenu">Płynne, zaokrąglone menu kontekstowe</string>
+    <string name="SyncContactToPhone">Synchronizuj kontakt z telefonem</string>
+    <string name="AddViaQRCode">Dodaj za pomocą kodu QR</string>
+    <string name="ContactNotes">Notatki</string>
+    <string name="PhoneNotOnTelegramInvite">Tego numeru telefonu nie ma na Telegramie. **Zaproś &gt;**</string>
+    <string name="PhoneAlreadyInContacts">Ten numer telefonu jest już w Twoich kontaktach. **Wyświetl &gt;**</string>
+    <string name="PhoneOnTelegram">Ten numer telefonu jest na Telegramie.</string>
+    <string name="SIMCard">Karta SIM</string>
+    <string name="DeviceAccount">Urządzenie</string>
+    <string name="ApiKeyNotSet">Klucz API nie jest skonfigurowany.</string>
+    <string name="SaveLocalLastSeen">Zapisz datę ostatniego widzenia</string>
+    <string name="CopyVideoFrame">Kopiuj ramkę</string>
+    <string name="SetLocalName">Ustaw nazwę lokalną</string>
 </resources>

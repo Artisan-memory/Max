@@ -6,9 +6,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -32,6 +34,7 @@ import org.telegram.ui.LaunchActivity;
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -93,11 +96,11 @@ public class AndroidUtil {
         if (diff > 0) {
             return Theme.getColor(Theme.key_chats_onlineCircle, resourcesProvider);
         } else if (diff > -15 * 60) {
-            return android.graphics.Color.argb(255, 234, 234, 30);
+            return Color.argb(255, 234, 234, 30);
         } else if (diff > -30 * 60) {
-            return android.graphics.Color.argb(255, 234, 132, 30);
+            return Color.argb(255, 234, 132, 30);
         } else if (diff > -60 * 60) {
-            return android.graphics.Color.argb(255, 234, 30, 30);
+            return Color.argb(255, 234, 30, 30);
         }
         return 0;
     }
@@ -184,16 +187,6 @@ public class AndroidUtil {
         });
     }
 
-    public static String getFileNameWithoutEx(String filename) {
-        if ((filename != null) && (filename.length() > 0)) {
-            int dot = filename.lastIndexOf('.');
-            if ((dot > -1) && (dot < (filename.length()))) {
-                return filename.substring(0, dot);
-            }
-        }
-        return filename;
-    }
-
     public static void toggleLogs() {
         BuildVars.LOGS_ENABLED = BuildVars.DEBUG_VERSION = !BuildVars.LOGS_ENABLED;
         SharedPreferences sharedPreferences = ApplicationLoader.applicationContext.getSharedPreferences("systemConfig", Context.MODE_PRIVATE);
@@ -244,5 +237,19 @@ public class AndroidUtil {
         }
         String mimeType = message.type == MessageObject.TYPE_FILE || message.type == MessageObject.TYPE_TEXT ? message.getMimeType() : null;
         return AndroidUtilities.openForView(f, message.getFileName(), mimeType, activity, resourcesProvider, false);
+    }
+
+    public static void performHapticFeedback() {
+        if (!NekoConfig.disableVibration.Bool()) {
+            try {
+                Optional.ofNullable(LaunchActivity.getSafeLastFragment())
+                        .ifPresent(fragment ->
+                                fragment.getFragmentView()
+                                        .performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
+                                                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
+                        );
+            } catch (Exception ignored) {
+            }
+        }
     }
 }

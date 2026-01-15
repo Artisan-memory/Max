@@ -176,9 +176,7 @@ object NaConfig {
         addConfig(
             "CustomTitle",
             ConfigItem.configTypeString,
-            getString(
-                R.string.NagramX
-            )
+            "Nagram X"
         )
     val dateOfForwardedMsg =
         addConfig(
@@ -576,6 +574,12 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val saveLocalLastSeen =
+        addConfig(
+            "SaveLocalLastSeen",
+            ConfigItem.configTypeBool,
+            false
+        )
     val messageSavingSaveMedia =
         addConfig(
             "MessageSavingSaveMedia",
@@ -714,7 +718,24 @@ object NaConfig {
             ConfigItem.configTypeFloat,
             0.7f
         )
-
+    val llmUseContext =
+        addConfig(
+            "LlmUseContext",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val llmContextSize =
+        addConfig(
+            "LlmContextSize",
+            ConfigItem.configTypeInt,
+            2
+        )
+    val llmUseContextInAutoTranslate =
+        addConfig(
+            "LlmUseContextInAutoTranslate",
+            ConfigItem.configTypeBool,
+            false
+        )
     val translucentDeletedMessages =
         addConfig(
             "TranslucentDeletedMessages",
@@ -1000,6 +1021,12 @@ object NaConfig {
     val mediaViewerMenuItemNoQuoteForward =
         addConfig(
             "MediaViewerMenuItemNoQuoteForward",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val mediaViewerMenuItemCopyFrame =
+        addConfig(
+            "MediaViewerMenuItemCopyFrame",
             ConfigItem.configTypeBool,
             true
         )
@@ -1386,6 +1413,18 @@ object NaConfig {
             "SmoothRoundedMenu",
             ConfigItem.configTypeBool,
             false
+        )
+    val showCopyFrame =
+        addConfig(
+            "MessageMenuCopyFrame",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val deleteChatForBothSides =
+        addConfig(
+            "DeleteChatForBothSides",
+            ConfigItem.configTypeBool,
+            true
         )
 
     val preferredTranslateTargetLangList = ArrayList<String>()

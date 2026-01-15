@@ -238,6 +238,7 @@ import org.telegram.ui.Components.CanvasButton;
 import org.telegram.ui.Components.ChatActivityInterface;
 import org.telegram.ui.Components.ChatAvatarContainer;
 import org.telegram.ui.Components.ChatNotificationsPopupWrapper;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.ColoredImageSpan;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CrossfadeDrawable;
@@ -336,6 +337,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -346,11 +348,14 @@ import java.util.zip.ZipOutputStream;
 import kotlin.Unit;
 import tw.nekomimi.nekogram.BackButtonMenuRecent;
 import tw.nekomimi.nekogram.helpers.AyuFilter;
+import tw.nekomimi.nekogram.helpers.ChatsHelper;
+import tw.nekomimi.nekogram.helpers.LocalNameHelper;
 import tw.nekomimi.nekogram.helpers.ProfileDateHelper;
 import tw.nekomimi.nekogram.helpers.SettingsHelper;
 import tw.nekomimi.nekogram.helpers.SettingsSearchResult;
 import tw.nekomimi.nekogram.helpers.remote.UpdateHelper;
 import tw.nekomimi.nekogram.menu.forum.CustomForumTabsPopupWrapper;
+import tw.nekomimi.nekogram.menu.ghostmode.GhostModeExclusionPopupWrapper;
 import tw.nekomimi.nekogram.menu.saveDeleted.SaveExclusionPopupWrapper;
 import tw.nekomimi.nekogram.menu.regexfilters.RegexFiltersExclusionPopupWrapper;
 import tw.nekomimi.nekogram.settings.RegexFiltersSettingActivity;
@@ -365,7 +370,6 @@ import tw.nekomimi.nekogram.ui.RegexChatFiltersListActivity;
 import tw.nekomimi.nekogram.utils.AlertUtil;
 import tw.nekomimi.nekogram.utils.AndroidUtil;
 import tw.nekomimi.nekogram.utils.FileUtil;
-import tw.nekomimi.nekogram.utils.LangsKt;
 import tw.nekomimi.nekogram.utils.ProxyUtil;
 import tw.nekomimi.nekogram.utils.ShareUtil;
 import xyz.nextalone.nagram.NaConfig;
@@ -2668,6 +2672,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else if (id == report) {
                     ReportBottomSheet.openChat(ProfileActivity.this, getDialogId());
                 } else if (id == edit_channel) {
+                    if (userId != 0 && chatId == 0 && !isBot && getContactsController().contactsDict.get(userId) == null) {
+                        setUserAlias();
+                        return;
+                    }
                     if (isTopic) {
                         Bundle args = new Bundle();
                         args.putLong("chat_id", chatId);
@@ -8062,59 +8070,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }, resourcesProvider);
     }
 
-    private void setChannelAlias() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(getString(R.string.setChannelAliasName));
-        final EditTextBoldCursor editText = new EditTextBoldCursor(getParentActivity()) {
-            @Override
-            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-                super.onMeasure(widthMeasureSpec,
-                        MeasureSpec.makeMeasureSpec(dp(64), MeasureSpec.EXACTLY));
-            }
-        };
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
-        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
-        editText.setHintText(getString(R.string.Name));
-        if (NekoXConfig.getChannelAlias(getCurrentChat().id) != null) {
-            editText.setText(NekoXConfig.getChannelAlias(getCurrentChat().id));
-        }
-        editText.setHeaderHintColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueHeader));
-        editText.setSingleLine(true);
-        editText.setFocusable(true);
-        editText.setTransformHintToHeader(true);
-        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField),
-                getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated),
-                getThemedColor(Theme.key_windowBackgroundWhiteRedText3));
-        editText.setImeOptions(EditorInfo.IME_ACTION_DONE);
-        editText.setBackgroundDrawable(null);
-        editText.requestFocus();
-        editText.setPadding(0, 0, 0, 0);
-        builder.setView(editText);
-        builder.setPositiveButton(getString(R.string.OK),
-                (dialogInterface, i) -> {
-                    if (editText.getText().toString().trim().isEmpty()) {
-                        NekoXConfig.emptyChannelAlias(getCurrentChat().id);
-                    } else {
-                        NekoXConfig.setChannelAlias(getCurrentChat().id, editText.getText().toString());
-                    }
-                });
-        builder.setNegativeButton(getString(R.string.Cancel), null);
-        builder.show().setOnShowListener(dialog -> {
-            editText.requestFocus();
-            AndroidUtilities.showKeyboard(editText);
-        });
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) editText.getLayoutParams();
-        if (layoutParams != null) {
-            if (layoutParams instanceof FrameLayout.LayoutParams) {
-                ((FrameLayout.LayoutParams) layoutParams).gravity = Gravity.CENTER_HORIZONTAL;
-            }
-            layoutParams.rightMargin = layoutParams.leftMargin = dp(24);
-            layoutParams.height = dp(36);
-            editText.setLayoutParams(layoutParams);
-        }
-        editText.setSelection(0, editText.getText().length());
-    }
-
     private void getChannelParticipants(boolean reload) {
         if (loadingUsers || participantsMap == null || chatInfo == null) {
             return;
@@ -12604,9 +12559,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
                 selfUser = true;
             } else {
-                if (user.bot && user.bot_can_edit) {
+                /*if (user.bot && user.bot_can_edit) {
                     editItemVisible = true;
-                }
+                }*/
+                editItemVisible = getContactsController().contactsDict.get(userId) == null;
 
                 if (userInfo != null && userInfo.phone_calls_available) {
                     callItemVisible = true;
@@ -12622,6 +12578,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         if (currentEncryptedChat == null) {
                             createAutoDeleteItem(context);
                         }
+                        createGhostModeExclusionItem(userId);
                         createSaveExclusionItem(userId);
                         createMessageFilterItem();
                         otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
@@ -12659,6 +12616,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (currentEncryptedChat == null) {
                         createAutoDeleteItem(context);
                     }
+                    createGhostModeExclusionItem(userId);
                     createSaveExclusionItem(userId);
                     createMessageFilterItem();
                     if (!TextUtils.isEmpty(user.phone)) {
@@ -12688,6 +12646,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (topicId == 0 && ChatObject.canChangeChatInfo(chat)) {
                 createAutoDeleteItem(context);
             }
+            createGhostModeExclusionItem(chatId);
             createSaveExclusionItem(chatId);
             createMessageFilterItem();
             if (chat.forum) {
@@ -17171,6 +17130,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    private void createGhostModeExclusionItem(long chatId) {
+        if (ChatObject.isChannelAndNotMegaGroup(currentChat)) {
+            return;
+        }
+        if (currentEncryptedChat instanceof TLRPC.TL_encryptedChat) {
+            chatId = currentEncryptedChat.id;
+        }
+        var ghostModePopupWrapper = new GhostModeExclusionPopupWrapper(ProfileActivity.this, otherItem.getPopupLayout().getSwipeBack(), chatId, getResourceProvider());
+        otherItem.addSwipeBackItem(R.drawable.ayu_ghost_solar, null, getString(R.string.GhostMode), ghostModePopupWrapper.windowLayout);
+        if (!NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() && !NaConfig.INSTANCE.getRegexFiltersEnabled().Bool() && !ChatObject.isForum(currentChat)) otherItem.addColoredGap();
+    }
+
     private void createSaveExclusionItem(long chatId) {
         if (!NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool()) return;
         var autoTranslatePopupWrapper = new SaveExclusionPopupWrapper(ProfileActivity.this, otherItem.getPopupLayout().getSwipeBack(), chatId, getResourceProvider());
@@ -17474,6 +17445,183 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             });
         }
         builder.show();
+    }
+
+    private void setChannelAlias() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(getString(R.string.setChannelAliasName));
+        final EditTextBoldCursor editText = new EditTextBoldCursor(getParentActivity()) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(dp(64), MeasureSpec.EXACTLY));
+            }
+        };
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        editText.setHintText(getString(R.string.Name));
+        if (NekoXConfig.getChannelAlias(getCurrentChat().id) != null) {
+            editText.setText(NekoXConfig.getChannelAlias(getCurrentChat().id));
+        }
+        editText.setHeaderHintColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueHeader));
+        editText.setSingleLine(true);
+        editText.setFocusable(true);
+        editText.setTransformHintToHeader(true);
+        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField), getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated), getThemedColor(Theme.key_windowBackgroundWhiteRedText3));
+        editText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        editText.setBackground(null);
+        editText.requestFocus();
+        editText.setPadding(0, 0, 0, 0);
+        builder.setView(editText);
+        builder.setPositiveButton(getString(R.string.OK),
+                (dialogInterface, i) -> {
+                    if (editText.getText().toString().trim().isEmpty()) {
+                        NekoXConfig.emptyChannelAlias(getCurrentChat().id);
+                    } else {
+                        NekoXConfig.setChannelAlias(getCurrentChat().id, editText.getText().toString());
+                    }
+                });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        builder.show().setOnShowListener(dialog -> {
+            editText.requestFocus();
+            AndroidUtilities.showKeyboard(editText);
+        });
+        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) editText.getLayoutParams();
+        if (layoutParams != null) {
+            if (layoutParams instanceof FrameLayout.LayoutParams lp) {
+                lp.gravity = Gravity.CENTER_HORIZONTAL;
+            }
+            layoutParams.rightMargin = layoutParams.leftMargin = dp(24);
+            layoutParams.height = dp(36);
+            editText.setLayoutParams(layoutParams);
+        }
+        editText.setSelection(0, editText.getText().length());
+    }
+
+    private void setUserAlias() {
+        TLRPC.User user = getMessagesController().getUser(userId);
+        if (user == null) {
+            return;
+        }
+        final boolean[] restoringServerName = {false};
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(getString(R.string.SetLocalName));
+        final EditTextBoldCursor editText = new EditTextBoldCursor(getParentActivity()) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(dp(64), MeasureSpec.EXACTLY));
+            }
+        };
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        editText.setHintText(getString(R.string.Name));
+        String existingOverride = LocalNameHelper.getUserNameOverride(userId);
+        editText.setText(Objects.requireNonNullElseGet(existingOverride, () -> UserObject.getUserName(user)));
+        editText.setHeaderHintColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueHeader));
+        editText.setSingleLine(true);
+        editText.setFocusable(true);
+        editText.setTransformHintToHeader(true);
+        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField), getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated), getThemedColor(Theme.key_windowBackgroundWhiteRedText3));
+        editText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        editText.setBackground(null);
+        editText.requestFocus();
+        editText.setPadding(0, 0, 0, 0);
+        builder.setView(editText);
+        builder.setPositiveButton(getString(R.string.OK),
+                (dialogInterface, i) -> {
+                    String newName = editText.getText().toString().trim();
+                    if (existingOverride != null) {
+                        if (newName.equals(existingOverride)) {
+                            return;
+                        }
+                        if (newName.isEmpty()) {
+                            LocalNameHelper.clearUserNameOverride(userId);
+                            getMessagesController().loadFullUser(user, 0, true);
+                        } else {
+                            LocalNameHelper.setUserNameOverride(userId, newName);
+                            user.first_name = newName;
+                            user.last_name = "";
+                        }
+                    } else {
+                        if (newName.isEmpty() || newName.equals(UserObject.getUserName(user))) {
+                            return;
+                        }
+                        LocalNameHelper.setUserNameOverride(userId, newName);
+                        user.first_name = newName;
+                        user.last_name = "";
+                    }
+                    updateProfileData(true);
+                    getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_NAME);
+                    AndroidUtil.performHapticFeedback();
+                });
+        builder.setNeutralButton(getString(R.string.Restore), null);
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        AlertDialog alertDialog = builder.create();
+        alertDialog.setOnShowListener(dialog -> {
+            editText.requestFocus();
+            AndroidUtilities.showKeyboard(editText);
+
+            View restoreButton = alertDialog.getButton(Dialog.BUTTON_NEUTRAL);
+            if (restoreButton instanceof TextView restoreButtonTextView) {
+                Drawable[] originalButtonDrawables = restoreButtonTextView.getCompoundDrawables();
+                Drawable originalDrawableLeft = originalButtonDrawables[0];
+                Drawable originalDrawableTop = originalButtonDrawables[1];
+                Drawable originalDrawableRight = originalButtonDrawables[2];
+                Drawable originalDrawableBottom = originalButtonDrawables[3];
+                int originalCompoundDrawablePadding = restoreButtonTextView.getCompoundDrawablePadding();
+
+                restoreButtonTextView.setOnClickListener(v -> {
+                    if (restoringServerName[0]) {
+                        return;
+                    }
+                    restoringServerName[0] = true;
+
+                    CircularProgressDrawable spinner = new CircularProgressDrawable(restoreButtonTextView.getCurrentTextColor());
+                    restoreButtonTextView.setCompoundDrawablePadding(dp(6));
+                    if (LocaleController.isRTL) {
+                        restoreButtonTextView.setCompoundDrawablesWithIntrinsicBounds(
+                                originalDrawableLeft, originalDrawableTop, spinner, originalDrawableBottom
+                        );
+                    } else {
+                        restoreButtonTextView.setCompoundDrawablesWithIntrinsicBounds(
+                                spinner, originalDrawableTop, originalDrawableRight, originalDrawableBottom
+                        );
+                    }
+
+                    ChatsHelper.getInstance(currentAccount).loadServerUserName(userId, classGuid, (name, error) -> {
+                        restoringServerName[0] = false;
+                        restoreButtonTextView.setCompoundDrawablesWithIntrinsicBounds(
+                                originalDrawableLeft, originalDrawableTop, originalDrawableRight, originalDrawableBottom
+                        );
+                        restoreButtonTextView.setCompoundDrawablePadding(originalCompoundDrawablePadding);
+                        if (!alertDialog.isShowing()) {
+                            return;
+                        }
+                        if (error != null) {
+                            AlertUtil.showToast(error);
+                            return;
+                        }
+                        if (TextUtils.isEmpty(name)) {
+                            AlertUtil.showToast(getString(R.string.UnknownError));
+                            return;
+                        }
+                        editText.setText(name);
+                        editText.setSelection(0, editText.getText().length());
+                        editText.requestFocus();
+                    });
+                });
+            }
+        });
+        alertDialog.show();
+        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) editText.getLayoutParams();
+        if (layoutParams != null) {
+            if (layoutParams instanceof FrameLayout.LayoutParams lp) {
+                lp.gravity = Gravity.CENTER_HORIZONTAL;
+            }
+            layoutParams.rightMargin = layoutParams.leftMargin = dp(24);
+            layoutParams.height = dp(36);
+            editText.setLayoutParams(layoutParams);
+        }
+        editText.setSelection(0, editText.getText().length());
     }
 
     @Override

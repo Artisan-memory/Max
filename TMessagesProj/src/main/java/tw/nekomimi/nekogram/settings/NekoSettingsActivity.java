@@ -37,6 +37,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.radolyn.ayugram.messages.AyuSavePreferences;
+import com.radolyn.ayugram.utils.AyuGhostPreferences;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -83,8 +84,8 @@ import tw.nekomimi.nekogram.DatacenterActivity;
 import tw.nekomimi.nekogram.DialogConfig;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.helpers.AppRestartHelper;
-import tw.nekomimi.nekogram.helpers.ChatNameHelper;
 import tw.nekomimi.nekogram.helpers.CloudSettingsHelper;
+import tw.nekomimi.nekogram.helpers.LocalNameHelper;
 import tw.nekomimi.nekogram.helpers.PasscodeHelper;
 import tw.nekomimi.nekogram.helpers.SettingsHelper;
 import tw.nekomimi.nekogram.helpers.SettingsSearchResult;
@@ -907,8 +908,11 @@ public class NekoSettingsActivity extends BaseFragment {
         } catch (Throwable ignore) {
         }
         String[] preservePrefixes = {
+                AyuGhostPreferences.ghostReadExclusionPrefix,
+                AyuGhostPreferences.ghostTypingExclusionPrefix,
                 AyuSavePreferences.saveExclusionPrefix,
-                ChatNameHelper.chatNameOverridePrefix,
+                LocalNameHelper.chatNameOverridePrefix,
+                LocalNameHelper.userNameOverridePrefix,
                 NekoConfig.channelAliasPrefix,
                 DialogConfig.customForumTabPrefix,
                 LocalPeerColorHelper.KEY_PREFIX,

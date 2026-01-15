@@ -146,6 +146,7 @@ import com.radolyn.ayugram.ui.AyuMessageHistory;
 import com.radolyn.ayugram.ui.AyuViewDeleted;
 import com.radolyn.ayugram.ui.DummyView;
 import com.radolyn.ayugram.utils.AyuGhostUtils;
+import com.radolyn.ayugram.utils.AyuGhostPreferences;
 import com.radolyn.ayugram.utils.AyuState;
 
 import org.telegram.PhoneFormat.PhoneFormat;
@@ -1293,6 +1294,7 @@ public class ChatActivity extends BaseFragment implements
 
     private final static int OPTION_COPY_PHOTO = 150;
     private final static int OPTION_COPY_PHOTO_AS_STICKER = 151;
+    private final static int OPTION_COPY_FRAME = 152;
 
     private final static int[] allowedNotificationsDuringChatListAnimations = new int[]{
             AyuConstants.MESSAGES_DELETED_NOTIFICATION,
@@ -1961,7 +1963,7 @@ public class ChatActivity extends BaseFragment implements
                 var noforwards = getMessagesController().isChatNoForwards(currentChat) || message.messageOwner.noforwards;
                 var isAyuDeleted = message.isAyuDeleted();
                 boolean allowChatActions = chatMode != MODE_SCHEDULED && (threadMessageObjects == null || !threadMessageObjects.contains(message)) &&
-                        !message.isSponsored() && (getMessageType(message) != 1 || message.getDialogId() != mergeDialogId) &&
+                        !message.isSponsored() && (getMessageType(message) != MESSAGE_TYPE_SERVICE || message.getDialogId() != mergeDialogId) &&
                         !(message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent) &&
                         (currentEncryptedChat != null || message.getId() >= 0) &&
                         // (bottomOverlayChat == null || bottomOverlayChat.getVisibility() != View.VISIBLE) &&
@@ -2440,6 +2442,11 @@ public class ChatActivity extends BaseFragment implements
             if (attachItem != null) {
                 attachItem.setVisibility(View.GONE);
             }
+        }
+
+        @Override
+        public boolean isAttachItemVisible() {
+            return attachItem != null && attachItem.getVisibility() == View.VISIBLE;
         }
 
         @Override
@@ -4594,6 +4601,9 @@ public class ChatActivity extends BaseFragment implements
             }
             headerItem = menu.addItem(chat_menu_options, R.drawable.ic_ab_other, themeDelegate);
             headerItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
+            if (avatarContainer != null) {
+                avatarContainer.setAvatarOptionsMenuItem(headerItem);
+            }
 
             if (currentUser != null && currentUser.self && chatMode != MODE_SAVED) {
                 savedChatsItem = headerItem.lazilyAddSubItem(view_as_topics, R.drawable.msg_topics, LocaleController.getString(R.string.SavedViewAsChats));
@@ -5324,7 +5334,7 @@ public class ChatActivity extends BaseFragment implements
                         if (
                                 chatMode != 0 && chatMode != MODE_QUICK_REPLIES && chatMode != MODE_SUGGESTIONS && (chatMode != MODE_SAVED || threadMessageId != getUserConfig().getClientUserId()) ||
                                 threadMessageObjects != null && threadMessageObjects.contains(message) ||
-                                getMessageType(message) == 1 && (message.getDialogId() == mergeDialogId || message.needDrawBluredPreview()) ||
+                                getMessageType(message) == MESSAGE_TYPE_SERVICE && (message.getDialogId() == mergeDialogId || message.needDrawBluredPreview()) ||
                                 currentEncryptedChat == null && message.getId() < 0 ||
                                 bottomChannelButtonsLayout != null && bottomChannelButtonsLayout.getVisibility() == View.VISIBLE && !(bottomOverlayChatWaitsReply && allowReplyOnOpenTopic || message.wasJustSent) ||
                                 currentChat != null && (ChatObject.isNotInChat(currentChat) && !isThreadChat() ||
@@ -10074,9 +10084,7 @@ public class ChatActivity extends BaseFragment implements
         closeRestartTopicButton = new ImageView(getContext());
         closeRestartTopicButton.setVisibility(View.GONE);
         closeRestartTopicButton.setImageResource(R.drawable.miniplayer_close);
-        if (Build.VERSION.SDK_INT >= 21) {
-            closeRestartTopicButton.setBackground(Theme.AdaptiveRipple.circle(getThemedColor(Theme.key_chat_topPanelClose)));
-        }
+        closeRestartTopicButton.setBackground(Theme.AdaptiveRipple.circle(getThemedColor(Theme.key_chat_topPanelClose)));
         closeRestartTopicButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chat_topPanelClose), PorterDuff.Mode.MULTIPLY));
         closeRestartTopicButton.setScaleType(ImageView.ScaleType.CENTER);
         topChatPanelView.addView(closeRestartTopicButton, LayoutHelper.createFrame(36, 36, Gravity.RIGHT | Gravity.TOP, 0, 6, 2, 0));
@@ -10572,29 +10580,23 @@ public class ChatActivity extends BaseFragment implements
         boolean noforward = getMessagesController().isChatNoForwards(currentChat);
         actionModeViews.add(actionModeOtherItem = actionMode.addItemWithWidth(nkactionbarbtn_action_mode_other, R.drawable.ic_ab_other, AndroidUtilities.dp(54), LocaleController.getString(R.string.MessageMenu)));
 
-        if (NaConfig.INSTANCE.getShowNoQuoteForward().Bool() && (currentEncryptedChat == null && !noforward)) {
+        if (currentEncryptedChat == null && !noforward) {
             actionModeOtherItem.addSubItem(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, LocaleController.getString(R.string.NoQuoteForward));
         }
         actionModeOtherItem.addSubItem(nkbtn_translate, NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate, LocaleController.getString(R.string.Translate));
-        if (NekoConfig.showShareMessages.Bool()) {
-            actionModeOtherItem.addSubItem(nkbtn_sharemessage, R.drawable.msg_shareout, LocaleController.getString(R.string.ShareMessages));
-        }
+        actionModeOtherItem.addSubItem(nkbtn_sharemessage, R.drawable.msg_shareout, LocaleController.getString(R.string.ShareMessages));
         actionModeOtherItem.addSubItem(nkbtn_unpin, R.drawable.msg_unpin, LocaleController.getString(R.string.UnpinMessage));
         if (!noforward) {
             actionModeOtherItem.addSubItem(nkbtn_savemessage, R.drawable.menu_saved, LocaleController.getString(R.string.AddToSavedMessages));
         }
-        if (!noforward && NekoConfig.showRepeat.Bool()) {
+        if (!noforward) {
             actionModeOtherItem.addSubItem(nkbtn_repeat, R.drawable.msg_repeat, LocaleController.getString(R.string.Repeat));
         }
-        if (!noforward && NaConfig.INSTANCE.getShowRepeatAsCopy().Bool()) {
+        if (!noforward) {
             actionModeOtherItem.addSubItem(nkbtn_repeatascopy, R.drawable.msg_repeat, LocaleController.getString(R.string.RepeatAsCopy));
         }
-        if (NekoConfig.showMessageHide.Bool()) {
-            actionModeOtherItem.addSubItem(nkbtn_hide, R.drawable.msg_disable, LocaleController.getString(R.string.Hide));
-        }
-        if (NekoConfig.showMessageDetails.Bool()) {
-            actionModeOtherItem.addSubItem(nkbtn_detail,R.drawable.msg_info,LocaleController.getString(R.string.MessageDetails));
-        }
+        actionModeOtherItem.addSubItem(nkbtn_hide, R.drawable.msg_disable, LocaleController.getString(R.string.Hide));
+        actionModeOtherItem.addSubItem(nkbtn_detail,R.drawable.msg_info,LocaleController.getString(R.string.MessageDetails));
 
         actionMode.setItemVisibility(nkactionbarbtn_reply, ChatObject.canSendMessages(currentChat) && (selectedMessagesIds[0].size() + selectedMessagesIds[1].size() == 1) && NaConfig.INSTANCE.getActionBarButtonReply().Bool() ? View.VISIBLE : View.GONE);
         actionMode.setItemVisibility(edit, canEditMessagesCount == 1 && (selectedMessagesIds[0].size() + selectedMessagesIds[1].size() == 1) && NaConfig.INSTANCE.getActionBarButtonEdit().Bool() ? View.VISIBLE : View.GONE);
@@ -11617,9 +11619,10 @@ public class ChatActivity extends BaseFragment implements
                     text = ChatObject.isChannel(currentChat) && !currentChat.megagroup ? LocaleController.getString(R.string.ActionUserInvitedToChannel) : LocaleController.getString(R.string.ActionUserInvitedToGroup);
                     text = MessageObject.replaceWithLink(text, "un1", user);
                     onClickListener = (v) -> {
-                        Bundle args = new Bundle();
+                        /*Bundle args = new Bundle();
                         args.putLong("user_id", chatInviterId);
-                        presentFragment(new ProfileActivity(args));
+                        presentFragment(new ProfileActivity(args));*/
+                        openUserProfile(chatInviterId);
                     };
                 }
             } else {
@@ -19240,48 +19243,67 @@ public class ChatActivity extends BaseFragment implements
         checkAndUpdateAvatar();
     }
 
+    // Values returned by getMessageType()
+    private static final int MESSAGE_TYPE_INVALID = -1;
+    private static final int MESSAGE_TYPE_SEND_ERROR_MEDIA = 0;
+    private static final int MESSAGE_TYPE_SERVICE = 1;
+    private static final int MESSAGE_TYPE_MEDIA = 2;
+    private static final int MESSAGE_TYPE_MEDIA_WEB = 3;
+    private static final int MESSAGE_TYPE_MEDIA_CACHED = 4;
+    private static final int MESSAGE_TYPE_XML = 5;
+    private static final int MESSAGE_TYPE_IMAGE_OR_VIDEO = 6;
+    private static final int MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED = 7;
+    private static final int MESSAGE_TYPE_CONTACT = 8;
+    private static final int MESSAGE_TYPE_STICKER_PACK_INSTALLED = 9;
+    private static final int MESSAGE_TYPE_THEME = 10;
+    private static final int MESSAGE_TYPE_SEND_ERROR_TEXT = 20;
+    private static final int MESSAGE_TYPE_NEKOX_JSON = 21;
+    private static final int MESSAGE_TYPE_NEKOX_STICKERS_JSON = 22;
+    private static final int MESSAGE_TYPE_NEKOX_SETTINGS_JSON = 23;
+    private static final int MESSAGE_TYPE_FONT = 100;
+
     private int getMessageType(MessageObject messageObject) {
         if (messageObject == null) {
-            return -1;
+            return MESSAGE_TYPE_INVALID;
         }
         if (currentEncryptedChat == null) {
             if (messageObject.isEditing()) {
-                return -1;
+                return MESSAGE_TYPE_INVALID;
             } else if (messageObject.getId() <= 0 && messageObject.isOut()) {
                 if (messageObject.isSendError()) {
                     if (!messageObject.isMediaEmpty()) {
-                        return 0;
+                        return MESSAGE_TYPE_SEND_ERROR_MEDIA;
                     } else {
-                        return 20;
+                        return MESSAGE_TYPE_SEND_ERROR_TEXT;
                     }
                 } else {
-                    return -1;
+                    return MESSAGE_TYPE_INVALID;
                 }
             } else {
                 if (messageObject.isAnimatedEmoji()) {
-                    return 2;
+                    return MESSAGE_TYPE_MEDIA;
                 } else if (messageObject.type == MessageObject.TYPE_LOADING) {
-                    return -1;
+                    return MESSAGE_TYPE_INVALID;
                 } else if (messageObject.type == MessageObject.TYPE_DATE || messageObject.type == MessageObject.TYPE_GIFT_THEME_UPDATE || messageObject.type == MessageObject.TYPE_ACTION_PHOTO || messageObject.type == MessageObject.TYPE_SUGGEST_PHOTO || messageObject.type == MessageObject.TYPE_GIFT_STARS || messageObject.isWallpaperAction()) {
                     if (messageObject.getId() == 0) {
-                        return -1;
+                        return MESSAGE_TYPE_INVALID;
                     }
-                    return 1;
+                    return MESSAGE_TYPE_SERVICE;
                 } else {
                     if (messageObject.isVoice()) {
-                        return 2;
+                        return MESSAGE_TYPE_MEDIA;
                     } else if (messageObject.isSticker() || messageObject.isAnimatedSticker()) {
                         TLRPC.InputStickerSet inputStickerSet = messageObject.getInputStickerSet();
                         if (inputStickerSet instanceof TLRPC.TL_inputStickerSetID) {
                             if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.id)) {
-                                return 7;
+                                return MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED;
                             }
                         } else if (inputStickerSet instanceof TLRPC.TL_inputStickerSetShortName) {
                             if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.short_name)) {
-                                return 7;
+                                return MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED;
                             }
                         }
-                        return 9;
+                        return MESSAGE_TYPE_STICKER_PACK_INSTALLED;
                     } else if (!messageObject.isRoundVideo() && (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaPhoto || messageObject.getDocument() != null || messageObject.isMusic() || messageObject.isVideo())) {
                         boolean canSave = false;
                         if (!TextUtils.isEmpty(messageObject.messageOwner.attachPath)) {
@@ -19300,60 +19322,60 @@ public class ChatActivity extends BaseFragment implements
                                 String mime = messageObject.getDocument().mime_type;
                                 if (mime != null) {
                                     if (messageObject.getDocumentName().toLowerCase().endsWith("attheme")) {
-                                        return 10;
+                                        return MESSAGE_TYPE_THEME;
                                     } else if (mime.endsWith("/xml")) {
-                                        return 5;
+                                        return MESSAGE_TYPE_XML;
                                     } else if ((messageObject.getDocumentName().toLowerCase().endsWith(".nekox.json"))) {
-                                        return 21;
+                                        return MESSAGE_TYPE_NEKOX_JSON;
                                     } else if ((messageObject.getDocumentName().toLowerCase().endsWith(".nekox-stickers.json"))) {
-                                        return 22;
+                                        return MESSAGE_TYPE_NEKOX_STICKERS_JSON;
                                     } else if ((messageObject.getDocumentName().toLowerCase().endsWith(".nekox-settings.json"))) {
-                                        return 23;
+                                        return MESSAGE_TYPE_NEKOX_SETTINGS_JSON;
                                     } else if (!messageObject.isNewGif() && mime.endsWith("/mp4") || mime.endsWith("/png") || mime.endsWith("/jpg") || mime.endsWith("/jpeg")) {
-                                        return 6;
+                                        return MESSAGE_TYPE_IMAGE_OR_VIDEO;
                                     } else if (mime.startsWith("font/")) {
-                                        return 100;
+                                        return MESSAGE_TYPE_FONT;
                                     }
                                 }
                             }
-                            return 4;
+                            return MESSAGE_TYPE_MEDIA_CACHED;
                         }
                     } else if (messageObject.type == MessageObject.TYPE_CONTACT) {
-                        return 8;
+                        return MESSAGE_TYPE_CONTACT;
                     } else if (messageObject.isMediaEmpty()) {
-                        return 3;
+                        return MESSAGE_TYPE_MEDIA_WEB;
                     }
-                    return 2;
+                    return MESSAGE_TYPE_MEDIA;
                 }
             }
         } else {
             if (messageObject.isSending()) {
-                return -1;
+                return MESSAGE_TYPE_INVALID;
             }
             if (messageObject.isAnimatedEmoji()) {
-                return 2;
-            } else if (messageObject.type == 6) {
-                return -1;
+                return MESSAGE_TYPE_MEDIA;
+            } else if (messageObject.type == MessageObject.TYPE_LOADING) {
+                return MESSAGE_TYPE_INVALID;
             } else if (messageObject.isSendError()) {
                 if (!messageObject.isMediaEmpty()) {
-                    return 0;
+                    return MESSAGE_TYPE_SEND_ERROR_MEDIA;
                 } else {
-                    return 20;
+                    return MESSAGE_TYPE_SEND_ERROR_TEXT;
                 }
-            } else if (messageObject.type == 10 || messageObject.type == MessageObject.TYPE_ACTION_PHOTO) {
+            } else if (messageObject.type == MessageObject.TYPE_DATE || messageObject.type == MessageObject.TYPE_ACTION_PHOTO) {
                 if (messageObject.getId() == 0 || messageObject.isSending()) {
-                    return -1;
+                    return MESSAGE_TYPE_INVALID;
                 } else {
-                    return 1;
+                    return MESSAGE_TYPE_SERVICE;
                 }
             } else {
                 if (messageObject.isVoice()) {
-                    return 2;
+                    return MESSAGE_TYPE_MEDIA;
                 } else if (!messageObject.isAnimatedEmoji() && (messageObject.isSticker() || messageObject.isAnimatedSticker())) {
                     TLRPC.InputStickerSet inputStickerSet = messageObject.getInputStickerSet();
                     if (inputStickerSet instanceof TLRPC.TL_inputStickerSetShortName) {
                         if (!getMediaDataController().isStickerPackInstalled(inputStickerSet.short_name)) {
-                            return 7;
+                            return MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED;
                         }
                     }
                 } else if (!messageObject.isRoundVideo() && (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaPhoto || messageObject.getDocument() != null || messageObject.isMusic() || messageObject.isVideo())) {
@@ -19374,22 +19396,22 @@ public class ChatActivity extends BaseFragment implements
                         if (messageObject.getDocument() != null) {
                             String mime = messageObject.getDocument().mime_type;
                             if (mime != null && mime.endsWith("text/xml")) {
-                                return 5;
+                                return MESSAGE_TYPE_XML;
                             }
                             if (mime != null && mime.endsWith("/json")) {
-                                return 21;
+                                return MESSAGE_TYPE_NEKOX_JSON;
                             }
                         }
                         if (messageObject.messageOwner.ttl <= 0) {
-                            return 4;
+                            return MESSAGE_TYPE_MEDIA_CACHED;
                         }
                     }
                 } else if (messageObject.type == MessageObject.TYPE_CONTACT) {
-                    return 8;
+                    return MESSAGE_TYPE_CONTACT;
                 } else if (messageObject.isMediaEmpty()) {
-                    return 3;
+                    return MESSAGE_TYPE_MEDIA_WEB;
                 }
-                return 2;
+                return MESSAGE_TYPE_MEDIA;
             }
         }
     }
@@ -19633,7 +19655,7 @@ public class ChatActivity extends BaseFragment implements
                             MessageObject message = messages.get(i);
                             int type = getMessageType(message);
 
-                            if (type < 2 || type == 20) {
+                            if (type < MESSAGE_TYPE_MEDIA || type == MESSAGE_TYPE_SEND_ERROR_TEXT) {
                                 continue;
                             }
 
@@ -19889,7 +19911,7 @@ public class ChatActivity extends BaseFragment implements
         if (message != null && message.isAnyGift()) {
             return;
         }
-        if (type < 2 || type == 20 || type == MessageObject.TYPE_SUGGEST_PHOTO || message != null && (message.type == MessageObject.TYPE_JOINED_CHANNEL || message.type == MessageObject.TYPE_GIFT_STARS) || (message != null && message.isWallpaperAction())) {
+        if (type < MESSAGE_TYPE_MEDIA || type == MESSAGE_TYPE_SEND_ERROR_TEXT || type == MessageObject.TYPE_SUGGEST_PHOTO || message != null && (message.type == MessageObject.TYPE_JOINED_CHANNEL || message.type == MessageObject.TYPE_GIFT_STARS) || (message != null && message.isWallpaperAction())) {
             return;
         }
         addToSelectedMessages(message, outside);
@@ -23661,6 +23683,10 @@ public class ChatActivity extends BaseFragment implements
                         if (messagePreviewParams != null) {
                             messagePreviewParams.updateReply(replyingMessageObject, replyingQuoteGroup != null ? replyingQuoteGroup : getGroup(replyingMessageObject.getGroupId()), dialog_id, replyingQuote);
                         }
+                        if (args.length > 3) {
+                            boolean fromMessageHelper = args[3] == Boolean.TRUE;
+                            if (fromMessageHelper && messageObjects.size() == 1 && isReplyChatComment()) break;
+                        }
                         fallbackFieldPanel();
                         break;
                     }
@@ -24268,7 +24294,7 @@ public class ChatActivity extends BaseFragment implements
                     }
                 }
                 if (headerItem != null) {
-//                    showAudioCallAsIcon = userInfo.phone_calls_available && !inPreviewMode;
+                    // showAudioCallAsIcon = userInfo.phone_calls_available && !inPreviewMode;
                     showAudioCallAsIcon = false;
                     if (avatarContainer != null) {
                         avatarContainer.setTitleExpand(showAudioCallAsIcon);
@@ -25761,7 +25787,7 @@ public class ChatActivity extends BaseFragment implements
                 if (!isAd && !obj.isAyuDeleted()) {
                     newUnreadMessageCount++;
                 }
-                if (obj.type == 10 || obj.type == MessageObject.TYPE_ACTION_PHOTO) {
+                if (obj.type == MessageObject.TYPE_DATE || obj.type == MessageObject.TYPE_ACTION_PHOTO) {
                     updateChat = true;
                 }
             }
@@ -26124,7 +26150,7 @@ public class ChatActivity extends BaseFragment implements
                 if (!isAd && !obj.isAyuDeleted()) {
                     newUnreadMessageCount++;
                 }
-                if (obj.type == 10 || obj.type == MessageObject.TYPE_ACTION_PHOTO) {
+                if (obj.type == MessageObject.TYPE_DATE || obj.type == MessageObject.TYPE_ACTION_PHOTO) {
                     updateChat = true;
                 }
                 if (obj.messageOwner.action instanceof TLRPC.TL_messageActionSetChatTheme) {
@@ -30328,7 +30354,7 @@ public class ChatActivity extends BaseFragment implements
                     message = ((ChatMessageCell) view).getMessageObject();
                 } else if (view instanceof ChatActionCell) {
                     message = ((ChatActionCell) view).getMessageObject();
-                } else if (view instanceof DummyView) { // AyuGram
+                } else if (view instanceof DummyView) { // hide message
                     message = ((DummyView) view).getMessageObject();
                 }
                 if (message != null && message.messageOwner != null && message.messageOwner.media_unread && message.messageOwner.mentioned) {
@@ -31445,7 +31471,7 @@ public class ChatActivity extends BaseFragment implements
             allowEdit = captionsCount < 2;
         }
         if (message.isExpiredStory() || chatMode == MODE_SCHEDULED || threadMessageObjects != null && threadMessageObjects.contains(message) ||
-                message.isSponsored() || type == 1 && message.getDialogId() == mergeDialogId ||
+                message.isSponsored() || type == MESSAGE_TYPE_SERVICE && message.getDialogId() == mergeDialogId ||
                 message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent ||
                 currentEncryptedChat == null && message.getId() < 0 ||
                 bottomChannelButtonsLayout != null && bottomChannelButtonsLayout.getVisibility() == View.VISIBLE && !(bottomOverlayChatWaitsReply && selectedObject != null && (MessageObject.getTopicId(currentAccount, selectedObject.messageOwner, ChatObject.isForum(currentChat)) != 0 || selectedObject.wasJustSent))) {
@@ -31464,7 +31490,7 @@ public class ChatActivity extends BaseFragment implements
             allowChatActions = false;
         }
 
-        if (single || type < 2 || type == 20) {
+        if (single || type < MESSAGE_TYPE_MEDIA || type == MESSAGE_TYPE_SEND_ERROR_TEXT) {
             if (getParentActivity() == null) {
                 return false;
             }
@@ -31524,7 +31550,7 @@ public class ChatActivity extends BaseFragment implements
                 }, true, 0, getResourceProvider());
                 autoDeletePopupWrapper.updateItems(userInfo != null ? userInfo.ttl_period : chatInfo.ttl_period);
                 optionsView = autoDeletePopupWrapper.windowLayout;
-            } else if (type >= 0 || type == -1 && single && (message.isSending() || message.isEditing()) && currentEncryptedChat == null) {
+            } else if (type >= MESSAGE_TYPE_SEND_ERROR_MEDIA || type == MESSAGE_TYPE_INVALID && single && (message.isSending() || message.isEditing()) && currentEncryptedChat == null) {
                 selectedObject = message;
                 selectedObjectGroup = groupedMessages;
                 fillMessageMenu(primaryMessage, icons, items, options);
@@ -31605,6 +31631,7 @@ public class ChatActivity extends BaseFragment implements
                 if (!NekoConfig.sendReadMessagePackets.Bool()
                         && message.messageOwner.from_id != null
                         && message.messageOwner.from_id.user_id != getAccountInstance().getUserConfig().getClientUserId()
+                        && !AyuGhostPreferences.getGhostModeReadExclusion(getDialogId())
                 ) {
                     int idx = options.isEmpty() ? 0 : options.size() - 1;
                     items.add(idx, getString(R.string.GhostReadMessage));
@@ -32070,12 +32097,13 @@ public class ChatActivity extends BaseFragment implements
                         @Override
                         protected void openUser(long userId) {
                             closeMenu(true);
-                            Bundle args = new Bundle();
+                            /*Bundle args = new Bundle();
                             args.putLong("user_id", userId);
                             if (userId == getUserConfig().getClientUserId()) {
                                 args.putBoolean("my_profile", true);
                             }
-                            presentFragment(new ProfileActivity(args));
+                            presentFragment(new ProfileActivity(args));*/
+                            openUserProfile(userId);
                         }
                     };
                     final FrameLayout messageSeenLayout = new FrameLayout(contentView.getContext());
@@ -33892,7 +33920,7 @@ public class ChatActivity extends BaseFragment implements
                 });
                 break;
             case AyuConstants.OPTION_READ_MESSAGE:
-                AyuGhostUtils.markReadOnServer(selectedObject.messageOwner.id, getMessagesController().getInputPeer(selectedObject.messageOwner.peer_id), false);
+                AyuGhostUtils.markReadOnServer(selectedObject, false);
                 BotWebViewVibrationEffect.SELECTION_CHANGE.vibrate();
                 break;
             case OPTION_RETRY: {
@@ -34100,7 +34128,7 @@ public class ChatActivity extends BaseFragment implements
                     } else if (locFile.getName().toLowerCase().endsWith(".nekox-settings.json") || fileName.endsWith(".nekox-settings.json")) {
                         File finalLocFile = locFile;
                         NekoSettingsActivity.importSettings(getParentActivity(), finalLocFile);
-                    } else if (getMessageType(selectedObject) == 100) {
+                    } else if (getMessageType(selectedObject) == MESSAGE_TYPE_FONT) {
                         AlertDialog progressDialog = new AlertDialog(getParentActivity(), 3);
                         File finalLocFile = locFile;
                         Utilities.globalQueue.postRunnable(() -> {
@@ -34788,6 +34816,33 @@ public class ChatActivity extends BaseFragment implements
                 MessageHelper.addMessageToClipboardAsSticker(selectedObject, () -> {
                     if (BulletinFactory.canShowBulletin(ChatActivity.this)) {
                         BulletinFactory.of(this).createCopyBulletin(LocaleController.getString("PhotoCopied", R.string.PhotoCopied)).show();
+                    }
+                });
+                break;
+            }
+            case OPTION_COPY_FRAME: {
+                final MessageObject messageObject = selectedObject;
+                BaseCell cell = findMessageCell(messageObject.getId(), true);
+                if (!(cell instanceof ChatMessageCell)) {
+                    break;
+                }
+                AnimatedFileDrawable animation = ((ChatMessageCell) cell).getPhotoImage().getAnimation();
+                if (animation == null || !animation.hasBitmap()) {
+                    break;
+                }
+                final long positionMs = animation.getCurrentProgressMs();
+                final String videoPath = MessageHelper.getPathToMessage(messageObject);
+                final File videoFile = !TextUtils.isEmpty(videoPath) ? new File(videoPath) : null;
+                if (videoFile == null || !videoFile.exists()) {
+                    if (BulletinFactory.canShowBulletin(ChatActivity.this)) {
+                        boolean alreadyDownloading = messageObject.isVideo() && FileLoader.getInstance(messageObject.currentAccount).isLoadingFile(messageObject.getFileName());
+                        BulletinFactory.of(this).createErrorBulletin(getString(alreadyDownloading ? R.string.PleaseStreamDownload : R.string.PleaseDownload), themeDelegate).show();
+                    }
+                    break;
+                }
+                MessageHelper.copyVideoFrameToClipboard(videoFile, positionMs, contentView, themeDelegate, () -> {
+                    if (BulletinFactory.canShowBulletin(ChatActivity.this)) {
+                        BulletinFactory.of(ChatActivity.this).createErrorBulletin(getString(R.string.UnknownError), themeDelegate).show();
                     }
                 });
                 break;
@@ -37853,7 +37908,7 @@ public class ChatActivity extends BaseFragment implements
                     }
                 };
                 view.setBackgroundColor(0xFF00FF00);
-            } else if (viewType == -1000) {
+            } else if (viewType == -1000) { // hide message
                 view = new DummyView(mContext);
             } else {
                 view = new View(mContext);
@@ -38428,7 +38483,7 @@ public class ChatActivity extends BaseFragment implements
                     if (createUnreadMessageAfterId != 0) {
                         createUnreadMessageAfterId = 0;
                     }
-                } else if (view instanceof DummyView) { // Ayugram
+                } else if (view instanceof DummyView) { // hide message
                     DummyView dummyView = (DummyView) view;
                     dummyView.setMessageObject(message);
                 }
@@ -40126,6 +40181,7 @@ public class ChatActivity extends BaseFragment implements
                 Bundle args = new Bundle();
                 args.putLong("user_id", user.id);
                 args.putBoolean("expandPhoto", expandPhoto);
+                ChatsHelper.getInstance(currentAccount).updateLastSeenFromLoadedMessages(user.id, messages, chatAdapter);
                 ProfileActivity fragment = new ProfileActivity(args);
                 fragment.setPlayProfileAnimation(currentUser != null && currentUser.id == user.id ? 1 : 0);
                 AndroidUtilities.setAdjustResizeToNothing(getParentActivity(), classGuid);
@@ -41585,6 +41641,16 @@ public class ChatActivity extends BaseFragment implements
                         locFile = f;
                     }
                 }
+                if (locFile == null) {
+                    var path = MessageHelper.getPathToMessage(message);
+                    if (!TextUtils.isEmpty(path)) {
+                        locFile = new File(path);
+                    }
+                }
+                if (locFile == null || !locFile.isFile()) {
+                    AlertUtil.showToast("FILE_NOT_FOUND");
+                    return;
+                }
                 if (message.getDocumentName().toLowerCase().endsWith("attheme")) {
                     Theme.ThemeInfo themeInfo = Theme.applyThemeFile(locFile, message.getDocumentName(), null, true);
                     if (themeInfo != null) {
@@ -41593,22 +41659,6 @@ public class ChatActivity extends BaseFragment implements
                     } else {
                         scrollToPositionOnRecreate = -1;
                     }
-                    boolean handled = false;
-                    if (message.canPreviewDocument()) {
-                        PhotoViewer.getInstance().setParentActivity(getParentActivity());
-                        PhotoViewer.getInstance().openPhoto(message, message.type != 0 ? dialog_id : 0, message.type != 0 ? mergeDialogId : 0, 0, photoViewerProvider, false);
-                        handled = true;
-                    }
-                    if (!handled) {
-                        try {
-                            AndroidUtilities.openForView(message, getParentActivity());
-                        } catch (Exception e) {
-                            FileLog.e(e);
-                            alertUserOpenError(message);
-                        }
-                    }
-                } else if (locFile == null || !locFile.isFile()) {
-                    AlertUtil.showToast("FILE_NOT_FOUND");
                 } else if (message.getDocumentName().toLowerCase().endsWith(".nekox.json")) {
                     File finalLocFile = locFile;
                     AlertUtil.showConfirm(getParentActivity(),
@@ -41618,7 +41668,7 @@ public class ChatActivity extends BaseFragment implements
                 } else if (message.getDocumentName().toLowerCase().endsWith(".nekox-stickers.json")) {
                     File finalLocFile = locFile;
                     AlertUtil.showConfirm(getParentActivity(),
-                            getString("ImportStickersList", R.string.ImportStickersList),
+                            getString(R.string.ImportStickersList),
                             R.drawable.msg_sticker, getString(R.string.Import), false, () -> {
                                 presentFragment(new StickersActivity(finalLocFile));
                             });
@@ -42128,6 +42178,7 @@ public class ChatActivity extends BaseFragment implements
             if (currentEncryptedChat != null && uid == currentUser.id) {
                 args.putLong("dialog_id", dialog_id);
             }
+            ChatsHelper.getInstance(currentAccount).updateLastSeenFromLoadedMessages(uid, messages, chatAdapter);
             ProfileActivity fragment = new ProfileActivity(args);
             fragment.setPlayProfileAnimation(currentUser != null && currentUser.id == uid ? 1 : 0);
             presentFragment(fragment);
@@ -44453,7 +44504,7 @@ public class ChatActivity extends BaseFragment implements
                     MessageObject message = messages.get(i);
                     int type = getMessageType(message);
 
-                    if (type < 2 || type == 20) {
+                    if (type < MESSAGE_TYPE_MEDIA || type == MESSAGE_TYPE_SEND_ERROR_TEXT) {
                         continue;
                     }
 
@@ -46244,7 +46295,7 @@ public class ChatActivity extends BaseFragment implements
         boolean allowForward = false;
 
         boolean isMessageTextEmpty = selectedObject.messageOwner == null || TextUtils.isEmpty(selectedObject.messageOwner.message);
-        boolean isStaticSticker = type == 7 && !selectedObject.isAnimatedSticker() && !selectedObject.isVideoSticker();
+        boolean isStaticSticker = type == MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED && !selectedObject.isAnimatedSticker() && !selectedObject.isVideoSticker();
         boolean hasCaption = !TextUtils.isEmpty(getMessageCaption(selectedObject, selectedObjectGroup));
         boolean canDeleteMessage = selectedObject.canDeleteMessage(chatMode == MODE_SCHEDULED, currentChat);
 
@@ -46262,7 +46313,7 @@ public class ChatActivity extends BaseFragment implements
             allowEdit = captionsCount < 2;
         }
         if (message.isExpiredStory() || chatMode == MODE_SCHEDULED || threadMessageObjects != null && threadMessageObjects.contains(message) ||
-            message.isSponsored() || type == 1 && message.getDialogId() == mergeDialogId ||
+            message.isSponsored() || type == MESSAGE_TYPE_SERVICE && message.getDialogId() == mergeDialogId ||
             message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent ||
             currentEncryptedChat == null && message.getId() < 0 ||
             bottomChannelButtonsLayout != null && bottomChannelButtonsLayout.getVisibility() == View.VISIBLE && !(bottomOverlayChatWaitsReply && selectedObject != null && (MessageObject.getTopicId(currentAccount, selectedObject.messageOwner, ChatObject.isForum(currentChat)) != 0 || selectedObject.wasJustSent))
@@ -46313,7 +46364,7 @@ public class ChatActivity extends BaseFragment implements
             deleteIconRes = R.drawable.msg_delete;
         }
 
-        if (type == -1) {
+        if (type == MESSAGE_TYPE_INVALID) {
             if ((selectedObject.type == MessageObject.TYPE_TEXT || selectedObject.isAnimatedEmoji() || selectedObject.isAnimatedEmojiStickers() || getMessageCaption(selectedObject, selectedObjectGroup) != null) && !noforwardsOrPaidMedia && !message.isExpiredStory()) {
                 allowCopy = true;
                 if (!GroupedIconsView.useGroupedIcons()) {
@@ -46325,7 +46376,7 @@ public class ChatActivity extends BaseFragment implements
             items.add(LocaleController.getString(R.string.CancelSending));
             options.add(OPTION_CANCEL_SENDING);
             icons.add(R.drawable.msg_delete);
-        } else if (type == 0) {
+        } else if (type == MESSAGE_TYPE_SEND_ERROR_MEDIA) {
             items.add(LocaleController.getString(R.string.Retry));
             options.add(OPTION_RETRY);
             icons.add(R.drawable.msg_retry);
@@ -46336,7 +46387,7 @@ public class ChatActivity extends BaseFragment implements
                 options.add(OPTION_DELETE);
                 icons.add(deleteIconRes);
             }
-        } else if (type == 1) {
+        } else if (type == MESSAGE_TYPE_SERVICE) {
             if (currentChat != null) {
                 if (allowChatActions && !isInsideContainer) {
                     allowReply = true;
@@ -46393,6 +46444,7 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_REPORT_CHAT);
                     icons.add(R.drawable.msg_report);
                 }
+                // currentChat != null END
             } else {
                 if (selectedObject.getId() > 0 && allowChatActions && !isInsideContainer) {
                     allowReply = true;
@@ -46422,7 +46474,8 @@ public class ChatActivity extends BaseFragment implements
                 options.add(nkbtn_view_history);
                 icons.add(R.drawable.msg_recent_solar);
             }
-        } else if (type == 20) {
+            // type == MESSAGE_TYPE_SERVICE END
+        } else if (type == MESSAGE_TYPE_SEND_ERROR_TEXT) {
             items.add(LocaleController.getString(R.string.Retry));
             options.add(OPTION_RETRY);
             icons.add(R.drawable.msg_retry);
@@ -46458,7 +46511,7 @@ public class ChatActivity extends BaseFragment implements
                         icons.add(R.drawable.msg_fave);
                     }
                 }
-                if ((allowChatActions || !noforwardsOrPaidMedia && ChatObject.isChannelAndNotMegaGroup(currentChat) && !selectedObject.isSponsored() && selectedObject.contentType == 0 && chatMode == MODE_DEFAULT) && !isInsideContainer) {
+                if ((allowChatActions || !noforwardsOrPaidMedia && ChatObject.isChannelAndNotMegaGroup(currentChat) && !selectedObject.isSponsored() && selectedObject.contentType == 0 && chatMode == MODE_DEFAULT) && !isInsideContainer && !isAyuDeleted) {
                     allowReply = true;
                     if (!GroupedIconsView.useGroupedIcons()) {
                         items.add(LocaleController.getString(R.string.Reply));
@@ -46524,7 +46577,7 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_VIEW_IN_TOPIC);
                     icons.add(R.drawable.msg_viewintopic);
                 }
-                if (type == 2) {
+                if (type == MESSAGE_TYPE_MEDIA) {
                     if (chatMode != MODE_SCHEDULED) {
                         if (selectedObject.type == MessageObject.TYPE_POLL && !message.isPollClosed()) {
                             TLRPC.MessageMedia media = MessageObject.getMedia(selectedObject);
@@ -46577,13 +46630,13 @@ public class ChatActivity extends BaseFragment implements
                             }
                         }
                     }
-                } else if (type == 3 && !noforwardsOrPaidMedia) {
+                } else if (type == MESSAGE_TYPE_MEDIA_WEB && !noforwardsOrPaidMedia) {
                     if (selectedObject.messageOwner.media instanceof TLRPC.TL_messageMediaWebPage && MessageObject.isNewGifDocument(selectedObject.messageOwner.media.webpage.document)) {
                         items.add(LocaleController.getString(R.string.SaveToGIFs));
                         options.add(OPTION_ADD_TO_GIFS);
                         icons.add(R.drawable.msg_gif);
                     }
-                } else if (type == 4) {
+                } else if (type == MESSAGE_TYPE_MEDIA_CACHED) {
                     if (!noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia()) {
                         if (selectedObject.isVideo()) {
                             if (!selectedObject.needDrawBluredPreview()) {
@@ -46602,6 +46655,17 @@ public class ChatActivity extends BaseFragment implements
                             options.add(OPTION_SHARE);
                             icons.add(R.drawable.msg_shareout);
                         } else if (selectedObject.getDocument() != null && !selectedObject.isVoiceOnce() && !selectedObject.isRoundOnce()) {
+                            if (NaConfig.INSTANCE.getShowCopyFrame().Bool()) {
+                                BaseCell cell = findMessageCell(selectedObject.getId(), true);
+                                if (cell instanceof ChatMessageCell chatMessageCell) {
+                                    AnimatedFileDrawable animation = chatMessageCell.getPhotoImage().getAnimation();
+                                    if (animation != null && animation.hasBitmap()) {
+                                        items.add(getString(R.string.CopyVideoFrame));
+                                        options.add(OPTION_COPY_FRAME);
+                                        icons.add(R.drawable.msg_copy_photo);
+                                    }
+                                }
+                            }
                             if (MessageObject.isNewGifDocument(selectedObject.getDocument())) {
                                 items.add(LocaleController.getString(R.string.SaveToGIFs));
                                 options.add(OPTION_ADD_TO_GIFS);
@@ -46640,7 +46704,7 @@ public class ChatActivity extends BaseFragment implements
                             }
                         }
                     }
-                } else if (type == 5) {
+                } else if (type == MESSAGE_TYPE_XML) {
                     items.add(LocaleController.getString(R.string.ApplyLocalizationFile));
                     options.add(OPTION_APPLY_LOCALIZATION_OR_THEME);
                     icons.add(R.drawable.msg_language);
@@ -46652,7 +46716,7 @@ public class ChatActivity extends BaseFragment implements
                         options.add(OPTION_SHARE);
                         icons.add(R.drawable.msg_shareout);
                     }
-                } else if (type == 10) {
+                } else if (type == MESSAGE_TYPE_THEME) {
                     items.add(LocaleController.getString(R.string.ApplyThemeFile));
                     options.add(OPTION_APPLY_LOCALIZATION_OR_THEME);
                     icons.add(R.drawable.msg_theme);
@@ -46664,15 +46728,15 @@ public class ChatActivity extends BaseFragment implements
                         options.add(OPTION_SHARE);
                         icons.add(R.drawable.msg_shareout);
                     }
-                } else if (type == 21 || type == 22 || type == 23 || type == 100) {
+                } else if (type == MESSAGE_TYPE_NEKOX_JSON || type == MESSAGE_TYPE_NEKOX_STICKERS_JSON || type == MESSAGE_TYPE_NEKOX_SETTINGS_JSON || type == MESSAGE_TYPE_FONT) {
                     options.add(5);
-                    if (type == 21) {
+                    if (type == MESSAGE_TYPE_NEKOX_JSON) {
                         items.add(LocaleController.getString(R.string.ImportProxyList));
                         icons.add(R.drawable.menu_secret);
-                    } else if (type == 22) {
+                    } else if (type == MESSAGE_TYPE_NEKOX_STICKERS_JSON) {
                         items.add(LocaleController.getString(R.string.ImportStickersList));
                         icons.add(R.drawable.msg_sticker);
-                    } else if (type == 23) {
+                    } else if (type == MESSAGE_TYPE_NEKOX_SETTINGS_JSON) {
                         items.add(LocaleController.getString(R.string.ImportSettings));
                         icons.add(R.drawable.menu_secret);
                     } else {
@@ -46687,8 +46751,19 @@ public class ChatActivity extends BaseFragment implements
                         options.add(OPTION_SHARE);
                         icons.add(R.drawable.msg_shareout);
                     }
-                } else if (type == 6 && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia()) {
+                } else if (type == MESSAGE_TYPE_IMAGE_OR_VIDEO && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia()) {
                     if (!selectedObject.needDrawBluredPreview() && !selectedObject.isVoiceOnce() && !selectedObject.isRoundOnce()) {
+                        if (NaConfig.INSTANCE.getShowCopyFrame().Bool()) {
+                            BaseCell cell = findMessageCell(selectedObject.getId(), true);
+                            if (cell instanceof ChatMessageCell chatMessageCell) {
+                                AnimatedFileDrawable animation = chatMessageCell.getPhotoImage().getAnimation();
+                                if (animation != null && animation.hasBitmap()) {
+                                    items.add(getString(R.string.CopyVideoFrame));
+                                    options.add(OPTION_COPY_FRAME);
+                                    icons.add(R.drawable.msg_copy_photo);
+                                }
+                            }
+                        }
                         items.add(LocaleController.getString(R.string.SaveToGallery));
                         options.add(OPTION_SAVE_TO_GALLERY2);
                         icons.add(R.drawable.msg_gallery);
@@ -46699,7 +46774,7 @@ public class ChatActivity extends BaseFragment implements
                         options.add(OPTION_SHARE);
                         icons.add(R.drawable.msg_shareout);
                     }
-                } else if (type == 7) {
+                } else if (type == MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED) {
                     if (selectedObject.isMask()) {
                         items.add(LocaleController.getString(R.string.AddToMasks));
                         options.add(OPTION_ADD_TO_STICKERS_OR_MASKS);
@@ -46734,7 +46809,7 @@ public class ChatActivity extends BaseFragment implements
                             icons.add(R.drawable.msg_unfave);
                         }
                     }
-                } else if (type == 8) {
+                } else if (type == MESSAGE_TYPE_CONTACT) {
                     long uid = selectedObject.messageOwner.media.user_id;
                     TLRPC.User user = null;
                     if (uid != 0) {
@@ -46755,7 +46830,7 @@ public class ChatActivity extends BaseFragment implements
                         options.add(OPTION_CALL);
                         icons.add(R.drawable.msg_callback);
                     }
-                } else if (type == 9) {
+                } else if (type == MESSAGE_TYPE_STICKER_PACK_INSTALLED) {
                     if (!selectedObject.isAnimatedSticker()) {
                         items.add(LocaleController.getString(R.string.SaveToGallery));
                         options.add(nkbtn_stickerdl);
@@ -46786,7 +46861,7 @@ public class ChatActivity extends BaseFragment implements
                         icons.add(NaConfig.INSTANCE.getShowNoQuoteForward().Bool() ? R.drawable.msg_forward : R.drawable.msg_forward_noquote);
                     }
                 }
-                // --- NekoX Start ---
+                // --- NagramX Start ---
                 if (chatMode != MODE_SCHEDULED) {
                     if (!selectedObject.needDrawBluredPreview() && !selectedObject.isLiveLocation() && selectedObject.type != 16) {
                         if (!noforwards && NaConfig.INSTANCE.getShowNoQuoteForward().Bool()) {
@@ -46912,7 +46987,7 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_STATISTICS);
                     icons.add(R.drawable.msg_stats);
                 }
-                // --- NekoX End ---
+                // --- NagramX End ---
                 if (allowUnpin) {
                     items.add(LocaleController.getString(R.string.UnpinMessage));
                     options.add(OPTION_UNPIN);
@@ -46967,7 +47042,7 @@ public class ChatActivity extends BaseFragment implements
                         icons.add(deleteIconRes);
                     }
                 }
-            } else {
+            } else { // currentEncryptedChat == null END
                 if (allowChatActions && !isInsideContainer) {
                     allowReply = true;
                     if (!GroupedIconsView.useGroupedIcons()) {
@@ -47002,7 +47077,7 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_VIEW_IN_TOPIC);
                     icons.add(R.drawable.msg_viewintopic);
                 }
-                if (type == 4 && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia() && !selectedObject.needDrawBluredPreview()) {
+                if (type == MESSAGE_TYPE_MEDIA_CACHED && !noforwardsOrPaidMedia && !selectedObject.hasRevealedExtendedMedia() && !selectedObject.needDrawBluredPreview()) {
                     if (selectedObject.isVideo()) {
                         items.add(LocaleController.getString(R.string.SaveToGallery));
                         options.add(OPTION_SAVE_TO_GALLERY);
@@ -47048,23 +47123,23 @@ public class ChatActivity extends BaseFragment implements
                             icons.add(R.drawable.msg_copy_photo);
                         }
                     }
-                } else if (type == 5) {
+                } else if (type == MESSAGE_TYPE_XML) {
                     items.add(LocaleController.getString(R.string.ApplyLocalizationFile));
                     options.add(OPTION_APPLY_LOCALIZATION_OR_THEME);
                     icons.add(R.drawable.msg_language);
-                } else if (type == 10) {
+                } else if (type == MESSAGE_TYPE_THEME) {
                     items.add(LocaleController.getString(R.string.ApplyThemeFile));
                     options.add(OPTION_APPLY_LOCALIZATION_OR_THEME);
                     icons.add(R.drawable.msg_theme);
-                } else if (type == 21) {
+                } else if (type == MESSAGE_TYPE_NEKOX_JSON) {
                     items.add(LocaleController.getString(R.string.ImportProxyList));
                     options.add(5);
                     icons.add(R.drawable.msg2_proxy_on);
-                } else if (type == 7 && NaConfig.INSTANCE.getShowAddToStickers().Bool()) {
+                } else if (type == MESSAGE_TYPE_STICKER_PACK_NOT_INSTALLED && NaConfig.INSTANCE.getShowAddToStickers().Bool()) {
                     items.add(LocaleController.getString(R.string.AddToStickers));
                     options.add(OPTION_ADD_TO_STICKERS_OR_MASKS);
                     icons.add(R.drawable.msg_sticker);
-                } else if (type == 8) {
+                } else if (type == MESSAGE_TYPE_CONTACT) {
                     long uid = selectedObject.messageOwner.media.user_id;
                     TLRPC.User user = null;
                     if (uid != 0) {
@@ -47236,7 +47311,8 @@ public class ChatActivity extends BaseFragment implements
         if (TextUtils.isEmpty(text)) {
             return false;
         }
-        DialogTransKt.startTrans(getParentActivity(), text, toLang != null ? toLang : NekoConfig.translateToLang.String(), Translator.providerLLMTranslator);
+        boolean appendOriginal = NaConfig.INSTANCE.getTranslatorMode().Int() == MessageTransKt.TRANSLATE_MODE_APPEND;
+        DialogTransKt.startTrans(getParentActivity(), text, toLang != null ? toLang : NekoConfig.translateToLang.String(), Translator.providerLLMTranslator, appendOriginal);
         return true;
     }
 

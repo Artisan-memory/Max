@@ -31,6 +31,11 @@
     <string name="LlmSystemPromptNotice">Definisci il ruolo e il comportamento dell\'IA.\n\nQuesto prompt imposta il tono, la personalità e i limiti dell\'IA. Considera la possibilità di descrivere che tipo di assistente dovrebbe essere l\'IA.\n\nPuò essere lasciato vuoto.</string>
     <string name="LlmUserPrompt">Richiesta utente</string>
     <string name="LlmUserPromptNotice">Utilizza @text come segnaposto per il messaggio originale e @toLang per la lingua di destinazione (facoltativo).\n\nEsempio: \"Traduci @text in @toLang senza alcuna spiegazione.\"\n\nLasciando questo campo vuoto verrà utilizzato il prompt predefinito.</string>
+    <string name="LlmUseContext">Usa contesto</string>
+    <string name="LlmUseContextNotice">Migliora la qualità della traduzione a scapito di più token.</string>
+    <string name="LlmContextSize">Messaggi contestuali</string>
+    <string name="LlmUseContextInAutoTranslate">Usa il contesto nella traduzione automatica</string>
+    <string name="LlmUseContextInAutoTranslateNotice">Potrebbe aumentare l\'uso dei token e la latenza.</string>
     <string name="LlmTemperature">Temperatura</string>
     <string name="AITranslatorSettings">Traduttore AI</string>
     <string name="TranslucentDeletedMessages">Messaggi cancellati traslucidi</string>
@@ -134,6 +139,8 @@
     <string name="MarkReadAfterSendNotice">Legge automaticamente i messaggi quando se ne invia uno nuovo o si tocca una reazione.</string>
     <string name="SendWithoutSoundRowNotice">Invia automaticamente i messaggi in uscita senza audio.</string>
     <string name="GhostReadMessage">Leggi messaggi</string>
+    <string name="GhostModeExcludeRead">Escludi Lette</string>
+    <string name="GhostModeExcludeTyping">Escludi Scrittura</string>
     <string name="SendWithSound">Invia con suono</string>
     <string name="PerformanceClass">Classe Prestazioni Dispositivo</string>
     <string name="PerformanceClassHigh">Alta</string>
@@ -293,4 +300,17 @@ Non possiamo aiutarti in questo caso; se hai problemi di accesso, contatta il Su
     <string name="CameraInVideoMessagesAsk">Chiedi</string>
     <string name="CameraSettings">Camera</string>
     <string name="SmoothRoundedMenu">Menu contestuali arrotondati</string>
+    <string name="SyncContactToPhone">Sincronizza contatto sul telefono</string>
+    <string name="AddViaQRCode">Aggiungi tramite QR Code</string>
+    <string name="ContactNotes">Note</string>
+    <string name="PhoneNotOnTelegramInvite">Questo numero di telefono non è su Telegram. **Invita &gt;**</string>
+    <string name="PhoneAlreadyInContacts">Questo numero di telefono è già nei tuoi contatti. **Visualizza &gt;**</string>
+    <string name="PhoneOnTelegram">Questo numero di telefono è su Telegram.</string>
+    <string name="SIMCard">Scheda SIM</string>
+    <string name="DeviceAccount">Dispositivo</string>
+    <string name="ApiKeyNotSet">La chiave API non è configurata.</string>
+    <string name="SaveLocalLastSeen">Salva data dell\'ultimo accesso</string>
+    <string name="CopyVideoFrame">Copia Frame</string>
+    <string name="SetLocalName">Imposta Nome Locale</string>
+    <string name="DeleteChatForBothSides">Usa \"Elimina anche per\" di default</string>
 </resources>

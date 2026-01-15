@@ -56,8 +56,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import kotlin.Unit;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
+import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.ui.MessageDetailsActivity;
+import xyz.nextalone.nagram.NaConfig;
 
 public class AyuMessageHistory extends AyuMessageDelegateFragment {
     private static final int OPTION_DELETE = 1;
@@ -67,6 +70,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
     private static final int OPTION_DETAILS = 5;
     private static final int OPTION_SAVE_TO_GALLERY = 6;
     private static final int OPTION_SAVE_TO_DOWNLOADS = 7;
+    private static final int OPTION_TRANSLATE = 8;
     private final MessageObject messageObject;
     private List<EditedMessage> messages;
     private final ArrayList<MessageObject> messageObjects = new ArrayList<>();
@@ -313,6 +317,14 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
             options.add(OPTION_SAVE_TO_DOWNLOADS);
         }
 
+        String textToTranslate = msg.messageOwner != null ? msg.messageOwner.message : null;
+        if (!TextUtils.isEmpty(textToTranslate)) {
+            boolean translated = msg.messageOwner.translated;
+            items.add(getString(translated ? R.string.HideTranslation : R.string.Translate));
+            icons.add(NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
+            options.add(OPTION_TRANSLATE);
+        }
+
         items.add(getString(R.string.Delete));
         icons.add(R.drawable.msg_delete);
         options.add(OPTION_DELETE);
@@ -395,11 +407,29 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
                     });
                 } else if (option == OPTION_DETAILS) {
                     presentFragment(new MessageDetailsActivity(msg, null));
+                } else if (option == OPTION_TRANSLATE) {
+                    toggleOrTranslate((ChatMessageCell) v, msg, null);
                 }
                 if (scrimPopupWindow != null) {
                     scrimPopupWindow.dismiss();
                 }
             });
+            if (option == OPTION_TRANSLATE) {
+                cell.setOnLongClickListener(v1 -> {
+                    if (msg.messageOwner != null && msg.messageOwner.translated) {
+                        return true;
+                    }
+                    Translator.showTargetLangSelect(cell, false, false, (locale) -> {
+                        if (scrimPopupWindow != null) {
+                            scrimPopupWindow.dismiss();
+                            scrimPopupWindow = null;
+                        }
+                        toggleOrTranslate((ChatMessageCell) v, msg, locale);
+                        return Unit.INSTANCE;
+                    });
+                    return true;
+                });
+            }
         }
 
         ChatScrimPopupContainerLayout scrimPopupContainerLayout = new ChatScrimPopupContainerLayout(fragmentView.getContext()) {

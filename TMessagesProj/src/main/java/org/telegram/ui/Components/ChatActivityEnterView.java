@@ -219,6 +219,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import kotlin.Unit;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
+import tw.nekomimi.nekogram.utils.AndroidUtil;
 import tw.nekomimi.nekogram.utils.StringUtils;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.translate.Translator;
@@ -428,6 +429,10 @@ public class ChatActivityEnterView extends FrameLayout implements
             return false;
         }
         default void setVideoRecordingCameraFront(boolean front) { // nax
+        }
+
+        default boolean isAttachItemVisible() { // nax
+            return false;
         }
     }
 
@@ -4627,8 +4632,9 @@ public class ChatActivityEnterView extends FrameLayout implements
         return true;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void onMenuClick(View view) {
-        if (parentFragment == null || slowModeTimer > 0) {
+        if (parentFragment == null || slowModeTimer > 0 || delegate == null) {
             return;
         }
         ActionBarPopupWindow.ActionBarPopupWindowLayout menuPopupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(parentActivity);
@@ -4655,10 +4661,10 @@ public class ChatActivityEnterView extends FrameLayout implements
         int a = 0;
 
         ActionBarMenuSubItem cell = new ActionBarMenuSubItem(getContext(), true, false);
-        int dlps = delegate.getDisableLinkPreviewStatus();
+        int disableLinkPreviewStatus = delegate.getDisableLinkPreviewStatus();
 
         if (!isInInput) {
-            cell.setTextAndIcon(LocaleController.getString(R.string.ChatAttachEnterMenuRecordAudio), R.drawable.input_mic);
+            cell.setTextAndIcon(getString(R.string.ChatAttachEnterMenuRecordAudio), R.drawable.input_mic);
             cell.setOnClickListener(v -> {
                 if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
                     menuPopupWindow.dismiss();
@@ -4686,8 +4692,8 @@ public class ChatActivityEnterView extends FrameLayout implements
             menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
 
             if (SharedConfig.inappCamera) {
-                cell = new ActionBarMenuSubItem(getContext(), false, dlps == 0);
-                cell.setTextAndIcon(LocaleController.getString(R.string.ChatAttachEnterMenuRecordVideo), R.drawable.input_video);
+                cell = new ActionBarMenuSubItem(getContext(), false, true);
+                cell.setTextAndIcon(getString(R.string.ChatAttachEnterMenuRecordVideo), R.drawable.input_video);
                 cell.setOnClickListener(v -> {
                     if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
                         menuPopupWindow.dismiss();
@@ -4729,8 +4735,32 @@ public class ChatActivityEnterView extends FrameLayout implements
         } else {
             long chatId = ChatsHelper.getChatId();
             String languageText = Translator.getInputTranslateLangForChat(chatId).toUpperCase();
+
+            // LinkPreview toggle
+            if (disableLinkPreviewStatus > 0) {
+                cell.setTextAndIcon(disableLinkPreviewStatus != 1 ?
+                        getString(R.string.ChatAttachEnterMenuEnableLinkPreview) :
+                        getString(R.string.ChatAttachEnterMenuDisableLinkPreview), R.drawable.msg_link);
+                final ActionBarMenuSubItem linkPreviewCell = cell;
+                cell.setOnClickListener(v -> {
+                    if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
+                        menuPopupWindow.dismiss();
+                    }
+                    delegate.toggleDisableLinkPreview();
+                    messageWebPageSearch = delegate.getDisableLinkPreviewStatus() == 1;
+
+                    linkPreviewCell.setTextAndIcon(delegate.getDisableLinkPreviewStatus() != 1 ?
+                            getString(R.string.ChatAttachEnterMenuEnableLinkPreview) :
+                            getString(R.string.ChatAttachEnterMenuDisableLinkPreview), R.drawable.msg_link);
+                });
+                cell.setMinimumWidth(AndroidUtilities.dp(196));
+                menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
+                cell = new ActionBarMenuSubItem(getContext(), true, false);
+            }
+
+            // AI Translate
             if (NaConfig.INSTANCE.isLLMTranslatorAvailable() && !NaConfig.INSTANCE.llmIsDefaultProvider()) {
-                cell.setTextAndIcon(LocaleController.getString(R.string.TranslateMessageLLM) + " (" + languageText + ")", R.drawable.magic_stick_solar);
+                cell.setTextAndIcon(getString(R.string.TranslateMessageLLM) + " (" + languageText + ")", R.drawable.magic_stick_solar);
                 cell.setOnClickListener(v -> {
                     if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
                         menuPopupWindow.dismiss();
@@ -4751,9 +4781,11 @@ public class ChatActivityEnterView extends FrameLayout implements
                 });
                 cell.setMinimumWidth(AndroidUtilities.dp(196));
                 menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
+                cell = new ActionBarMenuSubItem(getContext(), false, false);
             }
-            cell = new ActionBarMenuSubItem(getContext(), false, dlps == 0);
-            cell.setTextAndIcon(LocaleController.getString(R.string.TranslateMessage) + " (" + languageText + ")", NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
+
+            // Normal Translate
+            cell.setTextAndIcon(getString(R.string.TranslateMessage) + " (" + languageText + ")", NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
             cell.setOnClickListener(v -> {
                 if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
                     menuPopupWindow.dismiss();
@@ -4775,8 +4807,9 @@ public class ChatActivityEnterView extends FrameLayout implements
             cell.setMinimumWidth(AndroidUtilities.dp(196));
             menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
 
-            cell = new ActionBarMenuSubItem(getContext(), false, dlps == 0);
-            cell.setTextAndIcon(LocaleController.getString(R.string.ReplaceText), R.drawable.msg_edit);
+            // Replace Text
+            cell = new ActionBarMenuSubItem(getContext(), false, false);
+            cell.setTextAndIcon(getString(R.string.ReplaceText), R.drawable.msg_edit);
             cell.setOnClickListener(v -> {
                 if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
                     menuPopupWindow.dismiss();
@@ -4785,27 +4818,25 @@ public class ChatActivityEnterView extends FrameLayout implements
             });
             cell.setMinimumWidth(AndroidUtilities.dp(196));
             menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
-        }
 
-        if (dlps > 0) {
-            cell = new ActionBarMenuSubItem(getContext(), false, true);
-            cell.setTextAndIcon(dlps != 1 ?
-                    LocaleController.getString(R.string.ChatAttachEnterMenuEnableLinkPreview) :
-                    LocaleController.getString(R.string.ChatAttachEnterMenuDisableLinkPreview), R.drawable.msg_link);
-            final ActionBarMenuSubItem linkPreviewCell = cell;
-            cell.setOnClickListener(v -> {
-                if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
-                    menuPopupWindow.dismiss();
-                }
-                delegate.toggleDisableLinkPreview();
-                messageWebPageSearch = delegate.getDisableLinkPreviewStatus() == 1;
-
-                linkPreviewCell.setTextAndIcon(delegate.getDisableLinkPreviewStatus() != 1 ?
-                        LocaleController.getString(R.string.ChatAttachEnterMenuEnableLinkPreview) :
-                        LocaleController.getString(R.string.ChatAttachEnterMenuDisableLinkPreview), R.drawable.msg_link);
-            });
-            cell.setMinimumWidth(AndroidUtilities.dp(196));
-            menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
+            // Attach
+            if (delegate.isAttachItemVisible()) {
+                cell = new ActionBarMenuSubItem(getContext(), false, true);
+                cell.setTextAndIcon(getString(R.string.AttachMenu), R.drawable.input_attach);
+                cell.setOnClickListener(v -> {
+                    if (menuPopupWindow != null && menuPopupWindow.isShowing()) {
+                        menuPopupWindow.dismiss();
+                    }
+                    if (adjustPanLayoutHelper != null && adjustPanLayoutHelper.animationInProgress()) {
+                        return;
+                    }
+                    if (delegate != null) {
+                        delegate.didPressAttachButton();
+                    }
+                });
+                cell.setMinimumWidth(AndroidUtilities.dp(196));
+                menuPopupLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT, 0, 48 * a++, 0, 0));
+            }
         }
 
         menuPopupLayout.setupRadialSelectors(Theme.getColor(Theme.key_dialogButtonSelector));
@@ -6292,24 +6323,21 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
 
         BottomBuilder builder = new BottomBuilder(getContext());
 
-        builder.addTitle(LocaleController.getString("ReplaceText", R.string.ReplaceText), true);
+        builder.addTitle(getString(R.string.ReplaceText), true);
 
-        TextCheckCell regex = builder.addCheckItem(LocaleController.getString("ReplaceRegex", R.string.ReplaceRegex), false, false, null);
-        EditText origin = builder.addEditText(LocaleController.getString("TextOrigin", R.string.TextOrigin));
-        EditText replace = builder.addEditText(LocaleController.getString("TextReplace", R.string.TextReplace));
-
+        TextCheckCell regexCheckCell = builder.addCheckItem(getString(R.string.ReplaceRegex), false, false, null);
+        EditText fromField = builder.addEditText(getString(R.string.TextOrigin));
+        EditText toField = builder.addEditText(getString(R.string.TextReplace));
 
         String finalText = text.toString();
-        builder.addButton(LocaleController.getString("TextReplace", R.string.TextReplace), true, it -> {
-
-            String originText = origin.getText().toString();
-            String replaceText = replace.getText().toString();
-
+        builder.addButton(getString(R.string.TextReplace), true, it -> {
+            String originText = fromField.getText().toString();
+            String replaceText = toField.getText().toString();
             if (originText.isEmpty()) {
-                AndroidUtilities.showKeyboard(origin);
+                AndroidUtil.showInputError(fromField);
+                return Unit.INSTANCE;
             }
-
-            boolean useRegex = regex.isChecked();
+            boolean useRegex = regexCheckCell.isChecked();
             AlertDialog progress = AlertUtil.showProgress(getContext());
             progress.show();
             Utilities.globalQueue.postRunnable(() -> {
@@ -6332,13 +6360,16 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                     builder.dismiss();
                 });
             });
-
             return Unit.INSTANCE;
         });
-
         builder.addCancelButton();
+        builder.setOnShowListener(dialog -> {
+            fromField.setFocusable(true);
+            fromField.setFocusableInTouchMode(true);
+            fromField.requestFocus();
+            AndroidUtilities.runOnUIThread(() -> AndroidUtilities.showKeyboard(fromField), 200);
+        });
         builder.show();
-
     }
     // --- Input Menu End---
 
@@ -10588,6 +10619,9 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
     }
 
     public void updateColors() {
+        if (messageEditText != null) {
+            messageEditText.setHintColor(getThemedColor(Theme.key_chat_messagePanelHint));
+        }
         if (messageSendPreview != null) {
             messageSendPreview.updateColors();
         }
