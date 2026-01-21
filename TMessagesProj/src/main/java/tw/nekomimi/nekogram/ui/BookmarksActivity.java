@@ -183,35 +183,8 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
     };
 
     private void updateVisibleMessageCells() {
-        if (listView == null || fragmentView == null) {
-            return;
-        }
-        int parentHeight = listView.getMeasuredHeight();
-        if (parentHeight <= 0) {
-            return;
-        }
-        int parentWidth = fragmentView.getMeasuredWidth();
-        int backgroundHeight = fragmentView.getMeasuredHeight();
-        if (fragmentView instanceof SizeNotifierFrameLayout frameLayout) {
-            backgroundHeight = frameLayout.getBackgroundSizeY();
-        }
-
-        float listY = listView.getY();
-        for (int i = 0, count = listView.getChildCount(); i < count; i++) {
-            View child = listView.getChildAt(i);
-            if (!(child instanceof ChatMessageCell cell)) {
-                continue;
-            }
-            int childTop = child.getTop();
-            int childHeight = child.getMeasuredHeight();
-            int viewTop = Math.max(0, -childTop);
-            int viewBottom = Math.min(childHeight, parentHeight - childTop);
-            int visibleHeight = viewBottom - viewTop;
-            if (visibleHeight <= 0) {
-                continue;
-            }
-            cell.setParentBounds(0, parentHeight);
-            cell.setVisiblePart(viewTop, visibleHeight, parentHeight, 0f, child.getY() + listY, parentWidth, backgroundHeight, 0, 0);
+        if (listView != null) {
+            updateVisibleChatMessageCells(listView);
         }
     }
 
@@ -653,8 +626,8 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         }
 
         String textToTranslate = msg.messageOwner != null ? msg.messageOwner.message : null;
-        if (!TextUtils.isEmpty(textToTranslate)) {
-            boolean translated = msg.messageOwner.translated;
+        if (!TextUtils.isEmpty(textToTranslate) || msg.isPoll()) {
+            boolean translated = msg.messageOwner != null && (msg.messageOwner.translated || msg.messageOwner.translatedPoll != null);
             items.add(getString(translated ? R.string.HideTranslation : R.string.Translate));
             icons.add(NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
             options.add(OPTION_TRANSLATE);
@@ -764,7 +737,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
             });
             if (option == OPTION_TRANSLATE) {
                 cell.setOnLongClickListener(v1 -> {
-                    if (msg.messageOwner != null && msg.messageOwner.translated) {
+                    if (msg.messageOwner != null && (msg.messageOwner.translated || msg.messageOwner.translatedPoll != null)) {
                         return true;
                     }
                     Translator.showTargetLangSelect(cell, false, false, (locale) -> {
