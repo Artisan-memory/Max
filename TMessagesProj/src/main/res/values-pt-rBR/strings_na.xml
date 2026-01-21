@@ -2,9 +2,6 @@
 <resources>
     <string name="N_Config">Max-Configuração</string>
     <string name="ForceCopy">Forçar Cópia</string>
-    <string name="CombineMessage">Combinar Mensagens</string>
-    <string name="TextStyle">Estilo de Texto</string>
-    <string name="NoiseSuppressAndVoiceEnhance">Supressão de Ruído e Melhoramento de Voz</string>
     <string name="CombineMessage">Combinar mensagens</string>
     <string name="TextStyle">Estilo de texto</string>
     <string name="NoiseSuppressAndVoiceEnhance">Supressão de ruído e melhoria de voz</string>
