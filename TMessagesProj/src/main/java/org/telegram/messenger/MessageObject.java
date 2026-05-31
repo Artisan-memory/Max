@@ -3877,7 +3877,7 @@ public class MessageObject {
             byte[] correct = null;
             if (results.min && media.results.results != null) {
                 for (int b = 0, N2 = media.results.results.size(); b < N2; b++) {
-                    TLRPC.TL_pollAnswerVoters answerVoters = media.results.results.get(b);
+                    TLRPC.PollAnswerVoters answerVoters = media.results.results.get(b);
                     if (answerVoters.chosen) {
                         if (chosen == null) {
                             chosen = new ArrayList<>();
@@ -3892,7 +3892,7 @@ public class MessageObject {
             media.results.results = results.results;
             if (chosen != null || correct != null) {
                 for (int b = 0, N2 = media.results.results.size(); b < N2; b++) {
-                    TLRPC.TL_pollAnswerVoters answerVoters = media.results.results.get(b);
+                    TLRPC.PollAnswerVoters answerVoters = media.results.results.get(b);
                     if (chosen != null) {
                         for (int a = 0, N = chosen.size(); a < N; a++) {
                             if (Arrays.equals(answerVoters.option, chosen.get(a))) {
@@ -4025,7 +4025,7 @@ public class MessageObject {
             return false;
         }
         for (int a = 0, N = mediaPoll.results.results.size(); a < N; a++) {
-            TLRPC.TL_pollAnswerVoters answer = mediaPoll.results.results.get(a);
+            TLRPC.PollAnswerVoters answer = mediaPoll.results.results.get(a);
             if (answer.chosen) {
                 return true;
             }
@@ -4046,7 +4046,7 @@ public class MessageObject {
             return false;
         }
         for (int a = 0, N = mediaPoll.results.results.size(); a < N; a++) {
-            TLRPC.TL_pollAnswerVoters answer = mediaPoll.results.results.get(a);
+            TLRPC.PollAnswerVoters answer = mediaPoll.results.results.get(a);
             if (answer.chosen) {
                 return true;
             }

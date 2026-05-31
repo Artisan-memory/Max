@@ -1770,13 +1770,17 @@ public abstract class BotWebViewContainer extends FrameLayout implements Notific
                     int textColor = info.has("text_color") ? Color.parseColor(info.optString("text_color")) : lastButtonTextColor;
                     boolean isProgressVisible = info.optBoolean("is_progress_visible", false) && isVisible;
                     boolean hasShineEffect = info.optBoolean("has_shine_effect", false) && isVisible;
+                    long emojiId = 0;
+                    try {
+                        emojiId = Long.parseLong(info.getString("icon_custom_emoji_id"));
+                    } catch (Throwable t) {}
 
                     lastButtonColor = color;
                     lastButtonTextColor = textColor;
                     lastButtonText = text;
                     buttonData = eventData;
 
-                    delegate.onSetupMainButton(isVisible, isActive, text, color, textColor, isProgressVisible, hasShineEffect);
+                    delegate.onSetupMainButton(isVisible, isActive, text, emojiId, color, textColor, isProgressVisible, hasShineEffect);
                 } catch (Exception e) {
                     FileLog.e(e);
                 }
@@ -1794,6 +1798,10 @@ public abstract class BotWebViewContainer extends FrameLayout implements Notific
                     boolean hasShineEffect = info.optBoolean("has_shine_effect", false) && isVisible;
                     String position = info.has("position") ? info.optString("position") : lastSecondaryButtonPosition;
                     if (position == null) position = "left";
+                    long emojiId = 0;
+                    try {
+                        emojiId = Long.parseLong(info.getString("icon_custom_emoji_id"));
+                    } catch (Throwable t) {}
 
                     lastSecondaryButtonColor = color;
                     lastSecondaryButtonTextColor = textColor;
@@ -1801,7 +1809,7 @@ public abstract class BotWebViewContainer extends FrameLayout implements Notific
                     lastSecondaryButtonPosition = position;
                     secondaryButtonData = eventData;
 
-                    delegate.onSetupSecondaryButton(isVisible, isActive, text, color, textColor, isProgressVisible, hasShineEffect, position);
+                    delegate.onSetupSecondaryButton(isVisible, isActive, text, emojiId, color, textColor, isProgressVisible, hasShineEffect, position);
                 } catch (Exception e) {
                     FileLog.e(e);
                 }
@@ -3263,8 +3271,8 @@ public abstract class BotWebViewContainer extends FrameLayout implements Notific
         /**
          * Setups main button
          */
-        void onSetupMainButton(boolean isVisible, boolean isActive, String text, int color, int textColor, boolean isProgressVisible, boolean hasShineEffect);
-        void onSetupSecondaryButton(boolean isVisible, boolean isActive, String text, int color, int textColor, boolean isProgressVisible, boolean hasShineEffect, String position);
+        void onSetupMainButton(boolean isVisible, boolean isActive, String text, long emojiId, int color, int textColor, boolean isProgressVisible, boolean hasShineEffect);
+        void onSetupSecondaryButton(boolean isVisible, boolean isActive, String text, long emojiId, int color, int textColor, boolean isProgressVisible, boolean hasShineEffect, String position);
 
         /**
          * Sets back button enabled and visible

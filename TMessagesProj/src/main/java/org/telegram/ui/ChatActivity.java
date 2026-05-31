@@ -23452,7 +23452,7 @@ public class ChatActivity extends BaseFragment implements
                     ChatMessageCell cell = (ChatMessageCell) pollView;
                     if (cell.isAnimatingPollAnswer()) {
                         for (int a = 0, N = results.results.size(); a < N; a++) {
-                            TLRPC.TL_pollAnswerVoters voters = results.results.get(a);
+                            TLRPC.PollAnswerVoters voters = results.results.get(a);
                             if (voters.chosen) {
                                 try {
                                     if (!NekoConfig.disableVibration.Bool()) pollView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);

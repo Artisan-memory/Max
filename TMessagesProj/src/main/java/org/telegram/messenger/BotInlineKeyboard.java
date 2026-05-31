@@ -1,6 +1,7 @@
 package org.telegram.messenger;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 
 import org.telegram.tgnet.TLRPC;
@@ -8,9 +9,25 @@ import org.telegram.tgnet.TLRPC;
 import java.util.ArrayList;
 
 public class BotInlineKeyboard {
+    public enum BackgroundColor {
+        NONE,
+        PRIMARY,
+        SUCCESS,
+        DANGER
+    }
+
     public static abstract class Button {
         public abstract String getText();
         public abstract int getIcon();
+
+        @NonNull
+        public BackgroundColor getColor() {
+            return BackgroundColor.NONE;
+        }
+
+        public long getIconEmoji() {
+            return 0;
+        }
     }
 
     public static class ButtonBot extends Button {
@@ -28,6 +45,26 @@ public class BotInlineKeyboard {
         @Override
         public int getIcon() {
             return 0;
+        }
+
+        @NonNull
+        @Override
+        public BackgroundColor getColor() {
+            if (button.style != null) {
+                if (button.style.bg_success) {
+                    return BackgroundColor.SUCCESS;
+                } else if (button.style.bg_danger) {
+                    return BackgroundColor.DANGER;
+                } else if (button.style.bg_primary) {
+                    return BackgroundColor.PRIMARY;
+                }
+            }
+            return BackgroundColor.NONE;
+        }
+
+        @Override
+        public long getIconEmoji() {
+            return button.style != null ? button.style.icon : 0;
         }
     }
 

@@ -521,7 +521,7 @@ public class PollVotesAlert extends BottomSheet {
         Integer[] reqIds = new Integer[count];
 
         for (int a = 0; a < count; a++) {
-            TLRPC.TL_pollAnswerVoters answerVoters = mediaPoll.results.results.get(a);
+            TLRPC.PollAnswerVoters answerVoters = mediaPoll.results.results.get(a);
             if (answerVoters.voters == 0) {
                 continue;
             }
@@ -998,7 +998,7 @@ public class PollVotesAlert extends BottomSheet {
             votesPercents.put(list, button);
             if (!media.results.results.isEmpty()) {
                 for (int b = 0, N2 = media.results.results.size(); b < N2; b++) {
-                    TLRPC.TL_pollAnswerVoters answer = media.results.results.get(b);
+                    TLRPC.PollAnswerVoters answer = media.results.results.get(b);
                     if (Arrays.equals(list.option, answer.option)) {
                         button.votesCount = answer.voters;
                         button.decimal = 100 * (answer.voters / (float) media.results.total_voters);

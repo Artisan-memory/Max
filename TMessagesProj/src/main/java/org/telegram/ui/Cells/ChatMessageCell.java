@@ -1296,7 +1296,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private int pressedVoteButton;
     private TLRPC.Poll lastPoll;
     private float timerTransitionProgress;
-    private ArrayList<TLRPC.TL_pollAnswerVoters> lastPollResults;
+    private ArrayList<TLRPC.PollAnswerVoters> lastPollResults;
     private int lastPollResultsVoters;
     private TimerParticles timerParticles;
     private AnimatedFloat timerParticlesAlpha;
@@ -6063,7 +6063,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             setCurrentDiceValue(isUpdating);
         }
         if (!messageChanged && messageObject.isPoll()) {
-            ArrayList<TLRPC.TL_pollAnswerVoters> newResults = null;
+            ArrayList<TLRPC.PollAnswerVoters> newResults = null;
             TLRPC.Poll newPoll = null;
             int newVoters = 0;
             if (MessageObject.getMedia(messageObject.messageOwner) instanceof TLRPC.TL_messageMediaPoll) {
@@ -6096,11 +6096,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             if (!messageIdChanged && newPoll != null && lastPoll != null && lastPoll.quiz && newPoll.quiz && currentMessageObject != null && !pollVoted && messageObject != null && messageObject.isVoted()) {
                 TLRPC.TL_messageMediaPoll mediaPoll = (TLRPC.TL_messageMediaPoll) MessageObject.getMedia(messageObject.messageOwner);
                 if (mediaPoll.results != null && !mediaPoll.results.results.isEmpty()) {
-                    TLRPC.TL_pollAnswerVoters chosenAnswer = null;
+                    TLRPC.PollAnswerVoters chosenAnswer = null;
                     int a;
                     final int count = mediaPoll.results.results.size();
                     for (a = 0; a < count; a++) {
-                        TLRPC.TL_pollAnswerVoters answer = mediaPoll.results.results.get(a);
+                        TLRPC.PollAnswerVoters answer = mediaPoll.results.results.get(a);
                         if (answer.chosen) {
                             chosenAnswer = answer;
                             break;
@@ -8693,7 +8693,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         height += button.height + dp(26);
                         if (!media.results.results.isEmpty()) {
                             for (int b = 0, N2 = media.results.results.size(); b < N2; b++) {
-                                TLRPC.TL_pollAnswerVoters answer = media.results.results.get(b);
+                                TLRPC.PollAnswerVoters answer = media.results.results.get(b);
                                 if (Arrays.equals(button.answer.option, answer.option)) {
                                     button.chosen = answer.chosen;
                                     button.count = answer.voters;
@@ -10506,6 +10506,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
             }
 
+            for (BotButton botButton : botButtons) {
+                if (botButton.animatedEmojiDrawable != null) {
+                    botButton.animatedEmojiDrawable.clear();
+                }
+            }
             botButtons.clear();
             if (messageIdChanged) {
                 botButtonsByData.clear();
@@ -10576,6 +10581,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         for (int column = 0; column < buttonsCount; column++) {
                             BotInlineKeyboard.Button inlineButton = inlineButtons.getButton(row, column);
                             BotButton botButton = new BotButton(this::invalidateOutbounds);
+                            botButton.buttonImpl = inlineButton;
                             if (inlineButton instanceof BotInlineKeyboard.ButtonBot) {
                                 botButton.button = ((BotInlineKeyboard.ButtonBot) inlineButton).button;
                             } else if (inlineButton instanceof BotInlineKeyboard.ButtonCustom) {
@@ -10584,10 +10590,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                                     botButton.isLocked = true;
                                 }
                             }
-                            final int iconRes = inlineButton.getIcon();
-                            if (iconRes != 0) {
-                                botButton.iconDrawable = getResources().getDrawable(iconRes);
-                                botButton.iconDrawable.setColorFilter(new PorterDuffColorFilter(0xFFFFFFFF, PorterDuff.Mode.SRC_IN));
+                            final long emojiId = inlineButton.getIconEmoji();
+                            if (emojiId != 0) {
+                                botButton.animatedEmojiDrawable = new AnimatedEmojiDrawable(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, currentAccount, emojiId);
+                                botButton.animatedEmojiDrawable.addView(this::invalidateOutbounds);
+                                botButton.animatedEmojiDrawable.setColorFilter(new PorterDuffColorFilter(0xFFFFFFFF, PorterDuff.Mode.SRC_IN));
+                            } else {
+                                final int iconRes = inlineButton.getIcon();
+                                if (iconRes != 0) {
+                                    botButton.iconDrawable = getResources().getDrawable(iconRes);
+                                    botButton.iconDrawable.setColorFilter(new PorterDuffColorFilter(0xFFFFFFFF, PorterDuff.Mode.SRC_IN));
+                                }
                             }
 
                             String key = botButton.button != null ? Utilities.bytesToHex(botButton.button.data) : "";
@@ -15483,6 +15496,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
     }
 
+    private Paint botButtonPaint;
+
     private void drawBotButtons(Canvas canvas, ArrayList<BotButton> botButtons, int alpha) {
         if (SizeNotifierFrameLayout.drawingBlur) {
             return;
@@ -15554,9 +15569,28 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             botButtonPath.rewind();
             botButtonPath.addRoundRect(rect, botButtonRadii, Path.Direction.CW);
 
-            canvas.drawPath(botButtonPath, getThemedPaint(Theme.key_paint_chatActionBackground));
-            if (hasGradientService()) {
-                canvas.drawPath(botButtonPath, Theme.chat_actionBackgroundGradientDarkenPaint);
+            final BotInlineKeyboard.BackgroundColor bgColor = button.buttonImpl != null ? button.buttonImpl.getColor() : BotInlineKeyboard.BackgroundColor.NONE;
+            if (bgColor == BotInlineKeyboard.BackgroundColor.NONE) {
+                canvas.drawPath(botButtonPath, getThemedPaint(Theme.key_paint_chatActionBackground));
+                if (hasGradientService()) {
+                    canvas.drawPath(botButtonPath, Theme.chat_actionBackgroundGradientDarkenPaint);
+                }
+            } else {
+                if (botButtonPaint == null) {
+                    botButtonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                }
+                switch (bgColor) {
+                    case DANGER:
+                        botButtonPaint.setColor(Theme.multAlpha(getThemedColor(Theme.key_botKeyboard_button_danger), 0.7f));
+                        break;
+                    case SUCCESS:
+                        botButtonPaint.setColor(Theme.multAlpha(getThemedColor(Theme.key_botKeyboard_button_success), 0.7f));
+                        break;
+                    case PRIMARY:
+                        botButtonPaint.setColor(Theme.multAlpha(getThemedColor(Theme.key_botKeyboard_button_primary), 0.7f));
+                        break;
+                }
+                canvas.drawPath(botButtonPath, botButtonPaint);
             }
 
             boolean drawProgress = (button.button instanceof TLRPC.TL_keyboardButtonCallback || button.button instanceof TLRPC.TL_keyboardButtonGame || button.button instanceof TLRPC.TL_keyboardButtonBuy || button.button instanceof TLRPC.TL_keyboardButtonUrlAuth) && SendMessagesHelper.getInstance(currentAccount).isSendingCallback(currentMessageObject, button.button)
@@ -15612,9 +15646,19 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             canvas.save();
 //            canvas.translate(button.x * widthForButtons + addX + dp(5), y + (dp(44) - button.title.getLineBottom(button.title.getLineCount() - 1)) / 2);
 
-            int iconWithMarginPx = button.iconDrawable != null ? dp(24 + 2) : 0;
+            int iconWithMarginPx = button.iconDrawable != null || button.animatedEmojiDrawable != null ? dp(24 + 2) : 0;
             float titleX = button.x * widthForButtons + addX + (button.width * widthForButtons - (button.title.getWidth() + (button.iconDrawable != null ? dp(4): 0)) - iconWithMarginPx) / 2f;
-            if (button.iconDrawable != null) {
+            if (button.animatedEmojiDrawable != null) {
+                button.animatedEmojiDrawable.setBounds(
+                    (int) titleX,
+                    (int) (y + (button.height - dp(20)) / 2f),
+                    (int) titleX + dp(20),
+                    (int) (y + (button.height - dp(20)) / 2f) + dp(20)
+                );
+                button.animatedEmojiDrawable.setAlpha(button.isLocked ? 128 : 255);
+                button.animatedEmojiDrawable.draw(canvas);
+                titleX += iconWithMarginPx;
+            } else if (button.iconDrawable != null) {
                 button.iconDrawable.setBounds(
                     (int) titleX,
                     (int) (y + (button.height - dp(24)) / 2f),

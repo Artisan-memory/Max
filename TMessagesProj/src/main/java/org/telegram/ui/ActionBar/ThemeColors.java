@@ -820,6 +820,9 @@ public class ThemeColors {
 
         defaultColors[key_glass_defaultIcon] = 0x991B2227; //0xFF747875;
         defaultColors[key_glass_defaultText] = 0x991B2227; //0xFF737876;
+        defaultColors[key_botKeyboard_button_danger] = 0xFFdb4646;
+        defaultColors[key_botKeyboard_button_primary] = 0xFF3390ec;
+        defaultColors[key_botKeyboard_button_success] = 0xFF40b135;
 
         return defaultColors;
     }
@@ -1595,6 +1598,9 @@ public class ThemeColors {
         colorKeysMap.put(key_share_linkBackground, "share_linkBackground");
         colorKeysMap.put(key_glass_defaultIcon, "glass_defaultIcon");
         colorKeysMap.put(key_glass_defaultText, "glass_defaultText");
+        colorKeysMap.put(key_botKeyboard_button_danger, "botKeyboard_button_danger");
+        colorKeysMap.put(key_botKeyboard_button_primary, "botKeyboard_button_primary");
+        colorKeysMap.put(key_botKeyboard_button_success, "botKeyboard_button_success");
 
         return colorKeysMap;
     }
