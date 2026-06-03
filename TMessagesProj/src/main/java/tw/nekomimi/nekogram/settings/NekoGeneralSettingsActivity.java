@@ -164,6 +164,7 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
     // Appearance
     private final AbstractConfigCell headerAppearance = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.Appearance)));
     private final AbstractConfigCell typefaceRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.typeface));
+    private final AbstractConfigCell colorfulInlineBotButtonsRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.colorfulInlineBotButtons, getString(R.string.ColorfulInlineBotButtonsHint)));
     private final AbstractConfigCell hideDividers = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideDividers()));
     private final AbstractConfigCell appBarShadowRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableAppBarShadow));
     private final AbstractConfigCell transparentStatusBarRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.transparentStatusBar));

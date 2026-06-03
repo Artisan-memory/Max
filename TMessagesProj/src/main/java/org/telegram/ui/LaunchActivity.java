@@ -96,6 +96,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.common.api.Status;
 import com.google.common.primitives.Longs;
+import com.radolyn.ayugram.utils.AyuGhostUtils;
 // import com.google.firebase.appindexing.Action;
 // import com.google.firebase.appindexing.FirebaseUserActions;
 // import com.google.firebase.appindexing.builders.AssistActionBuilder;
@@ -281,6 +282,7 @@ import tw.nekomimi.nekogram.utils.AndroidUtil;
 import tw.nekomimi.nekogram.utils.BrowserUtils;
 import tw.nekomimi.nekogram.utils.ProxyUtil;
 import xyz.nextalone.nagram.NaConfig;
+import xyz.nextalone.nagram.helper.ExternalStickerCacheHelper;
 import tw.nekomimi.nekogram.ui.icons.IconsResources;
 
 public class LaunchActivity extends BasePermissionsActivity implements INavigationLayout.INavigationLayoutDelegate, NotificationCenter.NotificationCenterDelegate, DialogsActivity.DialogsActivityDelegate, IPipActivity {
@@ -1792,6 +1794,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         ConnectionsManager.getInstance(currentAccount).setAppPaused(true, false);
         UserConfig.selectedAccount = account;
         UserConfig.getInstance(0).saveConfig(false);
+        AyuGhostUtils.prepareAccountSwitch(account);
 
         checkCurrentAccount();
         if (AndroidUtilities.isTablet()) {
@@ -1882,6 +1885,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     private void checkCurrentAccount() {
         if (currentAccount != UserConfig.selectedAccount) {
+            ExternalStickerCacheHelper.removeNotificationObservers(currentAccount);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.openBoostForUsersDialog);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.appDidLogout);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.mainUserInfoChanged);
@@ -1904,6 +1908,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.storiesEnabledUpdate);
         }
         currentAccount = UserConfig.selectedAccount;
+        ExternalStickerCacheHelper.addNotificationObservers(currentAccount);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.openBoostForUsersDialog);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.appDidLogout);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.mainUserInfoChanged);
@@ -7101,6 +7106,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         }
         finished = true;
         if (currentAccount != -1) {
+            ExternalStickerCacheHelper.removeNotificationObservers(currentAccount);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.appDidLogout);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.openBoostForUsersDialog);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.mainUserInfoChanged);

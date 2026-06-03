@@ -334,6 +334,7 @@ public class MessageObject {
     private int generatedWithMinSize;
     private float generatedWithDensity;
     public boolean wasJustSent;
+    public boolean ghostScheduled;
     public boolean isBotPendingDraft;
 
     public static Pattern urlPattern;
@@ -750,6 +751,7 @@ public class MessageObject {
         messageOwner.premiumEffectWasPlayed = old.messageOwner.premiumEffectWasPlayed;
         forcePlayEffect = old.forcePlayEffect;
         wasJustSent = old.wasJustSent;
+        ghostScheduled = old.ghostScheduled;
         if (messageOwner.reactions != null && messageOwner.reactions.results != null && !messageOwner.reactions.results.isEmpty() && old.messageOwner.reactions != null && old.messageOwner.reactions.results != null) {
             for (int i = 0; i < messageOwner.reactions.results.size(); i++) {
                 TLRPC.ReactionCount reactionCount = messageOwner.reactions.results.get(i);

@@ -64,6 +64,7 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter imple
     public static int nkbtnGhostMode = 1006;
     public static int nkbtnSessions = 1007;
     public static int nkbtnBookmarks = 1008;
+    public static int nkbtnScheduleMessage = 1009;
 
     public DrawerLayoutAdapter(Context context, SideMenultItemAnimator animator, DrawerLayoutContainer drawerLayoutContainer) {
         mContext = context;
@@ -335,12 +336,21 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter imple
         }
 
         boolean showGhostInDrawer = NekoConfig.showGhostInDrawer.Bool();
+        boolean showScheduleMessagesInDrawer = NekoConfig.showScheduleMessagesInDrawer.Bool();
         // --- Ghost Mode ---
        if (showGhostInDrawer) {
             var msg = NekoConfig.isGhostModeActive()
                     ? LocaleController.getString(R.string.DisableGhostMode)
                     : LocaleController.getString(R.string.EnableGhostMode);
             items.add(new Item(nkbtnGhostMode, msg, R.drawable.ayu_ghost));
+        }
+        if (showScheduleMessagesInDrawer) {
+            items.add(new CheckItem(nkbtnScheduleMessage, LocaleController.getString(R.string.ScheduleMessage), R.drawable.msg_schedule, NekoConfig.scheduleMessages::Bool, () -> {
+                NekoConfig.scheduleMessages.toggleConfigBool();
+                return true;
+            }, true));
+        }
+        if (showGhostInDrawer || showScheduleMessagesInDrawer) {
             items.add(null);
         }
        // --- Ghost Mode ---
@@ -539,21 +549,34 @@ public class DrawerLayoutAdapter extends RecyclerListView.SelectionAdapter imple
 
         public Function0<Boolean> isChecked;
         public Function0<Boolean> doSwitch;
+        public boolean rowToggle;
 
         public CheckItem(int id, String text, int icon, Function0<Boolean> isChecked, @Nullable Function0<Boolean> doSwitch) {
+            this(id, text, icon, isChecked, doSwitch, false);
+        }
+
+        public CheckItem(int id, String text, int icon, Function0<Boolean> isChecked, @Nullable Function0<Boolean> doSwitch, boolean rowToggle) {
             super(id, text, icon);
             this.isChecked = isChecked;
             this.doSwitch = doSwitch;
+            this.rowToggle = rowToggle;
         }
 
         public void bindCheck(DrawerActionCheckCell actionCell) {
             actionCell.setTextAndValueAndCheck(text.toString(), icon, null, isChecked.invoke(), false, false);
+            actionCell.setBackground(rowToggle ? Theme.getSelectorDrawable(false) : null);
+            actionCell.setDrawCheckRipple(rowToggle);
             if (doSwitch != null) {
-                actionCell.setOnCheckClickListener((v) -> {
+                View.OnClickListener listener = (v) -> {
                     if (doSwitch.invoke()) {
                         actionCell.setChecked(isChecked.invoke());
                     }
-                });
+                };
+                actionCell.setOnCheckClickListener(listener);
+                actionCell.setOnClickListener(rowToggle ? listener : null);
+            } else {
+                actionCell.setOnCheckClickListener(null);
+                actionCell.setOnClickListener(null);
             }
         }
 

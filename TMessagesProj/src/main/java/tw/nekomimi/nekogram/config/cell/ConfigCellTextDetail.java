@@ -10,6 +10,7 @@ import org.telegram.ui.Cells.TextDetailSettingsCell;
 import org.telegram.ui.Components.RecyclerListView;
 
 import java.util.Arrays;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import tw.nekomimi.nekogram.config.CellGroup;
@@ -20,18 +21,28 @@ public class ConfigCellTextDetail extends AbstractConfigCell {
     private final String title;
     private final String hint;
     private final boolean isKey;
+    private final Supplier<String> valueSupplier;
     public final RecyclerListView.OnItemClickListener onItemClickListener;
 
     public ConfigCellTextDetail(ConfigItem bind, RecyclerListView.OnItemClickListener onItemClickListener, String hint) {
-        this(bind, onItemClickListener, hint, false);
+        this(bind, onItemClickListener, hint, false, null);
     }
 
     public ConfigCellTextDetail(ConfigItem bind, RecyclerListView.OnItemClickListener onItemClickListener, String hint, boolean isKey) {
+        this(bind, onItemClickListener, hint, isKey, null);
+    }
+
+    public ConfigCellTextDetail(ConfigItem bind, RecyclerListView.OnItemClickListener onItemClickListener, String hint, Supplier<String> valueSupplier) {
+        this(bind, onItemClickListener, hint, false, valueSupplier);
+    }
+
+    public ConfigCellTextDetail(ConfigItem bind, RecyclerListView.OnItemClickListener onItemClickListener, String hint, boolean isKey, Supplier<String> valueSupplier) {
         this.bindConfig = bind;
         this.title = getString(bindConfig.getKey());
         this.hint = hint == null ? "" : hint;
         this.onItemClickListener = onItemClickListener;
         this.isKey = isKey;
+        this.valueSupplier = valueSupplier;
     }
 
     public int getType() {
@@ -52,7 +63,7 @@ public class ConfigCellTextDetail extends AbstractConfigCell {
 
     public void onBindViewHolder(RecyclerView.ViewHolder holder) {
         TextDetailSettingsCell cell = (TextDetailSettingsCell) holder.itemView;
-        String value = bindConfig.String().trim();
+        String value = valueSupplier != null ? valueSupplier.get().trim() : bindConfig.String().trim();
 
         if (!TextUtils.isEmpty(value)) {
             if (isKey) {

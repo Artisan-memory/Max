@@ -22372,7 +22372,7 @@ public class ChatActivity extends BaseFragment implements
                 int mode = (Integer) args[3];
                 if (mode != chatMode && chatMode != MODE_SAVED && chatMode != MODE_SUGGESTIONS) {
                     if (chatMode != MODE_SCHEDULED && mode == MODE_SCHEDULED && !isPaused && LaunchActivity.getSafeLastFragment() == this && messagePreviewParams == null) {
-                        if (!arr.isEmpty() && arr.get(0).getId() < 0) {
+                        if (!arr.isEmpty() && arr.get(0).getId() < 0 && !arr.get(0).ghostScheduled) {
                             openScheduledMessages(arr.get(0).getId(), arr.get(0).messageOwner != null && arr.get(0).messageOwner.video_processing_pending);
                         }
                     }

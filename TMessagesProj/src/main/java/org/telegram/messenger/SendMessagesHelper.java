@@ -3900,7 +3900,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         TLRPC.ReplyMarkup replyMarkup = sendMessageParams.replyMarkup;
         HashMap<String, String> params = sendMessageParams.params;
         boolean notify = sendMessageParams.notify;
-        int scheduleDate = sendMessageParams.scheduleDate;
         int scheduleRepeatPeriod = sendMessageParams.scheduleRepeatPeriod;
         int ttl = sendMessageParams.ttl;
         Object parentObject = sendMessageParams.parentObject;
@@ -3940,6 +3939,9 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             });
             return;
         }
+
+        AyuGhostUtils.applyGhostSchedule(sendMessageParams, getConnectionsManager().getCurrentTime(), currentAccount);
+        int scheduleDate = sendMessageParams.scheduleDate;
 
         if (replyQuote != null && replyQuote.message != null && replyToMsg != null) {
             replyToMsg = replyQuote.message;
@@ -4691,6 +4693,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             newMsgObj.wasJustSent = true;
             newMsgObj.sentHighQuality = sendMessageParams.sendingHighQuality;
             newMsgObj.scheduled = scheduleDate != 0;
+            newMsgObj.ghostScheduled = sendMessageParams.ghostScheduled;
             if (!newMsgObj.isForwarded() && (newMsgObj.type == MessageObject.TYPE_VIDEO || videoEditedInfo != null || newMsgObj.type == MessageObject.TYPE_VOICE) && !TextUtils.isEmpty(newMsg.attachPath)) {
                 newMsgObj.attachPathExists = true;
             }
@@ -8168,7 +8171,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     private final static int ERROR_TYPE_UNSUPPORTED = 1;
     private final static int ERROR_TYPE_FILE_TOO_LARGE = 2;
 
-    private static int prepareSendingDocumentInternal(AccountInstance accountInstance, String path, String originalPath, Uri uri, String mime, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, final ArrayList<TLRPC.MessageEntity> entities, final MessageObject editingMessageObject, long[] groupId, boolean isGroupFinal, CharSequence caption, boolean notify, int scheduleDate, int scheduleRepeatPeriod, Integer[] docType, boolean forceDocument, String quickReplyShortcut, int quickReplyShortcutId, long effectId, boolean invertMedia, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
+    private static int prepareSendingDocumentInternal(AccountInstance accountInstance, String path, String originalPath, Uri uri, String mime, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, final ArrayList<TLRPC.MessageEntity> entities, final MessageObject editingMessageObject, long[] groupId, boolean isGroupFinal, CharSequence caption, boolean notify, int scheduleDate, boolean ghostScheduled, int scheduleRepeatPeriod, Integer[] docType, boolean forceDocument, String quickReplyShortcut, int quickReplyShortcutId, long effectId, boolean invertMedia, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
         if ((path == null || path.length() == 0) && uri == null) {
             return ERROR_TYPE_UNSUPPORTED;
         }
@@ -8464,6 +8467,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 accountInstance.getSendMessagesHelper().editMessage(editingMessageObject, null, null, documentFinal, pathFinal, null, params, false, false, parentFinal);
             } else {
                 SendMessageParams sendMessageParams = SendMessagesHelper.SendMessageParams.of(documentFinal, null, pathFinal, dialogId, replyToMsg, replyToTopMsg, captionFinal, entities, null, params, notify, scheduleDate, scheduleRepeatPeriod, 0, parentFinal, null, false);
+                sendMessageParams.ghostScheduled = ghostScheduled;
                 sendMessageParams.replyToStoryItem = storyItem;
                 sendMessageParams.replyQuote = quote;
                 sendMessageParams.quick_reply_shortcut = quickReplyShortcut;
@@ -8634,6 +8638,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         }
         Utilities.globalQueue.postRunnable(() -> {
             int error = 0;
+            int effectiveScheduleDate = editingMessageObject == null && !DialogObject.isEncryptedDialog(dialogId)
+                    ? AyuGhostUtils.applyGhostScheduleDate(scheduleDate, accountInstance.getConnectionsManager().getCurrentTime(), AyuGhostUtils.getUploadDelaySeconds(AyuGhostUtils.getTotalFileSize(paths, uris)), accountInstance.getCurrentAccount())
+                    : scheduleDate;
+            boolean ghostScheduled = scheduleDate == 0 && effectiveScheduleDate != 0;
             long[] groupId = new long[1];
             int mediaCount = 0;
             Integer[] docType = new Integer[1];
@@ -8646,14 +8654,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     final String captionFinal = a == 0 ? caption : null;
                     if (!isEncrypted && count > 1 && mediaCount % 10 == 0) {
                         if (groupId[0] != 0) {
-                            finishGroup(accountInstance, groupId[0], scheduleDate);
+                            finishGroup(accountInstance, groupId[0], effectiveScheduleDate);
                         }
                         groupId[0] = Utilities.random.nextLong();
                         mediaCount = 0;
                     }
                     mediaCount++;
                     long prevGroupId = groupId[0];
-                    error = prepareSendingDocumentInternal(accountInstance, paths.get(a), originalPaths.get(a), null, mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, a == 0 ? captionEntities : null, editingMessageObject, groupId, mediaCount == 10 || a == count - 1, captionFinal, notify, scheduleDate, scheduleRepeatPeriod, docType, inputContent == null, quickReplyShortcut, quickReplyShortcutId, first ? effectId : 0, invertMedia, payStars, monoForumPeerId, suggestionParams);
+                    error = prepareSendingDocumentInternal(accountInstance, paths.get(a), originalPaths.get(a), null, mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, a == 0 ? captionEntities : null, editingMessageObject, groupId, mediaCount == 10 || a == count - 1, captionFinal, notify, effectiveScheduleDate, ghostScheduled, scheduleRepeatPeriod, docType, inputContent == null, quickReplyShortcut, quickReplyShortcutId, first ? effectId : 0, invertMedia, payStars, monoForumPeerId, suggestionParams);
                     first = false;
                     if (prevGroupId != groupId[0] || groupId[0] == -1) {
                         mediaCount = 1;
@@ -8669,14 +8677,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     final ArrayList<TLRPC.MessageEntity> captionEntitiesFinal = a == 0 && (paths == null || paths.size() == 0) ? captionEntities : null;
                     if (!isEncrypted && count > 1 && mediaCount % 10 == 0) {
                         if (groupId[0] != 0) {
-                            finishGroup(accountInstance, groupId[0], scheduleDate);
+                            finishGroup(accountInstance, groupId[0], effectiveScheduleDate);
                         }
                         groupId[0] = Utilities.random.nextLong();
                         mediaCount = 0;
                     }
                     mediaCount++;
                     long prevGroupId = groupId[0];
-                    error = prepareSendingDocumentInternal(accountInstance, null, null, uris.get(a), mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, captionEntitiesFinal, editingMessageObject, groupId, mediaCount == 10 || a == count - 1, captionFinal, notify, scheduleDate, scheduleRepeatPeriod, docType, inputContent == null, quickReplyShortcut, quickReplyShortcutId, first ? effectId : 0, invertMedia, payStars, monoForumPeerId, suggestionParams);
+                    error = prepareSendingDocumentInternal(accountInstance, null, null, uris.get(a), mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, captionEntitiesFinal, editingMessageObject, groupId, mediaCount == 10 || a == count - 1, captionFinal, notify, effectiveScheduleDate, ghostScheduled, scheduleRepeatPeriod, docType, inputContent == null, quickReplyShortcut, quickReplyShortcutId, first ? effectId : 0, invertMedia, payStars, monoForumPeerId, suggestionParams);
                     first = false;
                     if (prevGroupId != groupId[0] || groupId[0] == -1) {
                         mediaCount = 1;
@@ -10133,6 +10141,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 inputContent.releasePermission();
             }
             if (sendAsDocuments != null && !sendAsDocuments.isEmpty()) {
+                int documentsScheduleDate = editingMessageObject == null && !isEncrypted
+                        ? AyuGhostUtils.applyGhostScheduleDate(scheduleDate, accountInstance.getConnectionsManager().getCurrentTime(), AyuGhostUtils.getUploadDelaySeconds(AyuGhostUtils.getTotalFileSizeForAlternatives(sendAsDocuments, sendAsDocumentsUri)), accountInstance.getCurrentAccount())
+                        : scheduleDate;
+                boolean documentsGhostScheduled = scheduleDate == 0 && documentsScheduleDate != 0;
                 long[] groupId2 = new long[1];
                 int documentsCount = sendAsDocuments.size();
                 for (int a = 0; a < documentsCount; a++) {
@@ -10141,7 +10153,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         mediaCount = 0;
                     }
                     mediaCount++;
-                    int error = prepareSendingDocumentInternal(accountInstance, sendAsDocuments.get(a), sendAsDocumentsOriginal.get(a), sendAsDocumentsUri.get(a), extension, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, sendAsDocumentsEntities.get(a), editingMessageObject, groupId2, mediaCount == 10 || a == documentsCount - 1, sendAsDocumentsCaptions.get(a), notify, scheduleDate, 0, null, forceDocument, quickReplyShortcut, quickReplyShortcutId, effectId, invertMedia, payStars, monoForumPeerId, suggestionParams);
+                    int error = prepareSendingDocumentInternal(accountInstance, sendAsDocuments.get(a), sendAsDocumentsOriginal.get(a), sendAsDocumentsUri.get(a), extension, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, sendAsDocumentsEntities.get(a), editingMessageObject, groupId2, mediaCount == 10 || a == documentsCount - 1, sendAsDocumentsCaptions.get(a), notify, documentsScheduleDate, documentsGhostScheduled, 0, null, forceDocument, quickReplyShortcut, quickReplyShortcutId, effectId, invertMedia, payStars, monoForumPeerId, suggestionParams);
                     handleError(error, accountInstance);
                 }
             }
@@ -10627,7 +10639,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     }
                 });
             } else {
-                prepareSendingDocumentInternal(accountInstance, videoPath, videoPath, null, null, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, entities, editingMessageObject, null, false, caption, notify, scheduleDate, scheduleRepeatPeriod, null, forceDocument, quickReplyShortcut, quickReplyShortcutId, 0, false, stars, monoForumPeerId, suggestionParams);
+                prepareSendingDocumentInternal(accountInstance, videoPath, videoPath, null, null, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, entities, editingMessageObject, null, false, caption, notify, scheduleDate, false, scheduleRepeatPeriod, null, forceDocument, quickReplyShortcut, quickReplyShortcutId, 0, false, stars, monoForumPeerId, suggestionParams);
             }
         }).start();
     }
@@ -10658,6 +10670,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         public HashMap<String, String> params;
         public boolean notify;
         public int scheduleDate;
+        public boolean ghostScheduled;
         public int scheduleRepeatPeriod;
         public int ttl;
         public Object parentObject;

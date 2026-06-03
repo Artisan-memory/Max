@@ -821,7 +821,7 @@ public class ThemeColors {
         defaultColors[key_glass_defaultIcon] = 0x991B2227; //0xFF747875;
         defaultColors[key_glass_defaultText] = 0x991B2227; //0xFF737876;
         defaultColors[key_botKeyboard_button_danger] = 0xFFdb4646;
-        defaultColors[key_botKeyboard_button_primary] = 0xFF3390ec;
+        defaultColors[key_botKeyboard_button_primary] = 0xFF229AF0;
         defaultColors[key_botKeyboard_button_success] = 0xFF40b135;
 
         return defaultColors;

@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import me.vkryl.android.animator.ListAnimator;
 import me.vkryl.android.animator.ReplaceAnimator;
 import me.vkryl.core.lambda.Destroyable;
+import tw.nekomimi.nekogram.NekoConfig;
 
 @SuppressLint("ViewConstructor")
 public class BotKeyboardView extends LinearLayout implements InAppKeyboardInsetView, ReplaceAnimator.Callback {
@@ -231,7 +232,7 @@ public class BotKeyboardView extends LinearLayout implements InAppKeyboardInsetV
             int pressed = getThemedColor(Theme.key_chat_botKeyboardButtonBackgroundPressed);
             int textColor = getThemedColor(Theme.key_chat_botKeyboardButtonText);
 
-            if (button.style != null) {
+            if (NekoConfig.colorfulInlineBotButtons.Bool() && button.style != null) {
                 if (button.style.bg_primary) {
                     color = Theme.multAlpha(getThemedColor(Theme.key_botKeyboard_button_primary), 0.8f);
                     pressed = ColorUtils.compositeColors(getThemedColor(Theme.key_listSelector), color);

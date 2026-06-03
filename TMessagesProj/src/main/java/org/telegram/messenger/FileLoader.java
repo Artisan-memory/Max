@@ -31,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.radolyn.ayugram.utils.AyuFileLocation;
+import xyz.nextalone.nagram.helper.ExternalStickerCacheHelper;
 
 public class FileLoader extends BaseController {
 
@@ -810,10 +811,22 @@ public class FileLoader extends BaseController {
         if (document == null) {
             return;
         }
+        if (ExternalStickerCacheHelper.restoreBeforeDownload(currentAccount, document, parentObject, priority, cacheType)) {
+            return;
+        }
         if (cacheType == 0 && document.key != null) {
             cacheType = 1;
         }
         loadFile(document, null, null, null, null, parentObject, null, 0, priority, cacheType);
+    }
+
+    public void notifyFileLoadedFromLocalStickerCache(TLRPC.Document document, File finalFile, Object parentObject) {
+        String fileName = getAttachFileName(document);
+        loadOperationPathsUI.remove(fileName);
+        getFileDatabase().putPath(document.id, document.dc_id, MEDIA_DIR_CACHE, 0, finalFile.toString());
+        if (delegate != null) {
+            delegate.fileDidLoaded(fileName, finalFile, parentObject, MEDIA_DIR_CACHE);
+        }
     }
 
     public void loadFile(WebFile document, int priority, int cacheType) {
@@ -1020,6 +1033,9 @@ public class FileLoader extends BaseController {
                 }
 
                 if (!operation.isPreloadVideoOperation()) {
+                    if (document != null) {
+                        ExternalStickerCacheHelper.onTelegramFileLoaded(currentAccount, document, finalFile);
+                    }
                     loadOperationPathsUI.remove(fileName);
                     if (delegate != null) {
                         delegate.fileDidLoaded(fileName, finalFile, parentObject, finalType);

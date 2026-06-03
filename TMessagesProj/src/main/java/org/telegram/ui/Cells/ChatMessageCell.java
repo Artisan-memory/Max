@@ -15569,16 +15569,16 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             botButtonPath.rewind();
             botButtonPath.addRoundRect(rect, botButtonRadii, Path.Direction.CW);
 
-            final BotInlineKeyboard.BackgroundColor bgColor = button.buttonImpl != null ? button.buttonImpl.getColor() : BotInlineKeyboard.BackgroundColor.NONE;
-            if (bgColor == BotInlineKeyboard.BackgroundColor.NONE) {
-                canvas.drawPath(botButtonPath, getThemedPaint(Theme.key_paint_chatActionBackground));
-                if (hasGradientService()) {
-                    canvas.drawPath(botButtonPath, Theme.chat_actionBackgroundGradientDarkenPaint);
-                }
-            } else {
-                if (botButtonPaint == null) {
-                    botButtonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                }
+            canvas.drawPath(botButtonPath, getThemedPaint(Theme.key_paint_chatActionBackground));
+
+            final BotInlineKeyboard.BackgroundColor bgColor = NekoConfig.colorfulInlineBotButtons.Bool() && button.buttonImpl != null ?
+                button.buttonImpl.getColor() : BotInlineKeyboard.BackgroundColor.NONE;
+
+            if (botButtonPaint == null) {
+                botButtonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            }
+
+            if (bgColor != BotInlineKeyboard.BackgroundColor.NONE) {
                 switch (bgColor) {
                     case DANGER:
                         botButtonPaint.setColor(Theme.multAlpha(getThemedColor(Theme.key_botKeyboard_button_danger), 0.7f));
@@ -15591,6 +15591,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         break;
                 }
                 canvas.drawPath(botButtonPath, botButtonPaint);
+            }
+            if (hasGradientService() && (bgColor == BotInlineKeyboard.BackgroundColor.NONE || resourcesProvider != null && resourcesProvider.isDark())) {
+                canvas.drawPath(botButtonPath, Theme.chat_actionBackgroundGradientDarkenPaint);
             }
 
             boolean drawProgress = (button.button instanceof TLRPC.TL_keyboardButtonCallback || button.button instanceof TLRPC.TL_keyboardButtonGame || button.button instanceof TLRPC.TL_keyboardButtonBuy || button.button instanceof TLRPC.TL_keyboardButtonUrlAuth) && SendMessagesHelper.getInstance(currentAccount).isSendingCallback(currentMessageObject, button.button)

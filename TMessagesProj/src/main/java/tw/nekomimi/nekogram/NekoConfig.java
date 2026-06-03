@@ -17,6 +17,7 @@ import android.util.Pair;
 import com.radolyn.ayugram.utils.AyuGhostUtils;
 
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.UserConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
@@ -203,6 +204,9 @@ public class NekoConfig {
     public static ConfigItem markReadAfterSend = addConfig("markReadAfterSend", configTypeBool, true);
     public static ConfigItem showGhostInDrawer = addConfig("showGhostInDrawer", configTypeBool, false);
     public static ConfigItem showGhostModeStatus = addConfig("showGhostModeStatus", configTypeBool, false);
+    public static ConfigItem scheduleMessages = addAccountBoolConfig("ScheduleMessage", false);
+    public static ConfigItem showScheduleMessagesInDrawer = addConfig("ScheduleMessageInDrawer", configTypeBool, false);
+    public static ConfigItem colorfulInlineBotButtons = addConfig("ColorfulInlineBotButtons", configTypeBool, true);
 
     // --- Locked Status ---
     public static ConfigItem sendReadMessagePacketsLocked = addConfig("sendReadMessagePacketsLocked", configTypeBool, false);
@@ -225,6 +229,12 @@ public class NekoConfig {
         ConfigItem a = new ConfigItem(k, t, d);
         configs.add(a);
         return a;
+    }
+
+    private static ConfigItem addAccountBoolConfig(String key, boolean defaultValue) {
+        ConfigItem item = new AccountBoolConfigItem(key, defaultValue);
+        configs.add(item);
+        return item;
     }
 
     public static void loadConfig(boolean force) {
@@ -327,6 +337,24 @@ public class NekoConfig {
 
     // --- Ghost Mode ---
     public static boolean isGhostModeActive() {
+        return isGhostModeActive(UserConfig.selectedAccount);
+    }
+
+    public static boolean isGhostModeActive(int account) {
+        String key = accountKey("ghostModeEnabled", account);
+        if (getPreferences().contains(key)) {
+            return getPreferences().getBoolean(key, false);
+        }
+        return isLegacyGhostModeActive();
+    }
+
+    public static boolean isScheduleMessagesEnabled(int account) {
+        return scheduleMessages instanceof AccountBoolConfigItem
+                ? ((AccountBoolConfigItem) scheduleMessages).Bool(account)
+                : scheduleMessages.Bool();
+    }
+
+    private static boolean isLegacyGhostModeActive() {
         for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
             ConfigItem item = pair.first;
             ConfigItem lockedItem = pair.second;
@@ -343,22 +371,27 @@ public class NekoConfig {
     }
 
     public static void setGhostMode(boolean enabled) {
-        for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
-            ConfigItem item = pair.first;
-            ConfigItem lockedItem = pair.second;
-            if (!lockedItem.Bool()) {
-                boolean targetValue = (item == sendOfflinePacketAfterOnline) == enabled;
-                item.setConfigBool(targetValue);
+        setGhostMode(UserConfig.selectedAccount, enabled);
+    }
+
+    public static void setGhostMode(int account, boolean enabled) {
+        getPreferences().edit().putBoolean(accountKey("ghostModeEnabled", account), enabled).apply();
+        if (enabled) {
+            for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
+                ConfigItem item = pair.first;
+                ConfigItem lockedItem = pair.second;
+                if (!lockedItem.Bool()) {
+                    item.setConfigBool(item == sendOfflinePacketAfterOnline);
+                }
             }
         }
     }
 
     public static void toggleGhostMode() {
-        boolean newState = !isGhostModeActive();
-        setGhostMode(newState);
-
-        boolean sendOnlineNow = !newState && !sendOfflinePacketAfterOnlineLocked.Bool() && sendOfflinePacketAfterOnline.Bool();
-        AyuGhostUtils.performStatusRequest(sendOnlineNow);
+        int account = UserConfig.selectedAccount;
+        boolean newState = !isGhostModeActive(account);
+        setGhostMode(account, newState);
+        AyuGhostUtils.performStatusRequest(newState, account);
     }
 
     private static final List<Pair<ConfigItem, ConfigItem>> ghostToggleItems = Arrays.asList(
@@ -368,6 +401,41 @@ public class NekoConfig {
             new Pair<>(sendUploadProgress, sendUploadProgressLocked),
             new Pair<>(sendOfflinePacketAfterOnline, sendOfflinePacketAfterOnlineLocked)
     );
+
+    private static String accountKey(String key, int account) {
+        return key + "_" + account;
+    }
+
+    private static class AccountBoolConfigItem extends ConfigItem {
+        AccountBoolConfigItem(String key, boolean defaultValue) {
+            super(key, configTypeBool, defaultValue);
+        }
+
+        @Override
+        public boolean Bool() {
+            return Bool(UserConfig.selectedAccount);
+        }
+
+        public boolean Bool(int account) {
+            String scopedKey = accountKey(key, account);
+            SharedPreferences preferences = getPreferences();
+            return preferences.contains(scopedKey)
+                    ? preferences.getBoolean(scopedKey, (boolean) defaultValue)
+                    : preferences.getBoolean(key, (boolean) defaultValue);
+        }
+
+        @Override
+        public boolean toggleConfigBool() {
+            boolean value = !Bool();
+            setConfigBool(value);
+            return value;
+        }
+
+        @Override
+        public void setConfigBool(boolean value) {
+            getPreferences().edit().putBoolean(accountKey(key, UserConfig.selectedAccount), value).apply();
+        }
+    }
     // --- Ghost Mode ---
 
     public static Set<String> getAllKeys() {

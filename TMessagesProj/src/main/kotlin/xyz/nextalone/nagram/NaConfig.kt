@@ -1,8 +1,10 @@
 package xyz.nextalone.nagram
 
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Build
 import android.util.Base64
+import androidx.core.net.toUri
 import androidx.core.content.edit
 import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
@@ -226,6 +228,15 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val externalStickerCache =
+        addConfig(
+            "ExternalStickerCache",
+            ConfigItem.configTypeString,
+            ""
+        )
+    var externalStickerCacheUri: Uri?
+        get() = externalStickerCache.String().let { if (it.isBlank()) null else it.toUri() }
+        set(value) = externalStickerCache.setConfigString(value?.toString() ?: "")
     val customArtworkApi =
         addConfig(
             "CustomArtworkApi",

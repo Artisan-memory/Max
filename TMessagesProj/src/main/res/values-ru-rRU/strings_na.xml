@@ -113,4 +113,14 @@
     <string name="VideoPlayerDecoderPreferSW">Предпочтение SW</string>
     <string name="VideoPlayerDecoderHardware">Только HW</string>
     <string name="VideoPlayerDecoderPreferHW">Предпочтение HW</string>
+    <string name="ExternalStickerCache">Локальный кеш стикеров</string>
+    <string name="ExternalStickerCacheHint">Выберите папку для кеша стикеров</string>
+    <string name="ExternalStickerCacheUsage">Заполнение постоянного кеша</string>
+    <string name="ExternalStickerCacheRefreshAll">Закешировать все стикеры аккаунта</string>
+    <string name="ExternalStickerCacheDeleteAll">Очистить локальный кеш стикеров</string>
+    <string name="ExternalStickerCacheFolderRequired">Сначала выберите папку для кеша</string>
+    <string name="ExternalStickerCacheFolderReady">Папка кеша стикеров готова</string>
+    <string name="ExternalStickerCacheFolderError">Не удалось использовать папку кеша стикеров</string>
+    <string name="ExternalStickerCacheSyncStarted">Кеширование стикеров запущено в фоне</string>
+    <string name="ExternalStickerCacheSyncQueued">Загрузки стикеров поставлены в очередь. Заполнение обновится по мере завершения.</string>
 </resources>

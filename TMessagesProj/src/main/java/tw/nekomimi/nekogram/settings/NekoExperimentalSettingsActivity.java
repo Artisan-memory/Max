@@ -6,7 +6,10 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -23,6 +26,7 @@ import com.radolyn.ayugram.database.AyuData;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -50,6 +54,7 @@ import org.telegram.ui.Components.BlurredRecyclerView;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.SeekBarView;
 import org.telegram.ui.Components.UndoView;
 
 import java.util.ArrayList;
@@ -72,16 +77,28 @@ import tw.nekomimi.nekogram.config.cell.ConfigCellTextInput;
 import tw.nekomimi.nekogram.config.cell.WithOnClick;
 import tw.nekomimi.nekogram.ui.PopupBuilder;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
+import tw.nekomimi.nekogram.utils.AlertUtil;
 import xyz.nextalone.nagram.NaConfig;
+import xyz.nextalone.nagram.helper.ExternalStickerCacheHelper;
 
 @SuppressLint("RtlHardcoded")
 @SuppressWarnings("unused")
 public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity {
 
+    private static final int INTENT_PICK_EXTERNAL_STICKER_DIRECTORY = 514;
+
     private ListAdapter listAdapter;
     private AnimatorSet animatorSet;
     private boolean sensitiveCanChange = false;
     private boolean sensitiveEnabled = false;
+    private ExternalStickerCacheHelper.CacheStats stickerCacheStats = new ExternalStickerCacheHelper.CacheStats(0, 0, 0);
+    private StickerCacheUsageCell stickerCacheUsageCell;
+    private final ExternalStickerCacheHelper.StatsListener stickerCacheStatsListener = stats -> {
+        stickerCacheStats = stats;
+        if (stickerCacheUsageCell != null) {
+            stickerCacheUsageCell.setStats(stats);
+        }
+    };
 
     private final CellGroup cellGroup = new CellGroup(this);
 
@@ -125,9 +142,19 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     }, null));
     private final AbstractConfigCell dividerMedia = cellGroup.appendCell(new ConfigCellDivider());
 
+    // Local sticker cache
+    private final AbstractConfigCell headerExternalStickerCache = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.ExternalStickerCache)));
+    private final AbstractConfigCell externalStickerCacheRow = cellGroup.appendCell(new ConfigCellTextDetail(NaConfig.INSTANCE.getExternalStickerCache(), (view, position) -> pickExternalStickerCacheFolder(), getString(R.string.ExternalStickerCacheHint), ExternalStickerCacheHelper::getDisplayPath));
+    private final AbstractConfigCell externalStickerCacheUsageRow = cellGroup.appendCell(new ConfigCellCustom("ExternalStickerCacheUsage", ConfigCellCustom.CUSTOM_ITEM_StickerCacheUsage, false));
+    private final AbstractConfigCell externalStickerCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheRefreshAll", ExternalStickerCacheHelper::syncAllCaches));
+    private final AbstractConfigCell externalStickerCacheDeleteAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheDeleteAll", ExternalStickerCacheHelper::deleteAllCaches));
+    private final AbstractConfigCell dividerExternalStickerCache = cellGroup.appendCell(new ConfigCellDivider());
+
     // Ayu
     private final AbstractConfigCell headerAyuMoments = cellGroup.appendCell(new ConfigCellHeader("AyuMoments"));
     private final AbstractConfigCell GhostModeRow = cellGroup.appendCell(new ConfigCellText("GhostMode", () -> presentFragment(new GhostModeActivity())));
+    private final AbstractConfigCell scheduleMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.scheduleMessages));
+    private final AbstractConfigCell showScheduleMessagesInDrawerRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.showScheduleMessagesInDrawer));
     private final AbstractConfigCell regexFiltersEnabledRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getRegexFiltersEnabled(), getString(R.string.RegexFiltersNotice)));
     private final AbstractConfigCell saveLastSeenRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSaveLocalLastSeen()));
     private final AbstractConfigCell enableSaveDeletedMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnableSaveDeletedMessages()));
@@ -208,8 +235,15 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
         super.onFragmentCreate();
         updateRows();
         AyuData.loadSizes(this);
+        ExternalStickerCacheHelper.addStatsListener(stickerCacheStatsListener);
 
         return true;
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        ExternalStickerCacheHelper.removeStatsListener(stickerCacheStatsListener);
+        super.onFragmentDestroy();
     }
 
     @Override
@@ -388,6 +422,36 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
         return superView;
     }
 
+    private void pickExternalStickerCacheFolder() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(intent, INTENT_PICK_EXTERNAL_STICKER_DIRECTORY);
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode == INTENT_PICK_EXTERNAL_STICKER_DIRECTORY && resultCode == Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                int takeFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                try {
+                    ApplicationLoader.applicationContext.getContentResolver().takePersistableUriPermission(uri, takeFlags);
+                    NaConfig.INSTANCE.setExternalStickerCacheUri(uri);
+                    ExternalStickerCacheHelper.onFolderSelected();
+                    if (listAdapter != null) {
+                        listAdapter.notifyItemChanged(cellGroup.rows.indexOf(externalStickerCacheRow));
+                    }
+                } catch (SecurityException e) {
+                    AlertUtil.showToast(getString(R.string.ExternalStickerCacheFolderError));
+                }
+            }
+            return;
+        }
+        super.onActivityResultFragment(requestCode, resultCode, data);
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     @Override
     public void onResume() {
@@ -545,7 +609,10 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
             if (a != null) {
                 if (a instanceof ConfigCellCustom) {
                     // Custom binds
-                    if (holder.itemView instanceof TextCheckCell textCheckCell) {
+                    if (holder.itemView instanceof StickerCacheUsageCell usageCell) {
+                        stickerCacheUsageCell = usageCell;
+                        usageCell.setStats(stickerCacheStats);
+                    } else if (holder.itemView instanceof TextCheckCell textCheckCell) {
                         textCheckCell.setEnabled(true, null);
                         if (position == cellGroup.rows.indexOf(disableFilteringRow)) {
                             textCheckCell.setTextAndValueAndCheck(getString(R.string.SensitiveDisableFiltering), getString(R.string.SensitiveAbout), sensitiveEnabled, true, true);
@@ -605,10 +672,56 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
                     view = new TextCell(mContext);
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     break;
+                case ConfigCellCustom.CUSTOM_ITEM_StickerCacheUsage:
+                    view = new StickerCacheUsageCell(mContext);
+                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    break;
             }
             //noinspection ConstantConditions
             view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
             return new RecyclerListView.Holder(view);
+        }
+    }
+
+    private class StickerCacheUsageCell extends FrameLayout {
+        private final TextView titleView;
+        private final TextView valueView;
+        private final SeekBarView usageBar;
+
+        StickerCacheUsageCell(Context context) {
+            super(context);
+            setWillNotDraw(false);
+            setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(6), AndroidUtilities.dp(20), AndroidUtilities.dp(4));
+
+            titleView = new TextView(context);
+            titleView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            titleView.setSingleLine(true);
+            titleView.setText(getString(R.string.ExternalStickerCacheUsage));
+            addView(titleView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 24, Gravity.LEFT | Gravity.TOP));
+
+            valueView = new TextView(context);
+            valueView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteValueText));
+            valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+            valueView.setSingleLine(true);
+            valueView.setGravity(Gravity.RIGHT);
+            addView(valueView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 24, Gravity.RIGHT | Gravity.TOP));
+
+            usageBar = new SeekBarView(context, getResourceProvider());
+            usageBar.setEnabled(false);
+            usageBar.setFocusable(false);
+            addView(usageBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 30, Gravity.LEFT | Gravity.BOTTOM));
+        }
+
+        void setStats(ExternalStickerCacheHelper.CacheStats stats) {
+            int totalCount = stats.getTotalCount();
+            usageBar.setProgress(totalCount == 0 ? 0f : Math.min(1f, stats.getCachedCount() / (float) totalCount), true);
+            valueView.setText(stats.getCachedCount() + " / " + totalCount + " - " + AndroidUtilities.formatFileSize(stats.getTotalBytes()));
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(62), MeasureSpec.EXACTLY));
         }
     }
 
