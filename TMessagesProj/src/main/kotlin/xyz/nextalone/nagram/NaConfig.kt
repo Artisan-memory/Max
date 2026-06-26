@@ -204,6 +204,12 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val disableTopicTitleCache =
+        addConfig(
+            "DisableTopicTitleCache",
+            ConfigItem.configTypeBool,
+            false
+        )
     val autoInsertGIFCaption =
         addConfig(
             "AutoInsertGIFCaption",

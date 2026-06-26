@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
+import xyz.nextalone.nagram.NaConfig;
+
 public class TopicsController extends BaseController {
 
     public static final int TOPIC_FLAG_TITLE = 1;
@@ -75,6 +77,7 @@ public class TopicsController extends BaseController {
         topicsIsLoading.put(chatId, 1);
 
         if (fromCache) {
+            boolean forceFreshTopicTitles = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool();
             getMessagesStorage().loadTopics(-chatId, topics -> {
                 AndroidUtilities.runOnUIThread(() -> {
                     if (BuildVars.LOGS_ENABLED) {
@@ -84,6 +87,9 @@ public class TopicsController extends BaseController {
                     topicsIsLoading.put(chatId, 0);
                     processTopics(chatId, topics, null, fromCache, loadType, -1);
                     sortTopics(chatId);
+                    if (forceFreshTopicTitles) {
+                        loadTopics(chatId, false, LOAD_TYPE_PRELOAD);
+                    }
                 });
             });
             return;
@@ -301,6 +307,11 @@ public class TopicsController extends BaseController {
                 } else if (!newTopic.isShort) {
                     TLRPC.TL_forumTopic oldTopic = topicsMap.get(newTopic.id);
                     if (oldTopic != null) {
+                        if (!fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && !TextUtils.equals(oldTopic.title, newTopic.title)) {
+                            oldTopic.title = newTopic.title;
+                            getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_TITLE);
+                            changed = true;
+                        }
                         if (oldTopic.closed != newTopic.closed) {
                             oldTopic.closed = newTopic.closed;
                             getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_CLOSE);

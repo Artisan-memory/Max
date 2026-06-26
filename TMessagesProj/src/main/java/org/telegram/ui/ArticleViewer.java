@@ -2539,9 +2539,12 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             String plainText = ((TLRPC.TL_textPlain) richText).text;
             var adapter = pages[0].adapter;
             if (!TextUtils.isEmpty(plainText) && adapter.trans && adapter.translatedTextCache.containsKey(plainText)) {
-                plainText = adapter.translatedTextCache.get(plainText);
+                String translatedText = adapter.translatedTextCache.get(plainText);
+                if (translatedText != null) {
+                    plainText = translatedText;
+                }
             }
-            return plainText;
+            return plainText == null ? "" : plainText;
         } else if (richText instanceof TLRPC.TL_textAnchor) {
             TLRPC.TL_textAnchor textAnchor = (TLRPC.TL_textAnchor) richText;
             SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder(getText(page, parentView, parentRichText, textAnchor.text, parentBlock, maxWidth));
@@ -2564,6 +2567,9 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
                 CharSequence innerText = getText(page, parentView, parentRichText, innerRichText, parentBlock, maxWidth);
                 int flags = getTextFlags(lastRichText);
                 int startLength = spannableStringBuilder.length();
+                if (innerText == null) {
+                    innerText = "";
+                }
                 spannableStringBuilder.append(innerText);
                 if (flags != 0 && !(innerText instanceof SpannableStringBuilder)) {
                     if ((flags & TEXT_FLAG_URL) != 0 || (flags & TEXT_FLAG_WEBPAGE_URL) != 0) {
@@ -2674,9 +2680,12 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         } else if (richText instanceof TLRPC.TL_textPlain) {
             String plainText = ((TLRPC.TL_textPlain) richText).text;
             if (plainText != null && Instance != null && Instance.pages != null && Instance.pages.length > 0 && Instance.pages[0].adapter != null && Instance.pages[0].adapter.trans && Instance.pages[0].adapter.translatedTextCache.containsKey(plainText)) {
-                plainText = Instance.pages[0].adapter.translatedTextCache.get(plainText);
+                String translatedText = Instance.pages[0].adapter.translatedTextCache.get(plainText);
+                if (translatedText != null) {
+                    plainText = translatedText;
+                }
             }
-            return plainText;
+            return plainText == null ? "" : plainText;
         } else if (richText instanceof TLRPC.TL_textAnchor) {
             return getPlainText(((TLRPC.TL_textAnchor) richText).text);
         } else if (richText instanceof TLRPC.TL_textEmpty) {
@@ -2986,7 +2995,12 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
 
         CharSequence text;
         if (plainText != null) {
-            text = (parentAdapter.trans && parentAdapter.translatedTextCache.containsKey(plainText.toString())) ? parentAdapter.translatedTextCache.get(plainText.toString()) : plainText;
+            if (parentAdapter.trans && parentAdapter.translatedTextCache.containsKey(plainText.toString())) {
+                String translatedText = parentAdapter.translatedTextCache.get(plainText.toString());
+                text = translatedText == null ? plainText : translatedText;
+            } else {
+                text = plainText;
+            }
         } else {
             text = getText(parentAdapter, parentView, richText, richText, parentBlock, width);
         }

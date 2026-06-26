@@ -1574,7 +1574,7 @@ public class MessagesStorage extends BaseController {
                 SQLiteCursor cursor = database.queryFinalized("SELECT did, pinned FROM topics WHERE did = " + dialogId + " AND topic_id = " + topic.id);
                 boolean exist = cursor.next();
                 if (exist) {
-                    pinnedValues.put(i, cursor.intValue(2));
+                    pinnedValues.put(i, cursor.intValue(1));
                 }
                 cursor.dispose();
                 cursor = null;
@@ -1590,10 +1590,21 @@ public class MessagesStorage extends BaseController {
                 database.beginTransaction();
             }
 
+            boolean disableTopicTitleCache = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool();
             for (int i = 0; i < topics.size(); i++) {
                 TLRPC.TL_forumTopic topic = topics.get(i);
                 long topicId = isMonoForum(dialogId) ? DialogObject.getPeerDialogId(topic.from_id): topic.id;
                 boolean exist = existingTopics.contains(i);
+                String topicTitle = null;
+                String topicStartActionTitle = null;
+                if (disableTopicTitleCache) {
+                    topicTitle = topic.title;
+                    topic.title = "";
+                    if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
+                        topicStartActionTitle = topic.topicStartMessage.action.title;
+                        topic.topicStartMessage.action.title = "";
+                    }
+                }
 
                 state.requery();
                 state.bindLong(1, dialogId);
@@ -1606,6 +1617,12 @@ public class MessagesStorage extends BaseController {
 
                 NativeByteBuffer messageData = new NativeByteBuffer(topic.topicStartMessage.getObjectSize());
                 topic.topicStartMessage.serializeToStream(messageData);
+                if (disableTopicTitleCache) {
+                    topic.title = topicTitle;
+                    if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
+                        topic.topicStartMessage.action.title = topicStartActionTitle;
+                    }
+                }
                 state.bindByteBuffer(5, messageData);
                 state.bindInteger(6, topic.unread_count);
                 state.bindInteger(7, topic.read_inbox_max_id);
@@ -1639,7 +1656,7 @@ public class MessagesStorage extends BaseController {
                     SQLitePreparedStatement state_media_holes = database.executeFast("REPLACE INTO media_holes_topics VALUES(?, ?, ?, ?, ?)");
                     createFirstHoles(dialogId, state_holes, state_media_holes, topic.top_message, topicId);
                     state_holes.dispose();
-                    state_holes.dispose();
+                    state_media_holes.dispose();
                 }
             }
             resetAllUnreadCounters(false);
@@ -1693,23 +1710,34 @@ public class MessagesStorage extends BaseController {
                 cursor.dispose();
                 cursor = null;
 
+                int flagsToStore = flags;
+                if (NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
+                    flagsToStore &= ~TopicsController.TOPIC_FLAG_TITLE;
+                }
                 if (topicToUpdate != null && (currentEditDate == 0 || currentEditDate <= date)) {
-                    if ((flags & TopicsController.TOPIC_FLAG_TITLE) != 0) {
+                    if (flagsToStore == 0) {
+                        int finalFlags = flags;
+                        AndroidUtilities.runOnUIThread(() -> {
+                            getMessagesController().getTopicsController().updateTopicInUi(dialogId, fromTopic, finalFlags);
+                        });
+                        return;
+                    }
+                    if ((flagsToStore & TopicsController.TOPIC_FLAG_TITLE) != 0) {
                         topicToUpdate.title = fromTopic.title;
                     }
-                    if ((flags & TopicsController.TOPIC_FLAG_ICON) != 0) {
+                    if ((flagsToStore & TopicsController.TOPIC_FLAG_ICON) != 0) {
                         topicToUpdate.icon_emoji_id = fromTopic.icon_emoji_id;
                         topicToUpdate.flags |= 1;
                     }
-                    if ((flags & TopicsController.TOPIC_FLAG_PIN) != 0) {
+                    if ((flagsToStore & TopicsController.TOPIC_FLAG_PIN) != 0) {
                         topicToUpdate.pinned = fromTopic.pinned;
                         topicToUpdate.pinnedOrder = fromTopic.pinnedOrder;
                     }
                     int pinnedOrder = topicToUpdate.pinned ? 1 + topicToUpdate.pinnedOrder : 0;
-                    if ((flags & TopicsController.TOPIC_FLAG_CLOSE) != 0) {
+                    if ((flagsToStore & TopicsController.TOPIC_FLAG_CLOSE) != 0) {
                         topicToUpdate.closed = fromTopic.closed;
                     }
-                    if ((flags & TopicsController.TOPIC_FLAG_HIDE) != 0) {
+                    if ((flagsToStore & TopicsController.TOPIC_FLAG_HIDE) != 0) {
                         topicToUpdate.hidden = fromTopic.hidden;
                     }
                     state = database.executeFast("UPDATE topics SET data = ?, pinned = ?, hidden = ?, edit_date = ? WHERE did = ? AND topic_id = ?");
@@ -1764,6 +1792,9 @@ public class MessagesStorage extends BaseController {
                     if (data != null) {
                         TLRPC.TL_forumTopic topic = TLRPC.TL_forumTopic.TLdeserialize(data, data.readInt32(false), false);
                         if (topic != null) {
+                            if (NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
+                                topic.title = "";
+                            }
                             topic.top_message = topMessageId;
                             ArrayList<TLRPC.TL_forumTopic> topicsListByTopMessageId = topicsByTopMessageId.get(topMessageId);
                             if (topicsListByTopMessageId == null) {
@@ -2866,13 +2897,15 @@ public class MessagesStorage extends BaseController {
             for (int a = 0, N = dialogFilters.size(); a < N + 2; a++) {
                 MessagesController.DialogFilter filter;
                 int flags;
+                boolean ignoreMutedUnreadCount = false;
                 if (a < N) {
                     filter = dialogFilters.get(a);
                     if (filter.pendingUnreadCount >= 0) {
                         continue;
                     }
                     flags = filter.flags;
-                    if (NaConfig.INSTANCE.getIgnoreUnreadCount().Int() == NekoConfig.DIALOG_FILTER_EXCLUDE_MUTED && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
+                    ignoreMutedUnreadCount = NaConfig.INSTANCE.getIgnoreUnreadCount().Int() == NekoConfig.DIALOG_FILTER_EXCLUDE_MUTED;
+                    if (ignoreMutedUnreadCount && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                         flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
                     }
                 } else {
@@ -2961,6 +2994,9 @@ public class MessagesStorage extends BaseController {
                 if (filter != null) {
                     for (int b = 0, N2 = filter.alwaysShow.size(); b < N2; b++) {
                         long did = filter.alwaysShow.get(b);
+                        if (ignoreMutedUnreadCount && mutedDialogs.indexOfKey(did) >= 0) {
+                            continue;
+                        }
                         if (DialogObject.isUserDialog(did)) {
                             for (int i = 0; i < 2; i++) {
                                 LongSparseArray<TLRPC.User> dict = i == 0 ? usersDict : encUsersDict;
@@ -6022,6 +6058,7 @@ public class MessagesStorage extends BaseController {
             int unreadCount;
             MessagesController.DialogFilter filter;
             int flags;
+            boolean ignoreMutedUnreadCount = false;
             if (a < N) {
                 filter = dialogFilters.get(a);
                 if (filter.pendingUnreadCount < 0) {
@@ -6029,7 +6066,8 @@ public class MessagesStorage extends BaseController {
                 }
                 unreadCount = filter.pendingUnreadCount;
                 flags = filter.flags;
-                if (NaConfig.INSTANCE.getIgnoreUnreadCount().Int() == NekoConfig.DIALOG_FILTER_EXCLUDE_MUTED && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
+                ignoreMutedUnreadCount = NaConfig.INSTANCE.getIgnoreUnreadCount().Int() == NekoConfig.DIALOG_FILTER_EXCLUDE_MUTED;
+                if (ignoreMutedUnreadCount && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                     flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
                 }
             } else {
@@ -6128,6 +6166,9 @@ public class MessagesStorage extends BaseController {
                 if (filter != null) {
                     for (int b = 0, N2 = filter.alwaysShow.size(); b < N2; b++) {
                         long did = filter.alwaysShow.get(b);
+                        if (ignoreMutedUnreadCount && mutedDialogs.indexOfKey(did) >= 0) {
+                            continue;
+                        }
                         if (DialogObject.isUserDialog(did)) {
                             for (int i = 0; i < 2; i++) {
                                 LongSparseArray<TLRPC.User> dict = i == 0 ? usersDict : encUsersDict;
@@ -6316,7 +6357,7 @@ public class MessagesStorage extends BaseController {
                 }
                 if (filter != null) {
                     if (!filter.alwaysShow.isEmpty()) {
-                        if ((flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) != 0 && dialogsToUpdateMentions != null) {
+                        if (!ignoreMutedUnreadCount && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) != 0 && dialogsToUpdateMentions != null) {
                             for (int b = 0, N2 = dialogsToUpdateMentions.size(); b < N2; b++) {
                                 long did = dialogsToUpdateMentions.keyAt(b);
                                 TLRPC.Chat chat = chatsDict.get(-did);
@@ -6336,6 +6377,9 @@ public class MessagesStorage extends BaseController {
                         }
                         for (int b = 0, N2 = filter.alwaysShow.size(); b < N2; b++) {
                             long did = filter.alwaysShow.get(b);
+                            if (ignoreMutedUnreadCount && mutedDialogs.indexOfKey(did) >= 0) {
+                                continue;
+                            }
                             if (newUnreadDialogs.indexOfKey(did) < 0) {
                                 continue;
                             }
@@ -17699,9 +17743,11 @@ public class MessagesStorage extends BaseController {
                     NativeByteBuffer data = cursor.byteBufferValue(0);
                     if (data != null) {
                         message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
-                        message.readAttachPath(data, getUserConfig().clientUserId);
+                        if (message != null) {
+                            message.readAttachPath(data, getUserConfig().clientUserId);
+                        }
                         data.reuse();
-                        if (message.reactions != null && message.reactions.recent_reactions != null) {
+                        if (message != null && message.reactions != null && message.reactions.recent_reactions != null) {
                             for (int i = 0; i < message.reactions.recent_reactions.size(); i++) {
                                 message.reactions.recent_reactions.get(i).unread = false;
                             }

@@ -21,6 +21,8 @@
     <string name="ShowRPCError">Показывать ошибки RPC</string>
     <string name="ShowPremiumStickersAnimation">Показывать анимацию Premium-стикеров</string>
     <string name="AlwaysSaveChatOffset">Всегда сохранять смещение чатов</string>
+    <string name="DisableTopicTitleCache">Не кэшировать названия топиков</string>
+    <string name="DisableTopicTitleCacheNotice">Названия топиков форумов будут обновляться из Telegram, а не переиспользоваться из локальной базы.</string>
     <string name="AppIconColorful">Красочная</string>
     <string name="AppIconDarkGreen">Тёмно-зелёная</string>
     <string name="AppIconNeon">Неон</string>
