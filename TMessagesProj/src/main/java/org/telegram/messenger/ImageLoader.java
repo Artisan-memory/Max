@@ -3040,39 +3040,47 @@ public class ImageLoader {
     }
 
     private static String getImageParentDiagnosticInfo(Object parentObject) {
-        if (parentObject instanceof MessageObject) {
-            MessageObject messageObject = (MessageObject) parentObject;
-            return "message dialog=" + messageObject.getDialogId() + " id=" + messageObject.getId() + " type=" + messageObject.type;
-        } else if (parentObject instanceof TLRPC.Message) {
-            TLRPC.Message message = (TLRPC.Message) parentObject;
-            return "tlMessage dialog=" + message.dialog_id + " id=" + message.id;
-        } else if (parentObject instanceof TLRPC.User) {
-            return "user " + ((TLRPC.User) parentObject).id;
-        } else if (parentObject instanceof TLRPC.Chat) {
-            return "chat " + ((TLRPC.Chat) parentObject).id;
-        } else if (parentObject != null) {
-            return parentObject.getClass().getSimpleName();
+        try {
+            if (parentObject instanceof MessageObject) {
+                MessageObject messageObject = (MessageObject) parentObject;
+                return "message dialog=" + messageObject.getDialogId() + " id=" + messageObject.getId() + " type=" + messageObject.type;
+            } else if (parentObject instanceof TLRPC.Message) {
+                TLRPC.Message message = (TLRPC.Message) parentObject;
+                return "tlMessage dialog=" + message.dialog_id + " id=" + message.id;
+            } else if (parentObject instanceof TLRPC.User) {
+                return "user " + ((TLRPC.User) parentObject).id;
+            } else if (parentObject instanceof TLRPC.Chat) {
+                return "chat " + ((TLRPC.Chat) parentObject).id;
+            } else if (parentObject != null) {
+                return parentObject.getClass().getSimpleName();
+            }
+        } catch (Throwable e) {
+            return "diagnostic_error=" + e.getClass().getSimpleName();
         }
         return "null";
     }
 
     private static String getImageLocationDiagnosticInfo(ImageLocation imageLocation) {
-        if (imageLocation == null) {
-            return "null";
-        } else if (imageLocation.document != null) {
-            return "document id=" + imageLocation.document.id + " dc=" + imageLocation.document.dc_id + " mime=" + imageLocation.document.mime_type;
-        } else if (imageLocation.photo != null) {
-            return "photo id=" + imageLocation.photo.id + " dc=" + imageLocation.dc_id + " thumb=" + imageLocation.thumbSize;
-        } else if (imageLocation.photoPeer != null) {
-            return "peerPhoto did=" + DialogObject.getPeerDialogId(imageLocation.photoPeer) + " photo=" + imageLocation.photoId + " type=" + imageLocation.photoPeerType;
-        } else if (imageLocation.webFile != null) {
-            return "webFile size=" + imageLocation.webFile.size;
-        } else if (imageLocation.path != null) {
-            return "path " + imageLocation.path;
-        } else if (imageLocation.location != null) {
-            return "fileLocation dc=" + imageLocation.location.dc_id + " volume=" + imageLocation.location.volume_id + " local=" + imageLocation.location.local_id;
+        try {
+            if (imageLocation == null) {
+                return "null";
+            } else if (imageLocation.document != null) {
+                return "document id=" + imageLocation.document.id + " dc=" + imageLocation.document.dc_id + " mime=" + imageLocation.document.mime_type;
+            } else if (imageLocation.photo != null) {
+                return "photo id=" + imageLocation.photo.id + " dc=" + imageLocation.dc_id + " thumb=" + imageLocation.thumbSize;
+            } else if (imageLocation.photoPeer != null) {
+                return "peerPhoto did=" + DialogObject.getPeerDialogId(imageLocation.photoPeer) + " photo=" + imageLocation.photoId + " type=" + imageLocation.photoPeerType;
+            } else if (imageLocation.webFile != null) {
+                return "webFile size=" + imageLocation.webFile.size;
+            } else if (imageLocation.path != null) {
+                return "path " + imageLocation.path;
+            } else if (imageLocation.location != null) {
+                return "fileLocation dc=" + imageLocation.location.dc_id + " volume=" + imageLocation.location.volume_id + " local=" + imageLocation.location.local_id;
+            }
+            return imageLocation.getClass().getSimpleName();
+        } catch (Throwable e) {
+            return "diagnostic_error=" + e.getClass().getSimpleName();
         }
-        return imageLocation.getClass().getSimpleName();
     }
 
     private void createLoadOperationForImageReceiver(final ImageReceiver imageReceiver, final String key, final String url, final String ext, final ImageLocation imageLocation, final String filter, final long size, final int cacheType, final int type, final int thumb, int guid) {
@@ -3349,6 +3357,7 @@ public class ImageLoader {
                     if (imageLocation.imageType != 0) {
                         img.imageType = imageLocation.imageType;
                     }
+                    boolean cacheFileOnDisk = cacheFile != null && cacheFile.exists();
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.d("NagramDiag image.request key=" + key +
                                 " url=" + url +
@@ -3358,7 +3367,7 @@ public class ImageLoader {
                                 " filter=" + filter +
                                 " imageType=" + img.imageType +
                                 " onlyCache=" + onlyCache +
-                                " cacheExists=" + (cacheFileExists || cacheFile.exists()) +
+                                " cacheExists=" + (cacheFileExists || cacheFileOnDisk) +
                                 " priority=" + img.priority +
                                 " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
                                 " parent=" + getImageParentDiagnosticInfo(parentObject));
@@ -3368,7 +3377,7 @@ public class ImageLoader {
                     }
                     img.addImageReceiver(imageReceiver, key, filter, type, guid);
 
-                    if (onlyCache || cacheFileExists || cacheFile.exists()) {
+                    if (onlyCache || cacheFileExists || cacheFileOnDisk) {
                         img.finalFilePath = cacheFile;
                         img.imageLocation = imageLocation;
                         img.cacheTask = new CacheOutTask(img);

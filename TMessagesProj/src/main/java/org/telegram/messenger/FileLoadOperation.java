@@ -772,20 +772,25 @@ public class FileLoadOperation {
     }
 
     private String getDiagnosticInfo() {
-        return "file=" + fileName +
-                " dc=" + datacenterId +
-                " type=" + currentType +
-                " total=" + totalBytesCount +
-                " stream=" + isStream +
-                " preload=" + isPreloadVideoOperation +
-                " loc=" + getLocationDiagnosticInfo() +
-                " parent=" + getParentDiagnosticInfo(parentObject);
+        try {
+            return "file=" + fileName +
+                    " dc=" + datacenterId +
+                    " type=" + currentType +
+                    " total=" + totalBytesCount +
+                    " stream=" + isStream +
+                    " preload=" + isPreloadVideoOperation +
+                    " loc=" + getLocationDiagnosticInfo() +
+                    " parent=" + getParentDiagnosticInfo(parentObject);
+        } catch (Throwable e) {
+            return "diagnostic_error=" + e.getClass().getSimpleName();
+        }
     }
 
     private String getLocationDiagnosticInfo() {
         if (location instanceof TLRPC.TL_inputPeerPhotoFileLocation) {
             TLRPC.TL_inputPeerPhotoFileLocation peerLocation = (TLRPC.TL_inputPeerPhotoFileLocation) location;
-            return "peerPhoto did=" + DialogObject.getPeerDialogId(peerLocation.peer) + " photo=" + peerLocation.photo_id + " big=" + peerLocation.big;
+            long dialogId = peerLocation.peer != null ? DialogObject.getPeerDialogId(peerLocation.peer) : 0;
+            return "peerPhoto did=" + dialogId + " photo=" + peerLocation.photo_id + " big=" + peerLocation.big;
         } else if (location != null) {
             return location.getClass().getSimpleName() + " id=" + location.id + " local=" + location.local_id + " volume=" + location.volume_id;
         } else if (webLocation != null) {
