@@ -290,6 +290,12 @@ public class TopicsController extends BaseController {
                     deletedTopics.add((long) newTopic.id);
                     continue;
                 }
+                if (fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && TextUtils.isEmpty(newTopic.title)) {
+                    if (BuildVars.LOGS_ENABLED) {
+                        FileLog.d("NagramDiag topic.skip_empty_cached_title chat=" + chatId + " topic=" + newTopic.id + " top=" + newTopic.top_message);
+                    }
+                    continue;
+                }
                 if (!topicsMap.containsKey(newTopic.id)) {
                     if (messagesMap != null) {
                         newTopic.topMessage = messagesMap.get(newTopic.top_message);

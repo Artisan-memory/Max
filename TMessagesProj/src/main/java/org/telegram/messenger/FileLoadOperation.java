@@ -2563,7 +2563,19 @@ public class FileLoadOperation {
                     if (requestInfo.whenCancelled != null) {
                         requestInfo.whenCancelled.run();
                     }
-                    if (error.code == -2000) {
+                    if (error.code == ConnectionsManager.ErrorCodeRpcAnswerDroppedRunning) {
+                        boolean wasCancelling = requestInfo.cancelling || cancelledRequestInfos.contains(requestInfo);
+                        requestInfos.remove(requestInfo);
+                        requestedBytesCount -= requestInfo.chunkSize;
+                        removePart(notRequestedBytesRanges, requestInfo.offset, requestInfo.offset + requestInfo.chunkSize);
+                        if (BuildVars.LOGS_ENABLED) {
+                            FileLog.d("NagramDiag file.dropped_running offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken + " cancelling=" + wasCancelling + " " + getDiagnosticInfo());
+                        }
+                        if (!wasCancelling && state == stateDownloading) {
+                            startDownloadRequest(requestInfo.connectionType);
+                        }
+                        return;
+                    } else if (error.code == -2000) {
                         requestInfos.remove(requestInfo);
                         requestedBytesCount -= requestInfo.chunkSize;
                         removePart(notRequestedBytesRanges, requestInfo.offset, requestInfo.offset + requestInfo.chunkSize);

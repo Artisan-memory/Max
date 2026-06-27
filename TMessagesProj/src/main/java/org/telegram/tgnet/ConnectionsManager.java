@@ -119,6 +119,8 @@ public class ConnectionsManager extends BaseController {
     private static long lastDnsRequestTime;
 
     public final static int DEFAULT_DATACENTER_ID = Integer.MAX_VALUE;
+    public final static int ErrorCodeRpcAnswerDroppedRunning = -2001;
+    private final static int RPC_ANSWER_DROPPED_RUNNING_CONSTRUCTOR = 0xcd78e586;
 
     private long lastPauseTime = System.currentTimeMillis();
     private boolean appPaused = true;
@@ -416,11 +418,21 @@ public class ConnectionsManager extends BaseController {
                         try {
                             resp = object.deserializeResponse(buff, magic, true);
                         } catch (Exception e2) {
-                            if (BuildVars.DEBUG_PRIVATE_VERSION) {
-                                throw e2;
+                            if (isRpcAnswerDroppedRunningResponse(object, magic)) {
+                                error = new TLRPC.TL_error();
+                                error.code = ErrorCodeRpcAnswerDroppedRunning;
+                                error.text = "RPC_ANSWER_DROPPED_RUNNING";
+                                if (BuildVars.LOGS_ENABLED) {
+                                    FileLog.d("NagramDiag network.dropped_running request=" + object + " token=" + requestToken + " messageId=0x" + Long.toHexString(requestMsgId));
+                                }
+                                buff.position(buff.limit());
+                            } else {
+                                if (BuildVars.DEBUG_PRIVATE_VERSION) {
+                                    throw e2;
+                                }
+                                FileLog.fatal(e2);
+                                return;
                             }
-                            FileLog.fatal(e2);
-                            return;
                         }
                     } else if (errorText != null) {
                         error = new TLRPC.TL_error();
@@ -477,6 +489,13 @@ public class ConnectionsManager extends BaseController {
         } catch (Exception e) {
             FileLog.e(e);
         }
+    }
+
+    private static boolean isRpcAnswerDroppedRunningResponse(TLObject object, int constructor) {
+        return constructor == RPC_ANSWER_DROPPED_RUNNING_CONSTRUCTOR
+                && (object instanceof TLRPC.TL_upload_getFile
+                || object instanceof TLRPC.TL_upload_getWebFile
+                || object instanceof TLRPC.TL_upload_getCdnFile);
     }
 
     private final ConcurrentHashMap<Integer, RequestCallbacks> requestCallbacks = new ConcurrentHashMap<>();
