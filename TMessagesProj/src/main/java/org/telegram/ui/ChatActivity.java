@@ -2540,8 +2540,12 @@ public class ChatActivity extends BaseFragment implements
             checkInstantCameraView();
             if (instantCameraView != null) {
                 if (state == 0) {
-                    instantCameraView.showCamera(false);
                     chatListView.stopScroll();
+                    MessageObject playingMessageObject = MediaController.getInstance().getPlayingMessageObject();
+                    if (playingMessageObject != null && (playingMessageObject.isVideo() || playingMessageObject.isRoundVideo())) {
+                        MediaController.getInstance().cleanupPlayer(true, true);
+                    }
+                    instantCameraView.showCamera(false);
                     chatAdapter.updateRowsSafe();
                 } else if (state == 1 || state == 3 || state == 4) {
                     instantCameraView.send(state, notify, scheduleDate, 0, ttl, effectId, stars);
@@ -41809,6 +41813,10 @@ public class ChatActivity extends BaseFragment implements
                 };
                 BoostDialogs.openGiveAwayStatusDialog(messageObject, progressDialogCurrent, getContext(), getResourceProvider());
             } else if (type == 21) {
+                if (messageObject != null && messageObject.isUnsupported()) {
+                    getMessagesController().loadRichMessageForUnsupported(messageObject, messageObject.getDialogId(), chatMode);
+                    return;
+                }
                 if (ApplicationLoader.isStandaloneBuild()) {
                     if (LaunchActivity.instance != null) {
                         if (progressDialogCurrent != null) {

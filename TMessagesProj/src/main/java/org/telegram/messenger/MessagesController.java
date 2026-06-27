@@ -76,6 +76,7 @@ import org.telegram.tgnet.tl.TL_phone;
 import org.telegram.tgnet.tl.TL_stars;
 import org.telegram.tgnet.tl.TL_stories;
 import org.telegram.tgnet.tl.TL_chatlists;
+import org.telegram.tgnet.tl.TL_iv;
 import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -182,6 +183,7 @@ public class MessagesController extends BaseController implements NotificationCe
     public LongSparseArray<MessageObject> dialogMessagesByRandomIds = new LongSparseArray<>();
     public LongSparseIntArray deletedHistory = new LongSparseIntArray();
     public SparseArray<MessageObject> dialogMessagesByIds = new SparseArray<>();
+    private final HashSet<String> loadingRichMessages = new HashSet<>();
     public ConcurrentHashMap<Long, ConcurrentHashMap<Integer, ArrayList<PrintingUser>>> printingUsers = new ConcurrentHashMap<>(20, 1.0f, 2);
     public LongSparseArray<LongSparseArray<CharSequence>> printingStrings = new LongSparseArray<>();
     public LongSparseArray<LongSparseArray<Integer>> printingStringsTypes = new LongSparseArray<>();
@@ -7746,8 +7748,63 @@ public class MessagesController extends BaseController implements NotificationCe
                         }
                     }
                     getNotificationCenter().postNotificationName(NotificationCenter.replaceMessagesObjects, dialogId, objects);
+                    loadRichMessagesForUnsupported(objects, dialogId, mode);
                 });
             }
+        });
+    }
+
+    private void loadRichMessagesForUnsupported(ArrayList<MessageObject> objects, long dialogId, int mode) {
+        if (objects == null || objects.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < objects.size(); i++) {
+            loadRichMessageForUnsupported(objects.get(i), dialogId, mode);
+        }
+    }
+
+    public void loadRichMessageForUnsupported(MessageObject messageObject, long dialogId, int mode) {
+        if (messageObject == null || messageObject.messageOwner == null || messageObject.messageOwner.rich_message != null || !(MessageObject.getMedia(messageObject.messageOwner) instanceof TLRPC.TL_messageMediaUnsupported)) {
+            return;
+        }
+        TLRPC.InputPeer peer = getInputPeer(dialogId);
+        if (peer == null) {
+            return;
+        }
+        String key = dialogId + "_" + messageObject.getId();
+        if (!loadingRichMessages.add(key)) {
+            return;
+        }
+        TL_iv.getRichMessage req = new TL_iv.getRichMessage();
+        req.peer = peer;
+        req.id = messageObject.getId();
+        getConnectionsManager().sendRequestTyped(req, AndroidUtilities::runOnUIThread, (response, error) -> {
+            loadingRichMessages.remove(key);
+            if (response == null || error != null) {
+                return;
+            }
+            putUsers(response.users, false);
+            putChats(response.chats, false);
+            TLRPC.Message fullMessage = null;
+            for (int i = 0; i < response.messages.size(); i++) {
+                TLRPC.Message message = response.messages.get(i);
+                if (message != null && message.id == messageObject.getId() && message.rich_message != null) {
+                    fullMessage = message;
+                    break;
+                }
+            }
+            if (fullMessage == null) {
+                return;
+            }
+            fullMessage.dialog_id = dialogId;
+            TLRPC.TL_messages_messages messages = new TLRPC.TL_messages_messages();
+            messages.messages.add(fullMessage);
+            messages.users.addAll(response.users);
+            messages.chats.addAll(response.chats);
+            getMessagesStorage().putMessages(messages, dialogId, -2, 0, false, mode, 0);
+            ArrayList<MessageObject> replacements = new ArrayList<>();
+            replacements.add(new MessageObject(currentAccount, fullMessage, null, users, chats, null, null, true, false, 0, false, false, mode == ChatActivity.MODE_SAVED, 0));
+            getNotificationCenter().postNotificationName(NotificationCenter.replaceMessagesObjects, dialogId, replacements);
         });
     }
 
@@ -11762,9 +11819,11 @@ public class MessagesController extends BaseController implements NotificationCe
                     } else {
                         getNotificationCenter().postNotificationName(NotificationCenter.messagesDidLoad, dialogId, count, objects, isCache, finalFirst_unread_final, last_message_id, unread_count, last_date, load_type, isEnd, classGuid, loadIndex, max_id, mentionsCount, mode);
                     }
+                    loadRichMessagesForUnsupported(objects, dialogId, mode);
                 }, classGuid, loaderLogger);
             } else {
                 getNotificationCenter().postNotificationName(NotificationCenter.messagesDidLoad, dialogId, count, objects, isCache, first_unread_final, last_message_id, unread_count, last_date, load_type, isEnd, classGuid, loadIndex, max_id, mentionsCount, mode);
+                loadRichMessagesForUnsupported(objects, dialogId, mode);
             }
 
             if (!messagesToReload.isEmpty()) {
