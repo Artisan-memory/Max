@@ -141,6 +141,7 @@ public class ImageLoader {
     private static ThreadLocal<byte[]> bytesThumbLocal = new ThreadLocal<>();
     private static byte[] header = new byte[12];
     private static byte[] headerThumb = new byte[12];
+    private static final ConcurrentHashMap<String, Boolean> failedMediaStoreThumbnails = new ConcurrentHashMap<>();
     private int currentHttpTasksCount = 0;
     private int currentArtworkTasksCount = 0;
     private boolean canForce8888;
@@ -1239,11 +1240,7 @@ public class ImageLoader {
                             opts.inJustDecodeBounds = true;
 
                             if (mediaId != null && mediaThumbPath == null) {
-                                if (mediaIsVideo) {
-                                    MediaStore.Video.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Video.Thumbnails.MINI_KIND, opts);
-                                } else {
-                                    MediaStore.Images.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Images.Thumbnails.MINI_KIND, opts);
-                                }
+                                loadMediaStoreThumbnail(mediaId, mediaIsVideo, opts);
                             } else {
                                 if (secureDocumentKey != null) {
                                     RandomAccessFile f = new RandomAccessFile(cacheFileFinal, "r");
@@ -1466,10 +1463,10 @@ public class ImageLoader {
                                     image = fileDrawable.getFrameAtTime(0, true);
                                     fileDrawable.recycle();
                                 } else {
-                                    image = MediaStore.Video.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Video.Thumbnails.MINI_KIND, opts);
+                                    image = loadMediaStoreThumbnail(mediaId, true, opts);
                                 }
                             } else {
-                                image = MediaStore.Images.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Images.Thumbnails.MINI_KIND, opts);
+                                image = loadMediaStoreThumbnail(mediaId, false, opts);
                             }
                         }
                         if (!mediaIsVideo && image == null) {
@@ -2053,6 +2050,27 @@ public class ImageLoader {
     }
 
     private static volatile ImageLoader Instance = null;
+
+    private static Bitmap loadMediaStoreThumbnail(Long mediaId, boolean mediaIsVideo, BitmapFactory.Options opts) {
+        if (mediaId == null) {
+            return null;
+        }
+        String key = (mediaIsVideo ? "v" : "i") + mediaId;
+        if (failedMediaStoreThumbnails.containsKey(key)) {
+            return null;
+        }
+        try {
+            if (mediaIsVideo) {
+                return MediaStore.Video.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Video.Thumbnails.MINI_KIND, opts);
+            } else {
+                return MediaStore.Images.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Images.Thumbnails.MINI_KIND, opts);
+            }
+        } catch (Throwable e) {
+            failedMediaStoreThumbnails.put(key, Boolean.TRUE);
+            FileLog.e(e, !(e instanceof FileNotFoundException));
+            return null;
+        }
+    }
 
     public static ImageLoader getInstance() {
         ImageLoader localInstance = Instance;

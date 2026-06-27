@@ -11657,7 +11657,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (message.legacy && message.layer < TLRPC.LAYER) {
                     messagesToReload.add(message.id);
                 } else if (MessageObject.getMedia(message) instanceof TLRPC.TL_messageMediaUnsupported) {
-                    if (MessageObject.getMedia(message).bytes != null && (MessageObject.getMedia(message).bytes.length == 0 || MessageObject.getMedia(message).bytes.length == 1 && MessageObject.getMedia(message).bytes[0] < TLRPC.LAYER || MessageObject.getMedia(message).bytes.length == 4 && Utilities.bytesToInt(MessageObject.getMedia(message).bytes) < TLRPC.LAYER)) {
+                    if (message.rich_message == null || MessageObject.getMedia(message).bytes != null && (MessageObject.getMedia(message).bytes.length == 0 || MessageObject.getMedia(message).bytes.length == 1 && MessageObject.getMedia(message).bytes[0] < TLRPC.LAYER || MessageObject.getMedia(message).bytes.length == 4 && Utilities.bytesToInt(MessageObject.getMedia(message).bytes) < TLRPC.LAYER)) {
                         messagesToReload.add(message.id);
                     }
                 }

@@ -795,7 +795,7 @@ public class MessageObject {
     }
 
     public boolean isUnsupported() {
-        return getMedia(messageOwner) instanceof TLRPC.TL_messageMediaUnsupported;
+        return getMedia(messageOwner) instanceof TLRPC.TL_messageMediaUnsupported && (messageOwner == null || messageOwner.rich_message == null);
     }
 
     public boolean isExpiredStory() {
@@ -6371,6 +6371,8 @@ public class MessageObject {
             channelJoinedExpanded = MessagesController.getInstance(currentAccount).getMainSettings().getBoolean("c" + getDialogId() + "_rec", true);
         } else if (messageOwner instanceof TLRPC.TL_message || messageOwner instanceof TLRPC.TL_messageForwarded_old2) {
             if (isRestrictedMessage) {
+                type = TYPE_TEXT;
+            } else if (messageOwner.rich_message != null) {
                 type = TYPE_TEXT;
             } else if (emojiAnimatedSticker != null || emojiAnimatedStickerId != null) {
                 if (isSticker()) {
