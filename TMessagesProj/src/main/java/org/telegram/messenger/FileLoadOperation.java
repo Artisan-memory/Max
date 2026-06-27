@@ -2452,11 +2452,15 @@ public class FileLoadOperation {
             int datacenterId = isCdn ? cdnDatacenterId : this.datacenterId;
             final int requestToken = requestInfo.requestToken = ConnectionsManager.getInstance(currentAccount).sendRequestSync(request, (response, error) -> {
                 if (requestInfo.cancelled) {
-                    FileLog.e("received chunk but definitely cancelled offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
+                    if (BuildVars.DEBUG_PRIVATE_VERSION) {
+                        FileLog.d("received chunk but definitely cancelled offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
+                    }
                     return;
                 }
                 if (requestInfo.cancelling) {
-                    FileLog.e("received cancelled chunk after cancelRequests! offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
+                    if (BuildVars.DEBUG_PRIVATE_VERSION) {
+                        FileLog.d("received cancelled chunk after cancelRequests! offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
+                    }
                 }
                 if (!requestInfos.contains(requestInfo)) {
                     if (!cancelledRequestInfos.contains(requestInfo)) {
