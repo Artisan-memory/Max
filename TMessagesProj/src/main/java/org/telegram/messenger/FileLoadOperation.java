@@ -1631,11 +1631,11 @@ public class FileLoadOperation {
                                 FileLog.e(e);
                             }
                         }
-                        if (!renameResult && renameRetryCount == 3) {
+                        if (!renameResult && renameRetryCount >= 2) {
                             try {
                                 renameResult = AndroidUtilities.copyFile(cacheFileTempLocal, cacheFileFinal);
                                 if (renameResult) {
-                                    cacheFileFinal.delete();
+                                    cacheFileTempLocal.delete();
                                 }
                             } catch (Throwable e) {
                                 FileLog.e(e);
