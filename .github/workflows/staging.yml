@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - backport/stability-topic-cache
     paths-ignore:
       - '**.md'
       - '.github/**'
