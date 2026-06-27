@@ -55,6 +55,7 @@ import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_iv;
 import org.telegram.tgnet.tl.TL_stories;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Business.QuickRepliesController;
@@ -5608,6 +5609,8 @@ public class MessageObject {
             if (!TextUtils.isEmpty(restrictionReason)) {
                 messageText = restrictionReason;
                 isRestrictedMessage = true;
+            } else if (messageOwner.rich_message != null) {
+                messageText = formatRichMessage(messageOwner.rich_message, isOutOwner());
             } else if (!isMediaEmpty() && !isSponsored()) {
 //                messageText = getMediaTitle(getMedia(messageOwner)); // I'm afraid doing this
                 if (getMedia(messageOwner) instanceof TLRPC.TL_messageMediaGiveaway) {
@@ -5795,6 +5798,376 @@ public class MessageObject {
         taskText = Emoji.replaceEmoji(taskText, paint.getFontMetricsInt(), false);
         taskText = replaceAnimatedEmoji(taskText, text.entities, paint.getFontMetricsInt());
         return taskText;
+    }
+
+    public static CharSequence formatRichMessage(TL_iv.RichMessage richMessage, boolean out) {
+        return formatRichMessage(richMessage, out, false, 4096);
+    }
+
+    public static CharSequence formatRichMessage(TL_iv.RichMessage richMessage, boolean out, boolean photoViewer, int maxLength) {
+        SpannableStringBuilder builder = new SpannableStringBuilder();
+        if (richMessage != null && richMessage.blocks != null) {
+            for (int i = 0; i < richMessage.blocks.size(); i++) {
+                appendRichSeparator(builder);
+                formatRichBlock(richMessage.blocks.get(i), out, photoViewer, maxLength, builder, richMessage);
+                if (trimRichMessage(builder, maxLength)) {
+                    break;
+                }
+            }
+        }
+        return builder;
+    }
+
+    private static void appendRichSeparator(SpannableStringBuilder builder) {
+        int length = builder.length();
+        if (length == 0) {
+            return;
+        }
+        if (builder.charAt(length - 1) != '\n') {
+            builder.append('\n');
+        }
+        if (builder.length() < 2 || builder.charAt(builder.length() - 2) != '\n') {
+            builder.append('\n');
+        }
+    }
+
+    private static boolean trimRichMessage(SpannableStringBuilder builder, int maxLength) {
+        if (builder.length() <= maxLength) {
+            return false;
+        }
+        builder.delete(maxLength, builder.length());
+        builder.append("...");
+        return true;
+    }
+
+    public static CharSequence formatRichBlock(TL_iv.PageBlock block, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder, TL_iv.RichMessage richMessage) {
+        if (block == null) {
+            return builder;
+        }
+        if (block instanceof TL_iv.pageBlockTitle ||
+                block instanceof TL_iv.pageBlockHeader ||
+                block instanceof TL_iv.pageBlockSubheader ||
+                block instanceof TL_iv.pageBlockSubtitle ||
+                block instanceof TL_iv.pageBlockHeading1 ||
+                block instanceof TL_iv.pageBlockHeading2 ||
+                block instanceof TL_iv.pageBlockHeading3 ||
+                block instanceof TL_iv.pageBlockHeading4 ||
+                block instanceof TL_iv.pageBlockHeading5 ||
+                block instanceof TL_iv.pageBlockHeading6) {
+            formatRichText(block.text, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+        } else if (block instanceof TL_iv.pageBlockParagraph ||
+                block instanceof TL_iv.pageBlockFooter ||
+                block instanceof TL_iv.pageBlockKicker ||
+                block instanceof TL_iv.pageBlockThinking) {
+            formatRichText(block.text, out, photoViewer, maxLength, builder, 0);
+        } else if (block instanceof TL_iv.pageBlockBlockquote || block instanceof TL_iv.pageBlockPullquote) {
+            int start = builder.length();
+            TL_iv.RichText caption = block instanceof TL_iv.pageBlockBlockquote ? ((TL_iv.pageBlockBlockquote) block).caption : ((TL_iv.pageBlockPullquote) block).caption;
+            builder.append("> ");
+            formatRichText(block.text, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+            if (caption != null && !(caption instanceof TL_iv.textEmpty)) {
+                builder.append('\n').append("> ");
+                formatRichText(caption, out, photoViewer, maxLength, builder, 0);
+            }
+            setRichStyle(builder, start, builder.length(), TextStyleSpan.FLAG_STYLE_QUOTE);
+        } else if (block instanceof TL_iv.pageBlockBlockquoteBlocks) {
+            TL_iv.pageBlockBlockquoteBlocks quote = (TL_iv.pageBlockBlockquoteBlocks) block;
+            int start = builder.length();
+            for (int i = 0; i < quote.blocks.size(); i++) {
+                appendRichLineSeparator(builder);
+                builder.append("> ");
+                formatRichBlock(quote.blocks.get(i), out, photoViewer, maxLength, builder, richMessage);
+                if (trimRichMessage(builder, maxLength)) {
+                    break;
+                }
+            }
+            if (quote.caption != null && !(quote.caption instanceof TL_iv.textEmpty)) {
+                appendRichLineSeparator(builder);
+                builder.append("> ");
+                formatRichText(quote.caption, out, photoViewer, maxLength, builder, 0);
+            }
+            setRichStyle(builder, start, builder.length(), TextStyleSpan.FLAG_STYLE_QUOTE);
+        } else if (block instanceof TL_iv.pageBlockPreformatted) {
+            formatRichText(block.text, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_MONO);
+        } else if (block instanceof TL_iv.pageBlockMath) {
+            appendRichPlain(builder, ((TL_iv.pageBlockMath) block).source);
+        } else if (block instanceof TL_iv.pageBlockDetails) {
+            TL_iv.pageBlockDetails details = (TL_iv.pageBlockDetails) block;
+            formatRichText(details.title, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+            for (int i = 0; i < details.blocks.size(); i++) {
+                appendRichSeparator(builder);
+                formatRichBlock(details.blocks.get(i), out, photoViewer, maxLength, builder, richMessage);
+                if (trimRichMessage(builder, maxLength)) {
+                    break;
+                }
+            }
+        } else if (block instanceof TL_iv.pageBlockList) {
+            formatRichList((TL_iv.pageBlockList) block, out, photoViewer, maxLength, builder, richMessage);
+        } else if (block instanceof TL_iv.pageBlockOrderedList) {
+            formatRichOrderedList((TL_iv.pageBlockOrderedList) block, out, photoViewer, maxLength, builder, richMessage);
+        } else if (block instanceof TL_iv.pageBlockTable) {
+            formatRichTable((TL_iv.pageBlockTable) block, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockAuthorDate) {
+            formatRichText(((TL_iv.pageBlockAuthorDate) block).author, out, photoViewer, maxLength, builder, 0);
+        } else if (block instanceof TL_iv.pageBlockMap) {
+            builder.append(getString(R.string.Map));
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockCover) {
+            formatRichBlock(((TL_iv.pageBlockCover) block).cover, out, photoViewer, maxLength, builder, richMessage);
+        } else if (block instanceof TL_iv.pageBlockPhoto) {
+            builder.append(getString(R.string.AttachPhoto));
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockVideo) {
+            builder.append(getString(R.string.AttachVideo));
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockAudio) {
+            formatRichAudio((TL_iv.pageBlockAudio) block, out, photoViewer, maxLength, builder, richMessage);
+        } else if (block instanceof TL_iv.pageBlockCollage) {
+            builder.append(getString(R.string.AttachPhoto));
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockSlideshow) {
+            builder.append(getString(R.string.AttachPhoto));
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockEmbed) {
+            TL_iv.pageBlockEmbed embed = (TL_iv.pageBlockEmbed) block;
+            if (!TextUtils.isEmpty(embed.url)) {
+                appendRichPlain(builder, embed.url);
+            } else if (!TextUtils.isEmpty(embed.html)) {
+                appendRichPlain(builder, embed.html);
+            }
+            appendRichCaption(block.caption, out, photoViewer, maxLength, builder);
+        } else if (block instanceof TL_iv.pageBlockEmbedPost) {
+            TL_iv.pageBlockEmbedPost post = (TL_iv.pageBlockEmbedPost) block;
+            if (!TextUtils.isEmpty(post.author)) {
+                builder.append(post.author);
+            }
+            for (int i = 0; i < post.blocks.size(); i++) {
+                appendRichSeparator(builder);
+                formatRichBlock(post.blocks.get(i), out, photoViewer, maxLength, builder, richMessage);
+                if (trimRichMessage(builder, maxLength)) {
+                    break;
+                }
+            }
+        } else if (block instanceof TL_iv.pageBlockUnsupported) {
+            builder.append(getString(R.string.UnsupportedMedia2));
+        }
+        return builder;
+    }
+
+    private static void formatRichList(TL_iv.pageBlockList list, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder, TL_iv.RichMessage richMessage) {
+        for (int i = 0; i < list.items.size(); i++) {
+            TL_iv.PageListItem item = list.items.get(i);
+            appendRichLineSeparator(builder);
+            builder.append(getRichCheckboxPrefix(item.checkbox, item.checked, "- "));
+            if (item instanceof TL_iv.TL_pageListItemText) {
+                formatRichText(((TL_iv.TL_pageListItemText) item).text, out, photoViewer, maxLength, builder, 0);
+            } else if (item instanceof TL_iv.TL_pageListItemBlocks) {
+                TL_iv.TL_pageListItemBlocks blocksItem = (TL_iv.TL_pageListItemBlocks) item;
+                for (int j = 0; j < blocksItem.blocks.size(); j++) {
+                    if (j > 0) {
+                        appendRichLineSeparator(builder);
+                    }
+                    formatRichBlock(blocksItem.blocks.get(j), out, photoViewer, maxLength, builder, richMessage);
+                    if (trimRichMessage(builder, maxLength)) {
+                        return;
+                    }
+                }
+            }
+            if (trimRichMessage(builder, maxLength)) {
+                return;
+            }
+        }
+    }
+
+    private static void formatRichOrderedList(TL_iv.pageBlockOrderedList list, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder, TL_iv.RichMessage richMessage) {
+        for (int i = 0; i < list.items.size(); i++) {
+            TL_iv.PageListOrderedItem item = list.items.get(i);
+            appendRichLineSeparator(builder);
+            builder.append(getRichOrderedNumber(item, i)).append(". ");
+            if (item.checkbox) {
+                builder.append(getRichCheckboxPrefix(true, item.checked, ""));
+            }
+            if (item instanceof TL_iv.TL_pageListOrderedItemText) {
+                formatRichText(((TL_iv.TL_pageListOrderedItemText) item).text, out, photoViewer, maxLength, builder, 0);
+            } else if (item instanceof TL_iv.TL_pageListOrderedItemBlocks) {
+                TL_iv.TL_pageListOrderedItemBlocks blocksItem = (TL_iv.TL_pageListOrderedItemBlocks) item;
+                for (int j = 0; j < blocksItem.blocks.size(); j++) {
+                    if (j > 0) {
+                        appendRichLineSeparator(builder);
+                    }
+                    formatRichBlock(blocksItem.blocks.get(j), out, photoViewer, maxLength, builder, richMessage);
+                    if (trimRichMessage(builder, maxLength)) {
+                        return;
+                    }
+                }
+            }
+            if (trimRichMessage(builder, maxLength)) {
+                return;
+            }
+        }
+    }
+
+    private static void formatRichTable(TL_iv.pageBlockTable table, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder) {
+        if (table.title != null && !(table.title instanceof TL_iv.textEmpty)) {
+            formatRichText(table.title, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+        }
+        for (int i = 0; i < table.rows.size(); i++) {
+            TL_iv.pageTableRow row = table.rows.get(i);
+            appendRichLineSeparator(builder);
+            for (int j = 0; j < row.cells.size(); j++) {
+                if (j > 0) {
+                    builder.append(" | ");
+                }
+                TL_iv.pageTableCell cell = row.cells.get(j);
+                if (cell.text != null) {
+                    formatRichText(cell.text, out, photoViewer, maxLength, builder, cell.header ? TextStyleSpan.FLAG_STYLE_BOLD : 0);
+                }
+            }
+            if (trimRichMessage(builder, maxLength)) {
+                return;
+            }
+        }
+    }
+
+    private static void formatRichAudio(TL_iv.pageBlockAudio audio, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder, TL_iv.RichMessage richMessage) {
+        String title = null;
+        if (richMessage != null && richMessage.documents != null) {
+            for (int i = 0; i < richMessage.documents.size(); i++) {
+                TLRPC.Document document = richMessage.documents.get(i);
+                if (document == null || document.id != audio.audio_id || document.attributes == null) {
+                    continue;
+                }
+                for (int j = 0; j < document.attributes.size(); j++) {
+                    TLRPC.DocumentAttribute attribute = document.attributes.get(j);
+                    if (attribute instanceof TLRPC.TL_documentAttributeAudio && !TextUtils.isEmpty(attribute.title)) {
+                        title = !TextUtils.isEmpty(attribute.performer) ? attribute.performer + " - " + attribute.title : attribute.title;
+                        break;
+                    } else if (attribute instanceof TLRPC.TL_documentAttributeFilename && !TextUtils.isEmpty(attribute.file_name)) {
+                        title = attribute.file_name;
+                    }
+                }
+                if (!TextUtils.isEmpty(title)) {
+                    break;
+                }
+            }
+        }
+        builder.append(TextUtils.isEmpty(title) ? getString(R.string.AttachAudio) : title);
+        appendRichCaption(audio.caption, out, photoViewer, maxLength, builder);
+    }
+
+    private static String getRichCheckboxPrefix(boolean checkbox, boolean checked, String fallback) {
+        if (!checkbox) {
+            return fallback;
+        }
+        return checked ? "[x] " : "[ ] ";
+    }
+
+    private static String getRichOrderedNumber(TL_iv.PageListOrderedItem item, int index) {
+        if (!TextUtils.isEmpty(item.num)) {
+            return item.num;
+        }
+        int value = item.value > 0 ? item.value : index + 1;
+        return String.valueOf(value);
+    }
+
+    private static void appendRichCaption(TL_iv.PageCaption caption, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder) {
+        if (caption == null || caption.text == null || caption.text instanceof TL_iv.textEmpty) {
+            return;
+        }
+        appendRichLineSeparator(builder);
+        formatRichText(caption.text, out, photoViewer, maxLength, builder, 0);
+    }
+
+    private static void appendRichLineSeparator(SpannableStringBuilder builder) {
+        if (builder.length() > 0 && builder.charAt(builder.length() - 1) != '\n') {
+            builder.append('\n');
+        }
+    }
+
+    private static void appendRichPlain(SpannableStringBuilder builder, String text) {
+        if (!TextUtils.isEmpty(text)) {
+            builder.append(text);
+        }
+    }
+
+    public static CharSequence formatRichText(TL_iv.RichText text, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder, int flags) {
+        if (text == null || trimRichMessage(builder, maxLength)) {
+            return builder;
+        }
+        int start = builder.length();
+        if (text instanceof TL_iv.textPlain) {
+            appendRichPlain(builder, ((TL_iv.textPlain) text).text);
+        } else if (text instanceof TL_iv.textBold) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_BOLD);
+        } else if (text instanceof TL_iv.textItalic) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_ITALIC);
+        } else if (text instanceof TL_iv.textUnderline) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_UNDERLINE);
+        } else if (text instanceof TL_iv.textStrike) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_STRIKE);
+        } else if (text instanceof TL_iv.textFixed) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_MONO);
+        } else if (text instanceof TL_iv.textSpoiler) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags | TextStyleSpan.FLAG_STYLE_SPOILER);
+        } else if (text instanceof TL_iv.textSubscript || text instanceof TL_iv.textSuperscript || text instanceof TL_iv.textMarked ||
+                text instanceof TL_iv.textAnchor || text instanceof TL_iv.textMention || text instanceof TL_iv.textHashtag ||
+                text instanceof TL_iv.textBotCommand || text instanceof TL_iv.textCashtag || text instanceof TL_iv.textBankCard ||
+                text instanceof TL_iv.textMentionName || text instanceof TL_iv.textDate || text instanceof TL_iv.textAutoUrl ||
+                text instanceof TL_iv.textAutoEmail || text instanceof TL_iv.textAutoPhone) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags);
+        } else if (text instanceof TL_iv.textUrl) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags);
+            setRichUrl(builder, start, builder.length(), text.url, flags, false);
+        } else if (text instanceof TL_iv.textEmail) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags);
+            setRichUrl(builder, start, builder.length(), "mailto:" + text.email, flags, true);
+        } else if (text instanceof TL_iv.textPhone) {
+            formatRichText(text.text, out, photoViewer, maxLength, builder, flags);
+            String phone = ((TL_iv.textPhone) text).phone;
+            String tel = PhoneFormat.stripExceptNumbers(phone);
+            if (phone != null && phone.startsWith("+")) {
+                tel = "+" + tel;
+            }
+            setRichUrl(builder, start, builder.length(), "tel:" + tel, flags, true);
+        } else if (text instanceof TL_iv.textConcat) {
+            TL_iv.textConcat concat = (TL_iv.textConcat) text;
+            for (int i = 0; i < concat.texts.size(); i++) {
+                formatRichText(concat.texts.get(i), out, photoViewer, maxLength, builder, flags);
+                if (trimRichMessage(builder, maxLength)) {
+                    return builder;
+                }
+            }
+        } else if (text instanceof TL_iv.textMath) {
+            appendRichPlain(builder, ((TL_iv.textMath) text).source);
+        } else if (text instanceof TL_iv.textCustomEmoji) {
+            appendRichPlain(builder, ((TL_iv.textCustomEmoji) text).alt);
+        }
+        if (builder.length() > start && flags != 0) {
+            setRichStyle(builder, start, builder.length(), flags);
+        }
+        return builder;
+    }
+
+    private static void setRichUrl(SpannableStringBuilder builder, int start, int end, String url, int flags, boolean replacement) {
+        if (start >= end || TextUtils.isEmpty(url)) {
+            return;
+        }
+        TextStyleSpan.TextStyleRun run = new TextStyleSpan.TextStyleRun();
+        run.flags = flags;
+        if (replacement) {
+            builder.setSpan(new URLSpanReplacement(url, run), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else {
+            builder.setSpan(new URLSpanBrowser(url, run), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private static void setRichStyle(SpannableStringBuilder builder, int start, int end, int flags) {
+        if (start >= end || flags == 0) {
+            return;
+        }
+        TextStyleSpan.TextStyleRun run = new TextStyleSpan.TextStyleRun();
+        run.flags = flags;
+        builder.setSpan(new TextStyleSpan(run), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     public static TLRPC.TL_textWithEntities removeLinks(TLRPC.TL_textWithEntities text) {
