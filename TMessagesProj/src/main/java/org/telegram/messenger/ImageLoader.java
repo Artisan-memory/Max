@@ -860,6 +860,7 @@ public class ImageLoader {
 
         private CacheImage cacheImage;
         private boolean isCancelled;
+        private long decodeStartedAt;
 
         public CacheOutTask(CacheImage image) {
             cacheImage = image;
@@ -874,6 +875,7 @@ public class ImageLoader {
                     return;
                 }
             }
+            decodeStartedAt = SystemClock.elapsedRealtime();
 
             if (cacheImage.imageLocation.photoSize instanceof TLRPC.TL_photoStrippedSize) {
                 TLRPC.TL_photoStrippedSize photoSize = (TLRPC.TL_photoStrippedSize) cacheImage.imageLocation.photoSize;
@@ -1694,6 +1696,28 @@ public class ImageLoader {
         }
 
         private void onPostExecute(final Drawable drawable) {
+            if (BuildVars.LOGS_ENABLED) {
+                long elapsed = decodeStartedAt == 0 ? 0 : SystemClock.elapsedRealtime() - decodeStartedAt;
+                if (elapsed > 24 || cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE) {
+                    int width = 0;
+                    int height = 0;
+                    if (drawable instanceof BitmapDrawable) {
+                        Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                        if (bitmap != null) {
+                            width = bitmap.getWidth();
+                            height = bitmap.getHeight();
+                        }
+                    }
+                    FileLog.d("NagramDiag image.decode time=" + elapsed +
+                            " key=" + cacheImage.key +
+                            " type=" + cacheImage.type +
+                            " imageType=" + cacheImage.imageType +
+                            " filter=" + cacheImage.filter +
+                            " file=" + cacheImage.finalFilePath +
+                            " size=" + width + "x" + height +
+                            " parent=" + getImageParentDiagnosticInfo(cacheImage.parentObject));
+                }
+            }
             AndroidUtilities.runOnUIThread(() -> {
                 // save deleted media from cache
                 if (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() && cacheImage.finalFilePath != null && cacheImage.parentObject instanceof MessageObject messageObject) {
@@ -3015,6 +3039,42 @@ public class ImageLoader {
         imageLoadQueue.postRunnable(() -> forceLoadingImages.remove(key));
     }
 
+    private static String getImageParentDiagnosticInfo(Object parentObject) {
+        if (parentObject instanceof MessageObject) {
+            MessageObject messageObject = (MessageObject) parentObject;
+            return "message dialog=" + messageObject.getDialogId() + " id=" + messageObject.getId() + " type=" + messageObject.type;
+        } else if (parentObject instanceof TLRPC.Message) {
+            TLRPC.Message message = (TLRPC.Message) parentObject;
+            return "tlMessage dialog=" + message.dialog_id + " id=" + message.id;
+        } else if (parentObject instanceof TLRPC.User) {
+            return "user " + ((TLRPC.User) parentObject).id;
+        } else if (parentObject instanceof TLRPC.Chat) {
+            return "chat " + ((TLRPC.Chat) parentObject).id;
+        } else if (parentObject != null) {
+            return parentObject.getClass().getSimpleName();
+        }
+        return "null";
+    }
+
+    private static String getImageLocationDiagnosticInfo(ImageLocation imageLocation) {
+        if (imageLocation == null) {
+            return "null";
+        } else if (imageLocation.document != null) {
+            return "document id=" + imageLocation.document.id + " dc=" + imageLocation.document.dc_id + " mime=" + imageLocation.document.mime_type;
+        } else if (imageLocation.photo != null) {
+            return "photo id=" + imageLocation.photo.id + " dc=" + imageLocation.dc_id + " thumb=" + imageLocation.thumbSize;
+        } else if (imageLocation.photoPeer != null) {
+            return "peerPhoto did=" + DialogObject.getPeerDialogId(imageLocation.photoPeer) + " photo=" + imageLocation.photoId + " type=" + imageLocation.photoPeerType;
+        } else if (imageLocation.webFile != null) {
+            return "webFile size=" + imageLocation.webFile.size;
+        } else if (imageLocation.path != null) {
+            return "path " + imageLocation.path;
+        } else if (imageLocation.location != null) {
+            return "fileLocation dc=" + imageLocation.location.dc_id + " volume=" + imageLocation.location.volume_id + " local=" + imageLocation.location.local_id;
+        }
+        return imageLocation.getClass().getSimpleName();
+    }
+
     private void createLoadOperationForImageReceiver(final ImageReceiver imageReceiver, final String key, final String url, final String ext, final ImageLocation imageLocation, final String filter, final long size, final int cacheType, final int type, final int thumb, int guid) {
         if (imageReceiver == null || url == null || key == null || imageLocation == null) {
             return;
@@ -3288,6 +3348,20 @@ public class ImageLoader {
                     img.parentObject = parentObject;
                     if (imageLocation.imageType != 0) {
                         img.imageType = imageLocation.imageType;
+                    }
+                    if (BuildVars.LOGS_ENABLED) {
+                        FileLog.d("NagramDiag image.request key=" + key +
+                                " url=" + url +
+                                " type=" + type +
+                                " thumb=" + thumb +
+                                " cacheType=" + cacheType +
+                                " filter=" + filter +
+                                " imageType=" + img.imageType +
+                                " onlyCache=" + onlyCache +
+                                " cacheExists=" + (cacheFileExists || cacheFile.exists()) +
+                                " priority=" + img.priority +
+                                " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
+                                " parent=" + getImageParentDiagnosticInfo(parentObject));
                     }
                     if (cacheType == 2) {
                         img.encryptionKeyPath = new File(FileLoader.getInternalCacheDir(), url + ".enc.key");

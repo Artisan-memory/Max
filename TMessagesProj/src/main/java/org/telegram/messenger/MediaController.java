@@ -2413,9 +2413,31 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         cleanupPlayer(notify, stopService, false, false);
     }
 
+    private String getPlayerDiagnosticInfo(MessageObject messageObject) {
+        if (messageObject == null) {
+            return "message=null";
+        }
+        return "dialog=" + messageObject.getDialogId() +
+                " id=" + messageObject.getId() +
+                " type=" + messageObject.type +
+                " video=" + messageObject.isVideo() +
+                " round=" + messageObject.isRoundVideo() +
+                " voice=" + messageObject.isVoice();
+    }
+
     public void cleanupPlayer(boolean notify, boolean stopService, boolean byVoiceEnd, boolean transferPlayerToPhotoViewer) {
         if (stopService && restoreMusicPlaylistState()) {
             return;
+        }
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NagramDiag video.cleanup begin notify=" + notify +
+                    " stopService=" + stopService +
+                    " byVoiceEnd=" + byVoiceEnd +
+                    " transferToPhotoViewer=" + transferPlayerToPhotoViewer +
+                    " hasAudio=" + (audioPlayer != null) +
+                    " hasVideo=" + (videoPlayer != null) +
+                    " pip=" + (pipRoundVideoView != null) +
+                    " " + getPlayerDiagnosticInfo(playingMessageObject));
         }
 
         if (audioPlayer != null) {
@@ -3171,6 +3193,15 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     public void setTextureView(TextureView textureView, AspectRatioFrameLayout aspectRatioFrameLayout, FrameLayout container, boolean set, Runnable afterPip) {
         if (textureView == null) {
             return;
+        }
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NagramDiag video.texture set=" + set +
+                    " same=" + (textureView == currentTextureView) +
+                    " hasPlayer=" + (videoPlayer != null) +
+                    " pip=" + (pipRoundVideoView != null) +
+                    " afterPip=" + (afterPip != null) +
+                    " view=" + textureView +
+                    " " + getPlayerDiagnosticInfo(playingMessageObject));
         }
         if (!set && currentTextureView == textureView) {
             pipSwitchingState = 1;

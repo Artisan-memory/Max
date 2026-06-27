@@ -10491,6 +10491,17 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         preparePlayer(videoUrises, uri, playWhenReady, preview, null);
     }
 
+    private String getPhotoViewerDiagnosticInfo() {
+        if (currentMessageObject == null) {
+            return "message=null";
+        }
+        return "dialog=" + currentMessageObject.getDialogId() +
+                " id=" + currentMessageObject.getId() +
+                " type=" + currentMessageObject.type +
+                " video=" + currentMessageObject.isVideo() +
+                " round=" + currentMessageObject.isRoundVideo();
+    }
+
     private void preparePlayer(ArrayList<VideoPlayer.Quality> videoUrises, Uri uri, boolean playWhenReady, boolean preview, MediaController.SavedFilterState savedFilterState) {
         if (!preview) {
             currentPlayingVideoFile = uri;
@@ -10498,6 +10509,15 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         }
         if (parentActivity == null) {
             return;
+        }
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NagramDiag photoviewer.preparePlayer preview=" + preview +
+                    " playWhenReady=" + playWhenReady +
+                    " injected=" + (injectingVideoPlayer != null) +
+                    " hasSurface=" + (injectingVideoPlayerSurface != null) +
+                    " uri=" + uri +
+                    " qualities=" + (videoUrises != null ? videoUrises.size() : 0) +
+                    " " + getPhotoViewerDiagnosticInfo());
         }
         streamingAlertShown = false;
         startedPlayTime = SystemClock.elapsedRealtime();
@@ -11089,6 +11109,14 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     }
 
     private void releasePlayer(boolean onClose) {
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NagramDiag photoviewer.releasePlayer onClose=" + onClose +
+                    " hasPlayer=" + (videoPlayer != null) +
+                    " playerInjected=" + playerInjected +
+                    " usedSurfaceView=" + usedSurfaceView +
+                    " pipSource=" + (pipSource != null) +
+                    " " + getPhotoViewerDiagnosticInfo());
+        }
         usedSurfaceView = false;
         if (pipSource != null) {
             pipSource.destroy();
