@@ -1690,6 +1690,12 @@ public class FileLoadOperation {
                                 FileLog.e(e);
                             }
                         }
+                        if (!renameResult && cacheFileFinal != null && cacheFileFinal.exists() && (cacheFileTempLocal == null || !cacheFileTempLocal.exists())) {
+                            renameResult = true;
+                            if (BuildVars.LOGS_ENABLED) {
+                                FileLog.d("NagramDiag file.rename_race finalExists=true tempExists=false " + getDiagnosticInfo());
+                            }
+                        }
                         if (!renameResult) {
                             if (BuildVars.LOGS_ENABLED) {
                                 FileLog.e("unable to rename temp = " + cacheFileTempLocal + " to final = " + cacheFileFinal + " retry = " + renameRetryCount);
@@ -2157,7 +2163,7 @@ public class FileLoadOperation {
                     }
                     FileLog.e("NagramDiag file.request_error error=" + error.text + " offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestToken + " " + getDiagnosticInfo());
                 }
-                onFail(false, 0);
+                onFail(false, error.text.contains("FILE_ID_INVALID") && location instanceof TLRPC.TL_inputPeerPhotoFileLocation ? 3 : 0);
             }
         }
         return false;

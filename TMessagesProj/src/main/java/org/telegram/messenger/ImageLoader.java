@@ -113,6 +113,7 @@ public class ImageLoader {
     public static final int CACHE_TYPE_ENCRYPTED = 2;
 
     private static final boolean DEBUG_MODE = false;
+    private static final long INVALID_FILE_LOCATION_TTL = 5 * 60 * 1000L;
 
     private HashMap<String, Integer> bitmapUseCounts = new HashMap<>();
     private LruCache<BitmapDrawable> smallImagesMemCache;
@@ -134,6 +135,7 @@ public class ImageLoader {
     private DispatchQueue thumbGeneratingQueue = new DispatchQueue("thumbGeneratingQueue");
     private DispatchQueue imageLoadQueue = new DispatchQueue("imageLoadQueue");
     private HashMap<String, String> replacedBitmaps = new HashMap<>();
+    private HashMap<String, Long> invalidFileLocations = new HashMap<>();
     private ConcurrentHashMap<String, long[]> fileProgresses = new ConcurrentHashMap<>();
     private HashMap<String, ThumbGenerateTask> thumbGenerateTasks = new HashMap<>();
     private HashMap<String, Integer> forceLoadingImages = new HashMap<>();
@@ -3358,6 +3360,24 @@ public class ImageLoader {
                         img.imageType = imageLocation.imageType;
                     }
                     boolean cacheFileOnDisk = cacheFile != null && cacheFile.exists();
+                    if (!cacheFileExists && !cacheFileOnDisk) {
+                        Long invalidUntil = invalidFileLocations.get(url);
+                        if (invalidUntil != null) {
+                            long now = SystemClock.elapsedRealtime();
+                            if (invalidUntil > now) {
+                                if (BuildVars.LOGS_ENABLED) {
+                                    FileLog.d("NagramDiag image.skip_invalid key=" + key +
+                                            " url=" + url +
+                                            " remaining=" + (invalidUntil - now) +
+                                            " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
+                                            " parent=" + getImageParentDiagnosticInfo(parentObject));
+                                }
+                                return;
+                            } else {
+                                invalidFileLocations.remove(url);
+                            }
+                        }
+                    }
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.d("NagramDiag image.request key=" + key +
                                 " url=" + url +
@@ -3854,6 +3874,7 @@ public class ImageLoader {
 
     private void fileDidLoaded(final String location, final File finalFile, final int mediaType) {
         imageLoadQueue.postRunnable(() -> {
+            invalidFileLocations.remove(location);
             ThumbGenerateInfo info = waitingForQualityThumb.get(location);
             if (info != null && info.parentDocument != null) {
                 generateThumb(mediaType, finalFile, info);
@@ -3912,6 +3933,12 @@ public class ImageLoader {
             return;
         }
         imageLoadQueue.postRunnable(() -> {
+            if (canceled == 3) {
+                invalidFileLocations.put(location, SystemClock.elapsedRealtime() + INVALID_FILE_LOCATION_TTL);
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.d("NagramDiag image.mark_invalid url=" + location + " ttl=" + INVALID_FILE_LOCATION_TTL);
+                }
+            }
             CacheImage img = imageLoadingByUrl.get(location);
             if (img != null) {
                 img.setImageAndClear(null, null);

@@ -2,6 +2,7 @@ package org.telegram.messenger;
 
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
+import android.os.SystemClock;
 import android.text.TextPaint;
 import android.text.TextUtils;
 
@@ -50,6 +51,7 @@ public class TopicsController extends BaseController {
     LongSparseIntArray topicsIsLoading = new LongSparseIntArray();
     LongSparseIntArray endIsReached = new LongSparseIntArray();
     LongSparseArray<TLRPC.TL_forumTopic> topicsByTopMsgId = new LongSparseArray<>();
+    LongSparseArray<Long> emptyTitleReloadRequests = new LongSparseArray<>();
 
     LongSparseIntArray currentOpenTopicsCounter = new LongSparseIntArray();
     LongSparseIntArray openedTopicsByChatId = new LongSparseIntArray();
@@ -105,12 +107,16 @@ public class TopicsController extends BaseController {
             TopicsLoadOffset loadOffsets = getLoadOffset(chatId);
             if (loadType == LOAD_TYPE_PRELOAD || loadType == LOAD_TYPE_HASH_CHECK || loadType != LOAD_TYPE_LOAD_NEXT && loadOffsets.lastTopicId == 0) {
                 final ArrayList<TLRPC.TL_forumTopic> expected = getTopics(chatId);
+                boolean forceFreshTopicTitles = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && hasMissingTopicTitles(expected);
                 getForumTopics.limit = MAX_PRELOAD_COUNT;
                 getForumTopics.offset_id = Integer.MAX_VALUE;
                 getForumTopics.offset_date = 0;
                 getForumTopics.offset_peer = new TLRPC.TL_inputPeerEmpty();
-                getForumTopics.hash = expected != null ?
+                getForumTopics.hash = !forceFreshTopicTitles && expected != null ?
                     calculateHashSavedDialogs(expected, 0, Math.min(expected.size(), MAX_PRELOAD_COUNT)): 0;
+                if (BuildVars.LOGS_ENABLED && forceFreshTopicTitles) {
+                    FileLog.d("NagramDiag topic.force_fresh_titles chat=" + chatId + " expected=" + (expected == null ? 0 : expected.size()));
+                }
             } else if (loadType == LOAD_TYPE_LOAD_NEXT) {
                 getForumTopics.limit = 100;
                 getForumTopics.offset_date = loadOffsets.lastMessageDate;
@@ -255,6 +261,9 @@ public class TopicsController extends BaseController {
 
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("processTopics=" + "new_topics_size=" + (newTopics == null ? 0 : newTopics.size()) + " fromCache=" + fromCache + " load_type=" + loadType + " totalCount=" + totalCount);
+            if (NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && hasMissingTopicTitles(newTopics)) {
+                FileLog.d("NagramDiag topic.missing_titles chat=" + chatId + " fromCache=" + fromCache + " loadType=" + loadType + " count=" + (newTopics == null ? 0 : newTopics.size()));
+            }
         }
         ArrayList<TLRPC.TL_forumTopic> topics = topicsByChatId.get(chatId);
         ArrayList<TLRPC.TL_forumTopic> topicsToReload = null;
@@ -620,7 +629,7 @@ public class TopicsController extends BaseController {
     }
 
     public String getTopicName(TLRPC.Chat chat, MessageObject message) {
-        if (message.messageOwner.reply_to == null) {
+        if (chat == null || message == null || message.messageOwner == null || message.messageOwner.reply_to == null) {
             return null;
         }
         int topicId = message.messageOwner.reply_to.reply_to_top_id;
@@ -630,6 +639,10 @@ public class TopicsController extends BaseController {
         if (topicId != 0) {
             TLRPC.TL_forumTopic topic = findTopic(chat.id, topicId);
             if (topic != null) {
+                if (TextUtils.isEmpty(topic.title) && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
+                    requestFreshTitleForPreview(chat.id, topicId, topic, "name");
+                    return null;
+                }
                 return topic.title;
             }
         }
@@ -641,7 +654,7 @@ public class TopicsController extends BaseController {
     }
 
     public CharSequence getTopicIconName(TLRPC.Chat chat, MessageObject message, TextPaint paint, Drawable[] drawableToSet) {
-        if (message.messageOwner.reply_to == null) {
+        if (chat == null || message == null || message.messageOwner == null || message.messageOwner.reply_to == null) {
             return null;
         }
         int topicId = message.messageOwner.reply_to.reply_to_top_id;
@@ -651,10 +664,41 @@ public class TopicsController extends BaseController {
         if (topicId != 0) {
             TLRPC.TL_forumTopic topic = findTopic(chat.id, topicId);
             if (topic != null) {
+                if (TextUtils.isEmpty(topic.title) && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
+                    requestFreshTitleForPreview(chat.id, topicId, topic, "iconName");
+                    return null;
+                }
                 return ForumUtilities.getTopicSpannedName(topic, paint, drawableToSet, false);
             }
         }
         return null;
+    }
+
+    private boolean hasMissingTopicTitles(ArrayList<TLRPC.TL_forumTopic> topics) {
+        if (topics == null) {
+            return false;
+        }
+        for (int i = 0; i < topics.size(); i++) {
+            TLRPC.TL_forumTopic topic = topics.get(i);
+            if (topic != null && !(topic instanceof TLRPC.TL_forumTopicDeleted) && TextUtils.isEmpty(topic.title)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void requestFreshTitleForPreview(long chatId, int topicId, TLRPC.TL_forumTopic topic, String source) {
+        long key = messageHash(topicId, chatId);
+        long now = SystemClock.elapsedRealtime();
+        Long lastRequest = emptyTitleReloadRequests.get(key);
+        if (lastRequest != null && now - lastRequest < 30_000L) {
+            return;
+        }
+        emptyTitleReloadRequests.put(key, now);
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("NagramDiag topic.empty_preview_title chat=" + chatId + " topic=" + topicId + " source=" + source + " icon=" + (topic != null ? topic.icon_emoji_id : 0));
+        }
+        loadTopics(chatId, false, LOAD_TYPE_PRELOAD);
     }
 
     private final static int[] countsTmp = new int[4];
