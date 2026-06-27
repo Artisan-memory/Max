@@ -11409,6 +11409,7 @@ public class TLRPC {
         public int stargifts_count;
         public long send_paid_messages_stars;
         public ProfileTab main_tab;
+        public long guard_bot_id;
         public long inviterId; //custom
         public int invitesCount; //custom
 
@@ -11420,6 +11421,9 @@ public class TLRPC {
                     break;
                 case TL_channelFull.constructor:
                     result = new TL_channelFull();
+                    break;
+                case TL_channelFull_layer225.constructor:
+                    result = new TL_channelFull_layer225();
                     break;
                 case TL_channelFull_layer212.constructor:
                     result = new TL_channelFull_layer212();
@@ -13535,7 +13539,7 @@ public class TLRPC {
     }
 
     public static class TL_channelFull extends ChatFull {
-        public static final int constructor = 0xe4e0b29d;
+        public static final int constructor = 0xa04e8d3a;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             flags = stream.readInt32(exception);
@@ -13677,6 +13681,9 @@ public class TLRPC {
             }
             if (hasFlag(flags2, FLAG_22)) {
                 main_tab = ProfileTab.TLdeserialize(stream, stream.readInt32(exception), exception);
+            }
+            if (hasFlag(flags2, FLAG_23)) {
+                guard_bot_id = stream.readInt64(exception);
             }
         }
 
@@ -13824,7 +13831,14 @@ public class TLRPC {
                 // Vector.serialize(stream, tabs_order);
                 main_tab.serializeToStream(stream);
             }
+            if (hasFlag(flags2, FLAG_23)) {
+                stream.writeInt64(guard_bot_id);
+            }
         }
+    }
+
+    public static class TL_channelFull_layer225 extends TL_channelFull {
+        public static final int constructor = 0xe4e0b29d;
     }
 
     public static class TL_channelFull_layer212 extends TL_channelFull {

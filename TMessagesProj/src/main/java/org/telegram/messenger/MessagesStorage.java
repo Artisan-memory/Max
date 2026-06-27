@@ -1571,6 +1571,9 @@ public class MessagesStorage extends BaseController {
             HashMap<Integer, Integer> pinnedValues = new HashMap<>();
             for (int i = 0; i < topics.size(); i++) {
                 TLRPC.TL_forumTopic topic = topics.get(i);
+                if (topic == null) {
+                    continue;
+                }
                 SQLiteCursor cursor = database.queryFinalized("SELECT did, pinned FROM topics WHERE did = " + dialogId + " AND topic_id = " + topic.id);
                 boolean exist = cursor.next();
                 if (exist) {
@@ -1593,37 +1596,45 @@ public class MessagesStorage extends BaseController {
             boolean disableTopicTitleCache = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool();
             for (int i = 0; i < topics.size(); i++) {
                 TLRPC.TL_forumTopic topic = topics.get(i);
+                if (!prepareTopicForStorage(dialogId, topic)) {
+                    continue;
+                }
                 long topicId = isMonoForum(dialogId) ? DialogObject.getPeerDialogId(topic.from_id): topic.id;
                 boolean exist = existingTopics.contains(i);
                 String topicTitle = null;
                 String topicStartActionTitle = null;
-                if (disableTopicTitleCache) {
-                    topicTitle = topic.title;
-                    topic.title = "";
-                    if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
-                        topicStartActionTitle = topic.topicStartMessage.action.title;
-                        topic.topicStartMessage.action.title = "";
+                NativeByteBuffer data = null;
+                NativeByteBuffer messageData = null;
+                try {
+                    if (disableTopicTitleCache) {
+                        topicTitle = topic.title;
+                        topic.title = "";
+                        if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
+                            topicStartActionTitle = topic.topicStartMessage.action.title;
+                            topic.topicStartMessage.action.title = "";
+                        }
+                    }
+
+                    state.requery();
+                    state.bindLong(1, dialogId);
+                    state.bindLong(2, topicId);
+                    data = new NativeByteBuffer(topic.getObjectSize());
+                    topic.serializeToStream(data);
+
+                    state.bindByteBuffer(3, data);
+                    state.bindInteger(4, topic.top_message);
+
+                    messageData = new NativeByteBuffer(topic.topicStartMessage.getObjectSize());
+                    topic.topicStartMessage.serializeToStream(messageData);
+                    state.bindByteBuffer(5, messageData);
+                } finally {
+                    if (disableTopicTitleCache) {
+                        topic.title = topicTitle;
+                        if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
+                            topic.topicStartMessage.action.title = topicStartActionTitle;
+                        }
                     }
                 }
-
-                state.requery();
-                state.bindLong(1, dialogId);
-                state.bindLong(2, topicId);
-                NativeByteBuffer data = new NativeByteBuffer(topic.getObjectSize());
-                topic.serializeToStream(data);
-
-                state.bindByteBuffer(3, data);
-                state.bindInteger(4, topic.top_message);
-
-                NativeByteBuffer messageData = new NativeByteBuffer(topic.topicStartMessage.getObjectSize());
-                topic.topicStartMessage.serializeToStream(messageData);
-                if (disableTopicTitleCache) {
-                    topic.title = topicTitle;
-                    if (topic.topicStartMessage != null && topic.topicStartMessage.action != null) {
-                        topic.topicStartMessage.action.title = topicStartActionTitle;
-                    }
-                }
-                state.bindByteBuffer(5, messageData);
                 state.bindInteger(6, topic.unread_count);
                 state.bindInteger(7, topic.read_inbox_max_id);
                 state.bindInteger(8, topic.unread_mentions_count);
@@ -1640,8 +1651,12 @@ public class MessagesStorage extends BaseController {
                 state.bindInteger(15, topic.nopaid_messages_exception ? 1 : 0);
 
                 state.step();
-                messageData.reuse();
-                data.reuse();
+                if (messageData != null) {
+                    messageData.reuse();
+                }
+                if (data != null) {
+                    data.reuse();
+                }
 
                 if (exist) {
                     closeHolesInTable("messages_holes_topics", dialogId, topic.top_message, topic.top_message, topicId);
@@ -1670,6 +1685,44 @@ public class MessagesStorage extends BaseController {
             }
             database.commitTransaction();
         }
+    }
+
+    private boolean prepareTopicForStorage(long dialogId, TLRPC.TL_forumTopic topic) {
+        if (topic == null || topic.topicStartMessage == null) {
+            return false;
+        }
+        if (topic.title == null) {
+            topic.title = "";
+        }
+        if (topic.peer == null) {
+            topic.peer = topic.from_id != null ? topic.from_id : createStoragePeer(dialogId);
+        }
+        if (topic.from_id == null) {
+            topic.from_id = topic.peer != null ? topic.peer : createStoragePeer(dialogId);
+        }
+        if (topic.peer == null || topic.from_id == null) {
+            return false;
+        }
+        if (topic.notify_settings == null) {
+            topic.notify_settings = new TLRPC.TL_peerNotifySettings();
+        }
+        if (topic.draft == null) {
+            topic.flags &= ~TLObject.FLAG_4;
+        }
+        return true;
+    }
+
+    private TLRPC.Peer createStoragePeer(long dialogId) {
+        if (DialogObject.isUserDialog(dialogId)) {
+            TLRPC.TL_peerUser peer = new TLRPC.TL_peerUser();
+            peer.user_id = dialogId;
+            return peer;
+        } else if (DialogObject.isChatDialog(dialogId)) {
+            TLRPC.TL_peerChannel peer = new TLRPC.TL_peerChannel();
+            peer.channel_id = -dialogId;
+            return peer;
+        }
+        return null;
     }
 
     public void updateTopicData(long dialogId, TLRPC.TL_forumTopic fromTopic, int flags) {
