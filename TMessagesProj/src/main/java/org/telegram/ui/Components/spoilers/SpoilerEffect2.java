@@ -129,7 +129,15 @@ public class SpoilerEffect2 {
                 return false;
             }
         };
-        rootView.addView(container);
+        if (rootView.isInLayout()) {
+            rootView.post(() -> {
+                if (container.getParent() == null) {
+                    rootView.addView(container);
+                }
+            });
+        } else {
+            rootView.addView(container);
+        }
         return container;
     }
 
@@ -297,7 +305,15 @@ public class SpoilerEffect2 {
             }
         });
         textureView.setOpaque(false);
-        textureViewContainer.addView(textureView);
+        if (textureViewContainer.isInLayout()) {
+            textureViewContainer.post(() -> {
+                if (textureView.getParent() == null) {
+                    textureViewContainer.addView(textureView);
+                }
+            });
+        } else {
+            textureViewContainer.addView(textureView);
+        }
     }
 
     private void resize(int w, int h) {
@@ -306,7 +322,11 @@ public class SpoilerEffect2 {
         }
         this.width = w;
         this.height = h;
-        textureView.requestLayout();
+        if (textureView.isInLayout()) {
+            textureView.post(textureView::requestLayout);
+        } else {
+            textureView.requestLayout();
+        }
     }
 
     private class SpoilerThread extends Thread {
@@ -464,7 +484,7 @@ public class SpoilerEffect2 {
                 running = false;
                 return;
             }
-            GLES31.glShaderSource(vertexShader, AndroidUtilities.readRes(R.raw.spoiler_vertex) + "\n// " + Math.random());
+            GLES31.glShaderSource(vertexShader, AndroidUtilities.readRes(R.raw.spoiler_vertex));
             GLES31.glCompileShader(vertexShader);
             int[] status = new int[1];
             GLES31.glGetShaderiv(vertexShader, GLES31.GL_COMPILE_STATUS, status, 0);
@@ -474,7 +494,7 @@ public class SpoilerEffect2 {
                 running = false;
                 return;
             }
-            GLES31.glShaderSource(fragmentShader, AndroidUtilities.readRes(R.raw.spoiler_fragment) + "\n// " + Math.random());
+            GLES31.glShaderSource(fragmentShader, AndroidUtilities.readRes(R.raw.spoiler_fragment));
             GLES31.glCompileShader(fragmentShader);
             GLES31.glGetShaderiv(fragmentShader, GLES31.GL_COMPILE_STATUS, status, 0);
             if (status[0] == 0) {

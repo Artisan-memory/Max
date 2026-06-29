@@ -3258,6 +3258,22 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             setBluetoothScoOn(true);
 
             try {
+                long prepareStartNs = System.nanoTime();
+                long stepStartNs = prepareStartNs;
+                long minBufferMs;
+                long audioRecordMs;
+                long audioThreadMs;
+                long audioCreateMs;
+                long audioConfigureMs;
+                long audioStartMs;
+                long videoCreateMs;
+                long videoConfigureMs;
+                long surfaceMs;
+                long videoStartMs;
+                long muxerMs = 0;
+                String audioCodecName = null;
+                String videoCodecName = null;
+
                 int recordBufferSize = AudioRecord.getMinBufferSize(audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (recordBufferSize <= 0) {
                     recordBufferSize = 3584;
@@ -3266,9 +3282,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 if (bufferSize < recordBufferSize) {
                     bufferSize = ((recordBufferSize / 2048) + 1) * 2048 * 2;
                 }
-                if (BuildVars.LOGS_ENABLED) {
-                    FileLog.d("NagramDiag instant.encoder.prepare fromPause=" + fromPause + " audioSampleRate=" + audioSampleRate + " minBuffer=" + recordBufferSize + " buffer=" + bufferSize + " " + getRecorderDiagnosticInfo());
-                }
+                minBufferMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
                 buffers.clear();
                 for (int a = 0; a < 3; a++) {
                     buffers.add(new AudioBufferInfo());
@@ -3297,6 +3312,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
                 audioRecorder.startRecording();
+                audioRecordMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("InstantCamera initied audio record with channels " + audioRecorder.getChannelCount() + " sample rate = " + audioRecorder.getSampleRate() + " bufferSize = " + bufferSize);
                 }
@@ -3304,6 +3321,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 Thread thread = new Thread(recorderRunnable);
                 thread.setPriority(Thread.MAX_PRIORITY);
                 thread.start();
+                audioThreadMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
 
                 audioBufferInfo = new MediaCodec.BufferInfo();
                 videoBufferInfo = new MediaCodec.BufferInfo();
@@ -3316,10 +3335,26 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 2048 * AudioBufferInfo.MAX_SAMPLES);
 
                 audioEncoder = MediaCodec.createEncoderByType(AUDIO_MIME_TYPE);
+                audioCreateMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
+                try {
+                    audioCodecName = audioEncoder.getName();
+                } catch (Exception ignore) {
+                }
                 audioEncoder.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                audioConfigureMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
                 audioEncoder.start();
+                audioStartMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
 
                 videoEncoder = MediaCodec.createEncoderByType(VIDEO_MIME_TYPE);
+                videoCreateMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
+                try {
+                    videoCodecName = videoEncoder.getName();
+                } catch (Exception ignore) {
+                }
                 firstEncode = true;
 
                 MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, videoWidth, videoHeight);
@@ -3330,11 +3365,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
 
                 videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                videoConfigureMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
                 surface = videoEncoder.createInputSurface();
+                surfaceMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
                 videoEncoder.start();
-                if (BuildVars.LOGS_ENABLED) {
-                    FileLog.d("NagramDiag instant.encoder.configured " + getRecorderDiagnosticInfo());
-                }
+                videoStartMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                stepStartNs = System.nanoTime();
 
                 if (!fromPause) {
                     boolean isSdCard = ImageLoader.isSdCardPath(videoFile);
@@ -3358,6 +3396,27 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     movie.setSize(videoWidth, videoHeight);
                     mediaMuxer = new MP4Builder().createMovie(movie, isSecretChat, false);
                     mediaMuxer.setAllowSyncFiles(allowSendingWhileRecording = SharedConfig.deviceIsHigh());
+                    muxerMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
+                }
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.d("NagramDiag instant.encoder.timings fromPause=" + fromPause
+                            + " audioSampleRate=" + audioSampleRate
+                            + " minBuffer=" + recordBufferSize
+                            + " buffer=" + bufferSize
+                            + " audioCodec=" + audioCodecName
+                            + " videoCodec=" + videoCodecName
+                            + " minBufferMs=" + minBufferMs
+                            + " audioRecordMs=" + audioRecordMs
+                            + " audioThreadMs=" + audioThreadMs
+                            + " audioCreateMs=" + audioCreateMs
+                            + " audioConfigureMs=" + audioConfigureMs
+                            + " audioStartMs=" + audioStartMs
+                            + " videoCreateMs=" + videoCreateMs
+                            + " videoConfigureMs=" + videoConfigureMs
+                            + " surfaceMs=" + surfaceMs
+                            + " videoStartMs=" + videoStartMs
+                            + " muxerMs=" + muxerMs
+                            + " totalMs=" + ((System.nanoTime() - prepareStartNs) / 1_000_000L));
                 }
 
                 AndroidUtilities.runOnUIThread(() -> {
