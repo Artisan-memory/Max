@@ -7739,7 +7739,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         compressItem.setContentDescription(getString("AccDescrVideoQuality", R.string.AccDescrVideoQuality));
         itemsLayout.addView(compressItem, LayoutHelper.createLinear(48, 48));
         compressItem.setOnClickListener(v -> {
-            if (isCaptionOpen() || muteVideo) {
+            if (isCaptionOpen()) {
                 return;
             }
             if (currentIndex >= 0 && currentIndex < imagesArrLocals.size()) {
@@ -7753,6 +7753,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                         return;
                     }
                 }
+            }
+            if (muteVideo) {
+                return;
             }
             if (compressItem.getTag() == null) {
                 if (videoConvertSupported) {
