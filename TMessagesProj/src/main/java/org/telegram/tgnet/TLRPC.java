@@ -30094,8 +30094,11 @@ public class TLRPC {
         public static PageBlock TLdeserialize(InputSerializedData stream, int constructor, boolean exception) {
             PageBlock result = null;
             switch (constructor) {
-                case 0x9a8ae1e1:
+                case 0x1fd6f6c1:
                     result = new TL_pageBlockOrderedList();
+                    break;
+                case 0x9a8ae1e1:
+                    result = new TL_pageBlockOrderedList_layer226();
                     break;
                 case 0xd9d71866:
                     result = new TL_pageBlockVideo_layer82();
@@ -30217,9 +30220,43 @@ public class TLRPC {
     }
 
     public static class TL_pageBlockOrderedList extends PageBlock {
-        public static final int constructor = 0x9a8ae1e1;
+        public static final int constructor = 0x1fd6f6c1;
 
+        public int flags;
+        public boolean reversed;
         public ArrayList<PageListOrderedItem> items = new ArrayList<>();
+        public int start;
+        public String type;
+
+        public void readParams(InputSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            reversed = hasFlag(flags, FLAG_2);
+            items = Vector.deserialize(stream, PageListOrderedItem::TLdeserialize, exception);
+            if (hasFlag(flags, FLAG_0)) {
+                start = stream.readInt32(exception);
+            }
+            if (hasFlag(flags, FLAG_1)) {
+                type = stream.readString(exception);
+            }
+        }
+
+        public void serializeToStream(OutputSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = setFlag(flags, FLAG_2, reversed);
+            flags = setFlag(flags, FLAG_1, type != null);
+            stream.writeInt32(flags);
+            Vector.serialize(stream, items);
+            if (hasFlag(flags, FLAG_0)) {
+                stream.writeInt32(start);
+            }
+            if (hasFlag(flags, FLAG_1)) {
+                stream.writeString(type);
+            }
+        }
+    }
+
+    public static class TL_pageBlockOrderedList_layer226 extends TL_pageBlockOrderedList {
+        public static final int constructor = 0x9a8ae1e1;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             items = Vector.deserialize(stream, PageListOrderedItem::TLdeserialize, exception);
@@ -47637,14 +47674,26 @@ public class TLRPC {
 
     public static abstract class PageListOrderedItem extends TLObject {
 
+        public int flags;
+        public boolean checkbox;
+        public boolean checked;
+        public int value;
+        public String type;
+
         public static PageListOrderedItem TLdeserialize(InputSerializedData stream, int constructor, boolean exception) {
             PageListOrderedItem result = null;
             switch (constructor) {
-                case 0x5e068047:
+                case 0x15031189:
                     result = new TL_pageListOrderedItemText();
                     break;
-                case 0x98dd8936:
+                case 0x5e068047:
+                    result = new TL_pageListOrderedItemText_layer226();
+                    break;
+                case 0x8ff2d5f0:
                     result = new TL_pageListOrderedItemBlocks();
+                    break;
+                case 0x98dd8936:
+                    result = new TL_pageListOrderedItemBlocks_layer226();
                     break;
             }
             return TLdeserialize(PageListOrderedItem.class, result, stream, constructor, exception);
@@ -47652,10 +47701,49 @@ public class TLRPC {
     }
 
     public static class TL_pageListOrderedItemText extends PageListOrderedItem {
-        public static final int constructor = 0x5e068047;
+        public static final int constructor = 0x15031189;
 
         public String num;
         public RichText text;
+
+        public void readParams(InputSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            checkbox = hasFlag(flags, FLAG_0);
+            checked = hasFlag(flags, FLAG_1);
+            if (hasFlag(flags, FLAG_2)) {
+                num = stream.readString(exception);
+            }
+            text = RichText.TLdeserialize(stream, stream.readInt32(exception), exception);
+            if (hasFlag(flags, FLAG_3)) {
+                value = stream.readInt32(exception);
+            }
+            if (hasFlag(flags, FLAG_4)) {
+                type = stream.readString(exception);
+            }
+        }
+
+        public void serializeToStream(OutputSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = setFlag(flags, FLAG_0, checkbox);
+            flags = setFlag(flags, FLAG_1, checked);
+            flags = setFlag(flags, FLAG_2, num != null);
+            flags = setFlag(flags, FLAG_4, type != null);
+            stream.writeInt32(flags);
+            if (hasFlag(flags, FLAG_2)) {
+                stream.writeString(num);
+            }
+            text.serializeToStream(stream);
+            if (hasFlag(flags, FLAG_3)) {
+                stream.writeInt32(value);
+            }
+            if (hasFlag(flags, FLAG_4)) {
+                stream.writeString(type);
+            }
+        }
+    }
+
+    public static class TL_pageListOrderedItemText_layer226 extends TL_pageListOrderedItemText {
+        public static final int constructor = 0x5e068047;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             num = stream.readString(exception);
@@ -47669,19 +47757,50 @@ public class TLRPC {
         }
     }
 
-    public static class TL_pageListOrderedItemCheckbox extends PageListOrderedItem {
-
-        public boolean checked;
-        public String num;
-        public RichText text;
-
-    }
-
     public static class TL_pageListOrderedItemBlocks extends PageListOrderedItem {
-        public static final int constructor = 0x98dd8936;
+        public static final int constructor = 0x8ff2d5f0;
 
         public String num;
         public ArrayList<PageBlock> blocks = new ArrayList<>();
+
+        public void readParams(InputSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            checkbox = hasFlag(flags, FLAG_0);
+            checked = hasFlag(flags, FLAG_1);
+            if (hasFlag(flags, FLAG_2)) {
+                num = stream.readString(exception);
+            }
+            blocks = Vector.deserialize(stream, PageBlock::TLdeserialize, exception);
+            if (hasFlag(flags, FLAG_3)) {
+                value = stream.readInt32(exception);
+            }
+            if (hasFlag(flags, FLAG_4)) {
+                type = stream.readString(exception);
+            }
+        }
+
+        public void serializeToStream(OutputSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = setFlag(flags, FLAG_0, checkbox);
+            flags = setFlag(flags, FLAG_1, checked);
+            flags = setFlag(flags, FLAG_2, num != null);
+            flags = setFlag(flags, FLAG_4, type != null);
+            stream.writeInt32(flags);
+            if (hasFlag(flags, FLAG_2)) {
+                stream.writeString(num);
+            }
+            Vector.serialize(stream, blocks);
+            if (hasFlag(flags, FLAG_3)) {
+                stream.writeInt32(value);
+            }
+            if (hasFlag(flags, FLAG_4)) {
+                stream.writeString(type);
+            }
+        }
+    }
+
+    public static class TL_pageListOrderedItemBlocks_layer226 extends TL_pageListOrderedItemBlocks {
+        public static final int constructor = 0x98dd8936;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             num = stream.readString(exception);
@@ -53731,14 +53850,24 @@ public class TLRPC {
 
     public static abstract class PageListItem extends TLObject {
 
+        public int flags;
+        public boolean checkbox;
+        public boolean checked;
+
         public static PageListItem TLdeserialize(InputSerializedData stream, int constructor, boolean exception) {
             PageListItem result = null;
             switch (constructor) {
-                case 0x25e073fc:
+                case 0x63ca67aa:
                     result = new TL_pageListItemBlocks();
                     break;
-                case 0xb92fb6cd:
+                case 0x25e073fc:
+                    result = new TL_pageListItemBlocks_layer226();
+                    break;
+                case 0x2f58683c:
                     result = new TL_pageListItemText();
+                    break;
+                case 0xb92fb6cd:
+                    result = new TL_pageListItemText_layer226();
                     break;
             }
             return TLdeserialize(PageListItem.class, result, stream, constructor, exception);
@@ -53746,9 +53875,28 @@ public class TLRPC {
     }
 
     public static class TL_pageListItemBlocks extends PageListItem {
-        public static final int constructor = 0x25e073fc;
+        public static final int constructor = 0x63ca67aa;
 
         public ArrayList<PageBlock> blocks = new ArrayList<>();
+
+        public void readParams(InputSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            checkbox = hasFlag(flags, FLAG_0);
+            checked = hasFlag(flags, FLAG_1);
+            blocks = Vector.deserialize(stream, PageBlock::TLdeserialize, exception);
+        }
+
+        public void serializeToStream(OutputSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = setFlag(flags, FLAG_0, checkbox);
+            flags = setFlag(flags, FLAG_1, checked);
+            stream.writeInt32(flags);
+            Vector.serialize(stream, blocks);
+        }
+    }
+
+    public static class TL_pageListItemBlocks_layer226 extends TL_pageListItemBlocks {
+        public static final int constructor = 0x25e073fc;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             blocks = Vector.deserialize(stream, PageBlock::TLdeserialize, exception);
@@ -53761,9 +53909,28 @@ public class TLRPC {
     }
 
     public static class TL_pageListItemText extends PageListItem {
-        public static final int constructor = 0xb92fb6cd;
+        public static final int constructor = 0x2f58683c;
 
         public RichText text;
+
+        public void readParams(InputSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            checkbox = hasFlag(flags, FLAG_0);
+            checked = hasFlag(flags, FLAG_1);
+            text = RichText.TLdeserialize(stream, stream.readInt32(exception), exception);
+        }
+
+        public void serializeToStream(OutputSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = setFlag(flags, FLAG_0, checkbox);
+            flags = setFlag(flags, FLAG_1, checked);
+            stream.writeInt32(flags);
+            text.serializeToStream(stream);
+        }
+    }
+
+    public static class TL_pageListItemText_layer226 extends TL_pageListItemText {
+        public static final int constructor = 0xb92fb6cd;
 
         public void readParams(InputSerializedData stream, boolean exception) {
             text = RichText.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -53773,13 +53940,6 @@ public class TLRPC {
             stream.writeInt32(constructor);
             text.serializeToStream(stream);
         }
-    }
-
-    public static class TL_pageListItemCheckbox extends PageListItem {
-
-        public boolean checked;
-        public RichText text;
-
     }
 
     public static class TL_stickerPack extends TLObject {

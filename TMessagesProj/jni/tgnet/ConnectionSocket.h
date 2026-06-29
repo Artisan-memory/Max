@@ -66,6 +66,9 @@ private:
     bool isIpv6;
     std::string currentAddress;
     uint16_t currentPort;
+    bool currentProxyActive = false;
+    std::string currentProxyAddress;
+    uint16_t currentProxyPort = 0;
 
     std::string waitingForHostResolve;
     bool adjustWriteOpAfterResolve;

@@ -280,6 +280,7 @@ public class TopicsController extends BaseController {
         }
 
         boolean changed = false;
+        int skippedEmptyCachedTitles = 0;
         if (newTopics != null) {
             for (int i = 0; i < newTopics.size(); i++) {
                 TLRPC.TL_forumTopic newTopic = newTopics.get(i);
@@ -291,9 +292,7 @@ public class TopicsController extends BaseController {
                     continue;
                 }
                 if (fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && TextUtils.isEmpty(newTopic.title)) {
-                    if (BuildVars.LOGS_ENABLED) {
-                        FileLog.d("NagramDiag topic.skip_empty_cached_title chat=" + chatId + " topic=" + newTopic.id + " top=" + newTopic.top_message);
-                    }
+                    skippedEmptyCachedTitles++;
                     continue;
                 }
                 if (!topicsMap.containsKey(newTopic.id)) {
@@ -335,6 +334,9 @@ public class TopicsController extends BaseController {
                     }
                 }
             }
+        }
+        if (BuildVars.LOGS_ENABLED && skippedEmptyCachedTitles > 0) {
+            FileLog.d("NagramDiag topic.skip_empty_cached_titles chat=" + chatId + " fromCache=" + fromCache + " loadType=" + loadType + " skipped=" + skippedEmptyCachedTitles + " count=" + (newTopics == null ? 0 : newTopics.size()));
         }
 
         int pinnedTopics = 0;

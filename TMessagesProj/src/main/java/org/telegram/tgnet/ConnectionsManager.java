@@ -120,6 +120,7 @@ public class ConnectionsManager extends BaseController {
 
     public final static int DEFAULT_DATACENTER_ID = Integer.MAX_VALUE;
     public final static int ErrorCodeRpcAnswerDroppedRunning = -2001;
+    private final static int API_RESPONSE_CONSTRUCTOR = 0x445663a7;
     private final static int RPC_ANSWER_DROPPED_RUNNING_CONSTRUCTOR = 0xcd78e586;
 
     private long lastPauseTime = System.currentTimeMillis();
@@ -415,6 +416,13 @@ public class ConnectionsManager extends BaseController {
                         buff.reused = true;
                         responseSize = buff.limit();
                         int magic = buff.readInt32(true);
+                        if (magic == API_RESPONSE_CONSTRUCTOR && buff.position() < buff.limit()) {
+                            int innerMagic = buff.readInt32(true);
+                            if (BuildVars.LOGS_ENABLED) {
+                                FileLog.d("NagramDiag network.api_response_unwrap request=" + object + " token=" + requestToken + " outer=0x" + Integer.toHexString(magic) + " inner=0x" + Integer.toHexString(innerMagic) + " messageId=0x" + Long.toHexString(requestMsgId));
+                            }
+                            magic = innerMagic;
+                        }
                         try {
                             resp = object.deserializeResponse(buff, magic, true);
                         } catch (Exception e2) {
