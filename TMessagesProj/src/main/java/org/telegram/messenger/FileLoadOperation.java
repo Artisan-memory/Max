@@ -2275,6 +2275,9 @@ public class FileLoadOperation {
 
     private void requestReference(RequestInfo requestInfo) {
         if (requestingReference) {
+            if (BuildVars.LOGS_ENABLED && requestInfo != null) {
+                FileLog.w("NagramDiag file.reference_already_pending offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken + " " + getDiagnosticInfo());
+            }
             return;
         }
         clearOperation(null, false, false);
@@ -2288,6 +2291,10 @@ public class FileLoadOperation {
             }
         }
         if (BuildVars.LOGS_ENABLED) {
+            FileLog.w("NagramDiag file.reference_expired offset=" + (requestInfo != null ? requestInfo.offset : -1) +
+                    " chunk=" + (requestInfo != null ? requestInfo.chunkSize : -1) +
+                    " token=" + (requestInfo != null ? requestInfo.requestToken : 0) +
+                    " " + getDiagnosticInfo());
             FileLog.d("debug_loading: " + cacheFileFinal.getName() + " file reference expired ");
         }
         FileRefController.getInstance(currentAccount).requestReference(parentObject, location, this, requestInfo);

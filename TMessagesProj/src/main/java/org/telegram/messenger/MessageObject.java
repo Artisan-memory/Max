@@ -165,6 +165,7 @@ public class MessageObject {
     public static final int TYPE_SUGGEST_BIRTHDAY = 32;
     public static final int TYPE_GIFT_OFFER = 33;
     public static final int TYPE_GIFT_OFFER_REJECTED = 34;
+    public static final int TYPE_ARTICLE = 35;
 
     public int localType;
     public String localName;
@@ -5854,7 +5855,7 @@ public class MessageObject {
                 block instanceof TL_iv.pageBlockHeading4 ||
                 block instanceof TL_iv.pageBlockHeading5 ||
                 block instanceof TL_iv.pageBlockHeading6) {
-            formatRichText(block.text, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+            formatRichHeading(block, out, photoViewer, maxLength, builder);
         } else if (block instanceof TL_iv.pageBlockParagraph ||
                 block instanceof TL_iv.pageBlockFooter ||
                 block instanceof TL_iv.pageBlockKicker ||
@@ -6011,21 +6012,60 @@ public class MessageObject {
         if (table.title != null && !(table.title instanceof TL_iv.textEmpty)) {
             formatRichText(table.title, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
         }
+        boolean separatorAdded = false;
         for (int i = 0; i < table.rows.size(); i++) {
             TL_iv.pageTableRow row = table.rows.get(i);
             appendRichLineSeparator(builder);
+            int rowStart = builder.length();
+            boolean headerRow = false;
+            builder.append("| ");
             for (int j = 0; j < row.cells.size(); j++) {
                 if (j > 0) {
                     builder.append(" | ");
                 }
                 TL_iv.pageTableCell cell = row.cells.get(j);
+                headerRow |= cell.header;
                 if (cell.text != null) {
                     formatRichText(cell.text, out, photoViewer, maxLength, builder, cell.header ? TextStyleSpan.FLAG_STYLE_BOLD : 0);
                 }
             }
+            builder.append(" |");
+            setRichStyle(builder, rowStart, builder.length(), TextStyleSpan.FLAG_STYLE_MONO);
+            if (headerRow && !separatorAdded) {
+                appendRichLineSeparator(builder);
+                int separatorStart = builder.length();
+                builder.append("| ");
+                for (int j = 0; j < row.cells.size(); j++) {
+                    if (j > 0) {
+                        builder.append(" | ");
+                    }
+                    builder.append("---");
+                }
+                builder.append(" |");
+                setRichStyle(builder, separatorStart, builder.length(), TextStyleSpan.FLAG_STYLE_MONO);
+                separatorAdded = true;
+            }
             if (trimRichMessage(builder, maxLength)) {
                 return;
             }
+        }
+    }
+
+    private static void formatRichHeading(TL_iv.PageBlock block, boolean out, boolean photoViewer, int maxLength, SpannableStringBuilder builder) {
+        int start = builder.length();
+        formatRichText(block.text, out, photoViewer, maxLength, builder, TextStyleSpan.FLAG_STYLE_BOLD);
+        int end = builder.length();
+        if (start >= end) {
+            return;
+        }
+        float scale = 1.0f;
+        if (block instanceof TL_iv.pageBlockTitle || block instanceof TL_iv.pageBlockHeader || block instanceof TL_iv.pageBlockHeading1) {
+            scale = 1.2f;
+        } else if (block instanceof TL_iv.pageBlockSubheader || block instanceof TL_iv.pageBlockHeading2) {
+            scale = 1.1f;
+        }
+        if (scale != 1.0f) {
+            builder.setSpan(new RelativeSizeSpan(scale), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
     }
 
@@ -6373,7 +6413,7 @@ public class MessageObject {
             if (isRestrictedMessage) {
                 type = TYPE_TEXT;
             } else if (messageOwner.rich_message != null) {
-                type = TYPE_TEXT;
+                type = TYPE_ARTICLE;
             } else if (emojiAnimatedSticker != null || emojiAnimatedStickerId != null) {
                 if (isSticker()) {
                     type = TYPE_STICKER;
@@ -6538,7 +6578,7 @@ public class MessageObject {
     }
 
     public boolean checkLayout() {
-        if (type != TYPE_TEXT && type != TYPE_EMOJIS || messageOwner.peer_id == null || messageText == null || messageText.length() == 0) {
+        if (type != TYPE_TEXT && type != TYPE_EMOJIS && type != TYPE_ARTICLE || messageOwner.peer_id == null || messageText == null || messageText.length() == 0) {
             return false;
         }
         if (layoutCreated) {
@@ -8292,7 +8332,7 @@ public class MessageObject {
     }
 
     public void generateLayout(TLRPC.User fromUser) {
-        if (type != TYPE_TEXT && type != TYPE_EMOJIS && type != TYPE_STORY_MENTION || messageOwner.peer_id == null || TextUtils.isEmpty(messageText)) {
+        if (type != TYPE_TEXT && type != TYPE_EMOJIS && type != TYPE_STORY_MENTION && type != TYPE_ARTICLE || messageOwner.peer_id == null || TextUtils.isEmpty(messageText)) {
             return;
         }
         boolean hasUrls = applyEntities();
