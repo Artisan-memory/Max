@@ -73,26 +73,28 @@ public class ReplyMessageLine {
 
     public ReplyMessageLine(View view) {
         this.parentView = view;
-        parentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-            @Override
-            public void onViewAttachedToWindow(@NonNull View v) {
-                if (emoji != null) {
-                    emoji.attach();
+        if (parentView != null) {
+            parentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(@NonNull View v) {
+                    if (emoji != null) {
+                        emoji.attach();
+                    }
+                    if (sticker != null) {
+                        sticker.attach();
+                    }
                 }
-                if (sticker != null) {
-                    sticker.attach();
+                @Override
+                public void onViewDetachedFromWindow(@NonNull View v) {
+                    if (emoji != null) {
+                        emoji.detach();
+                    }
+                    if (sticker != null) {
+                        sticker.attach();
+                    }
                 }
-            }
-            @Override
-            public void onViewDetachedFromWindow(@NonNull View v) {
-                if (emoji != null) {
-                    emoji.detach();
-                }
-                if (sticker != null) {
-                    sticker.attach();
-                }
-            }
-        });
+            });
+        }
 
         backgroundColorAnimated = new AnimatedColor(view, 0, 400, CubicBezierInterpolator.EASE_OUT_QUINT);
         color1Animated = new AnimatedColor(view, 0, 400, CubicBezierInterpolator.EASE_OUT_QUINT);
