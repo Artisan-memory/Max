@@ -3209,6 +3209,25 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         return parentView;
     }
 
+    public String getDiagnosticInfo() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("attached=").append(attachedToWindow);
+        builder.append(" visible=").append(isVisible);
+        builder.append(" priority=").append(fileLoadingPriority);
+        builder.append(" image=").append(currentImageKey);
+        builder.append(" media=").append(currentMediaKey);
+        builder.append(" thumb=").append(currentThumbKey);
+        if (parentView != null) {
+            builder.append(" view=").append(parentView.getClass().getSimpleName());
+            builder.append(" shown=").append(parentView.isShown());
+            builder.append(" alpha=").append(parentView.getAlpha());
+            builder.append(" size=").append(parentView.getWidth()).append("x").append(parentView.getHeight());
+        } else {
+            builder.append(" view=null");
+        }
+        return builder.toString();
+    }
+
     public boolean isAttachedToWindow() {
         return attachedToWindow;
     }

@@ -114,6 +114,17 @@ public class ImageLoader {
 
     private static final boolean DEBUG_MODE = false;
     private static final long INVALID_FILE_LOCATION_TTL = 5 * 60 * 1000L;
+    private static final long DECODE_STORM_WINDOW_MS = 2500L;
+    private static final int DECODE_STORM_MIN_COUNT = 24;
+    private static final int DECODE_STORM_MIN_SLOW_COUNT = 4;
+    private static final Object decodeStormLock = new Object();
+    private static final HashMap<String, DecodeStormBucket> decodeStormBuckets = new HashMap<>();
+    private static long decodeStormWindowStartedAt;
+    private static int decodeStormCount;
+    private static int decodeStormSlowCount;
+    private static long decodeStormTotalTime;
+    private static long decodeStormMaxTime;
+    private static String decodeStormMaxSample;
 
     private HashMap<String, Integer> bitmapUseCounts = new HashMap<>();
     private LruCache<BitmapDrawable> smallImagesMemCache;
@@ -1705,16 +1716,17 @@ public class ImageLoader {
         private void onPostExecute(final Drawable drawable) {
             if (BuildVars.LOGS_ENABLED) {
                 long elapsed = decodeStartedAt == 0 ? 0 : SystemClock.elapsedRealtime() - decodeStartedAt;
-                if (elapsed > 24 || cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE) {
-                    int width = 0;
-                    int height = 0;
-                    if (drawable instanceof BitmapDrawable) {
-                        Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-                        if (bitmap != null) {
-                            width = bitmap.getWidth();
-                            height = bitmap.getHeight();
-                        }
+                int width = 0;
+                int height = 0;
+                if (drawable instanceof BitmapDrawable) {
+                    Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                    if (bitmap != null) {
+                        width = bitmap.getWidth();
+                        height = bitmap.getHeight();
                     }
+                }
+                recordDecodeStorm(cacheImage, elapsed, width, height);
+                if (elapsed > 24 || cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE) {
                     FileLog.w("NagramDiag image.decode time=" + elapsed +
                             " key=" + cacheImage.key +
                             " type=" + cacheImage.type +
@@ -2128,8 +2140,8 @@ public class ImageLoader {
         }
         int cacheSize = DEBUG_MODE ? 1 : Math.min(maxSize, memoryClass / 7) * 1024 * 1024;
 
-        int commonCacheSize =  DEBUG_MODE ? 1 : (int) (cacheSize * 0.8f);
-        int smallImagesCacheSize =   DEBUG_MODE ? 1 : (int) (cacheSize * 0.2f);
+        int commonCacheSize = DEBUG_MODE ? 1 : (int) (cacheSize * 0.6f);
+        int smallImagesCacheSize = DEBUG_MODE ? 1 : (cacheSize - commonCacheSize);
 
         memCache = new LruCache<BitmapDrawable>(commonCacheSize) {
             @Override
@@ -3044,6 +3056,136 @@ public class ImageLoader {
             return;
         }
         imageLoadQueue.postRunnable(() -> forceLoadingImages.remove(key));
+    }
+
+    private static class DecodeStormBucket {
+        int count;
+        int slowCount;
+        long totalTime;
+        long maxTime;
+        String sample;
+    }
+
+    private static void recordDecodeStorm(CacheImage cacheImage, long elapsed, int width, int height) {
+        if (!BuildVars.LOGS_ENABLED || cacheImage == null) {
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        String parent = getImageParentDiagnosticInfo(cacheImage.parentObject);
+        String dir = getImageFileDir(cacheImage.finalFilePath);
+        String owner = getImageReceiverDiagnosticInfo(cacheImage);
+        String key = "filter=" + cacheImage.filter +
+                " imageType=" + cacheImage.imageType +
+                " type=" + cacheImage.type +
+                " parent=" + parent +
+                " dir=" + dir;
+        String sample = "time=" + elapsed +
+                " key=" + cacheImage.key +
+                " filter=" + cacheImage.filter +
+                " imageType=" + cacheImage.imageType +
+                " type=" + cacheImage.type +
+                " file=" + cacheImage.finalFilePath +
+                " size=" + width + "x" + height +
+                " parent=" + parent +
+                " owner={" + owner + "}";
+        synchronized (decodeStormLock) {
+            if (decodeStormWindowStartedAt == 0) {
+                decodeStormWindowStartedAt = now;
+            }
+            if (now - decodeStormWindowStartedAt > DECODE_STORM_WINDOW_MS) {
+                flushDecodeStormLocked(now);
+            }
+            decodeStormCount++;
+            decodeStormTotalTime += elapsed;
+            if (elapsed >= 50) {
+                decodeStormSlowCount++;
+            }
+            if (elapsed > decodeStormMaxTime) {
+                decodeStormMaxTime = elapsed;
+                decodeStormMaxSample = sample;
+            }
+            DecodeStormBucket bucket = decodeStormBuckets.get(key);
+            if (bucket == null) {
+                bucket = new DecodeStormBucket();
+                decodeStormBuckets.put(key, bucket);
+            }
+            bucket.count++;
+            bucket.totalTime += elapsed;
+            if (elapsed >= 50) {
+                bucket.slowCount++;
+            }
+            if (elapsed > bucket.maxTime) {
+                bucket.maxTime = elapsed;
+                bucket.sample = sample;
+            }
+        }
+    }
+
+    private static void flushDecodeStormLocked(long now) {
+        if (decodeStormCount >= DECODE_STORM_MIN_COUNT || decodeStormSlowCount >= DECODE_STORM_MIN_SLOW_COUNT) {
+            ArrayList<Map.Entry<String, DecodeStormBucket>> entries = new ArrayList<>(decodeStormBuckets.entrySet());
+            entries.sort((o1, o2) -> {
+                DecodeStormBucket b1 = o1.getValue();
+                DecodeStormBucket b2 = o2.getValue();
+                int score1 = b1.count * 100 + b1.slowCount * 500 + (int) Math.min(499, b1.maxTime);
+                int score2 = b2.count * 100 + b2.slowCount * 500 + (int) Math.min(499, b2.maxTime);
+                return score2 - score1;
+            });
+            StringBuilder builder = new StringBuilder();
+            int limit = Math.min(5, entries.size());
+            for (int i = 0; i < limit; i++) {
+                Map.Entry<String, DecodeStormBucket> entry = entries.get(i);
+                DecodeStormBucket bucket = entry.getValue();
+                if (i > 0) {
+                    builder.append(" | ");
+                }
+                builder.append("#").append(i + 1)
+                        .append(" count=").append(bucket.count)
+                        .append(" slow=").append(bucket.slowCount)
+                        .append(" avg=").append(bucket.count == 0 ? 0 : bucket.totalTime / bucket.count)
+                        .append(" max=").append(bucket.maxTime)
+                        .append(" ").append(entry.getKey())
+                        .append(" sample={").append(bucket.sample).append("}");
+            }
+            FileLog.w("NagramDiag image.decode_storm window=" + (now - decodeStormWindowStartedAt) +
+                    " count=" + decodeStormCount +
+                    " slow=" + decodeStormSlowCount +
+                    " avg=" + (decodeStormCount == 0 ? 0 : decodeStormTotalTime / decodeStormCount) +
+                    " max=" + decodeStormMaxTime +
+                    " maxSample={" + decodeStormMaxSample + "}" +
+                    " top=[" + builder + "]");
+        }
+        decodeStormWindowStartedAt = now;
+        decodeStormCount = 0;
+        decodeStormSlowCount = 0;
+        decodeStormTotalTime = 0;
+        decodeStormMaxTime = 0;
+        decodeStormMaxSample = null;
+        decodeStormBuckets.clear();
+    }
+
+    private static String getImageFileDir(File file) {
+        if (file == null || file.getParentFile() == null) {
+            return "null";
+        }
+        File parent = file.getParentFile();
+        File grandParent = parent.getParentFile();
+        if (grandParent == null) {
+            return parent.getName();
+        }
+        return grandParent.getName() + "/" + parent.getName();
+    }
+
+    private static String getImageReceiverDiagnosticInfo(CacheImage cacheImage) {
+        try {
+            if (cacheImage.imageReceiverArray == null || cacheImage.imageReceiverArray.isEmpty()) {
+                return "receivers=0";
+            }
+            ImageReceiver receiver = cacheImage.imageReceiverArray.get(0);
+            return "receivers=" + cacheImage.imageReceiverArray.size() + " " + (receiver != null ? receiver.getDiagnosticInfo() : "first=null");
+        } catch (Throwable e) {
+            return "diagnostic_error=" + e.getClass().getSimpleName();
+        }
     }
 
     private static String getImageParentDiagnosticInfo(Object parentObject) {

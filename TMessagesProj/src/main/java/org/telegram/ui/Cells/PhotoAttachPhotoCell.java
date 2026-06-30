@@ -223,6 +223,7 @@ public class PhotoAttachPhotoCell extends FrameLayout {
             }
         };
         imageView.setBlurAllowed(true);
+        imageView.getImageReceiver().setFileLoadingPriority(FileLoader.PRIORITY_LOW);
         container.addView(imageView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         videoInfoContainer = new FrameLayout(context) {
