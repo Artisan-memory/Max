@@ -950,7 +950,7 @@ public class MessageObject {
         return a != null && a.equals(b);
     }
 
-    public static class TextLayoutBlock {
+    public static class TextLayoutBlock implements org.telegram.ui.MultiLayoutTypingAnimator.Block {
         public final static int FLAG_RTL = 1, FLAG_NOT_RTL = 2;
 
         public boolean first, last;
@@ -1001,6 +1001,16 @@ public class MessageObject {
             if (!quoteCollapse)
                 return height;
             return AndroidUtilities.lerp(height, collapsedHeight, collapsed(tp));
+        }
+
+        @Override
+        public Layout getLayout() {
+            return textLayout;
+        }
+
+        @Override
+        public android.view.View getParentView() {
+            return null;
         }
 
         public float collapsed(ChatMessageCell.TransitionParams tp) {
@@ -1786,6 +1796,7 @@ public class MessageObject {
     public boolean hasRtl;
     public float textXOffset;
     public ArrayList<TextLayoutBlock> textLayoutBlocks;
+    public RichMessageLayout richLayout;
     public boolean hasCode;
     public boolean hasWideCode;
     public boolean hasCodeAtTop, hasCodeAtBottom;
@@ -8342,6 +8353,20 @@ public class MessageObject {
             noforwards = chat != null && chat.noforwards;
         }
 
+        if (type == TYPE_ARTICLE) {
+            int maxWidth = getMaxMessageTextWidth();
+            if (richLayout == null || richLayout.needsUpdate(messageOwner.rich_message, maxWidth)) {
+                richLayout = new RichMessageLayout(this, maxWidth, richLayout);
+            }
+            textLayoutBlocks = null;
+            textWidth = richLayout.getMinWidth();
+            lastLineWidth = richLayout.getLastLineWidth();
+            hasRtl = false;
+            cachedTextHeight = null;
+            return;
+        }
+
+        richLayout = null;
         textLayoutBlocks = new ArrayList<>();
         textWidth = 0;
 
@@ -8764,6 +8789,7 @@ public class MessageObject {
     private Integer cachedTextHeight;
     public int textHeightCached() {
         if (cachedTextHeight != null) return cachedTextHeight;
+        if (richLayout != null) return cachedTextHeight = richLayout.getHeight();
         if (textLayoutBlocks == null) return cachedTextHeight = 0;
         int h = 0;
         for (int i = 0; i < textLayoutBlocks.size(); ++i) {
@@ -8772,6 +8798,7 @@ public class MessageObject {
         return cachedTextHeight = h;
     }
     public int textHeight() {
+        if (richLayout != null) return richLayout.getHeight();
         if (textLayoutBlocks == null) return 0;
         int h = 0;
         for (int i = 0; i < textLayoutBlocks.size(); ++i) {
@@ -8781,6 +8808,7 @@ public class MessageObject {
     }
 
     public int textHeight(ChatMessageCell.TransitionParams tp) {
+        if (richLayout != null) return richLayout.getHeight();
         if (textLayoutBlocks == null) return 0;
         int h = 0;
         for (int i = 0; i < textLayoutBlocks.size(); ++i) {

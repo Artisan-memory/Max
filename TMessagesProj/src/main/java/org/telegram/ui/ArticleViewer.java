@@ -466,7 +466,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         private TLRPC.TL_pageBlockEmbedPost parent;
     }
 
-    public class DrawingText implements TextSelectionHelper.TextLayoutBlock {
+    public class DrawingText implements TextSelectionHelper.TextLayoutBlock, TableLayout.CellText {
         private View latestParentView;
 
         private boolean isDrawing;
@@ -537,6 +537,33 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             if (!isDrawing && latestParentView != null) {
                 latestParentView.invalidate();
             }
+        }
+
+        @Override
+        public void attach(View view) {
+            latestParentView = view;
+        }
+
+        @Override
+        public void detach(View view) {
+            if (latestParentView == view) {
+                latestParentView = null;
+            }
+        }
+
+        @Override
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        @Override
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        @Override
+        public void setRow(int row) {
+            this.row = row;
         }
 
         public CharSequence getText() {
@@ -8919,7 +8946,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         public boolean onTouchEvent(MotionEvent event) {
             for (int i = 0, N = tableLayout.getChildCount(); i < N; i++) {
                 TableLayout.Child c = tableLayout.getChildAt(i);
-                if (checkLayoutForLinks(parentAdapter, event, this, c.textLayout, scrollView.getPaddingLeft() - scrollView.getScrollX() + listX + c.getTextX(), listY + c.getTextY())) {
+                if (c.textLayout instanceof DrawingText && checkLayoutForLinks(parentAdapter, event, this, (DrawingText) c.textLayout, scrollView.getPaddingLeft() - scrollView.getScrollX() + listX + c.getTextX(), listY + c.getTextY())) {
                     return true;
                 }
             }
@@ -8979,9 +9006,9 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             for (int i = 0, N = tableLayout.getChildCount(); i < N; i++) {
                 TableLayout.Child c = tableLayout.getChildAt(i);
                 if (c.textLayout != null) {
-                    c.textLayout.x = c.getTextX() + listX + dp(18) - scrollView.getScrollX();
-                    c.textLayout.y = c.getTextY() + listY;
-                    c.textLayout.row = c.getRow();
+                    c.textLayout.setX(c.getTextX() + listX + dp(18) - scrollView.getScrollX());
+                    c.textLayout.setY(c.getTextY() + listY);
+                    c.textLayout.setRow(c.getRow());
                     c.setSelectionIndex(count++);
                 }
             }

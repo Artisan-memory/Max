@@ -143,6 +143,9 @@ public class CheckBoxBase {
         drawUnchecked = value;
     }
 
+    public void setCustomRadius(int radius) {
+    }
+
     public boolean getDrawUnchecked() {
         return drawUnchecked;
     }

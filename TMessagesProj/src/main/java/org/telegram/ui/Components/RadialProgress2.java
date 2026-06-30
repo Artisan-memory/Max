@@ -105,6 +105,10 @@ public class RadialProgress2 {
         this.resourcesProvider = resourcesProvider;
     }
 
+    public void setParent(View parentView) {
+        parent = parentView;
+    }
+
     @Keep
     public void setAsMini() {
         mediaActionDrawable.setMini(true);

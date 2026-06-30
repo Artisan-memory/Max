@@ -21,8 +21,18 @@ import androidx.core.math.MathUtils;
 import org.telegram.messenger.MessageObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallback {
+
+    public interface Block {
+        Layout getLayout();
+        View getParentView();
+    }
+
+    public interface Renderer {
+        void draw(Canvas canvas);
+    }
 
     /** Minimum speed in dp/s — speed will never drop below this. */
     public static final float MIN_SPEED_DP_PER_SEC = 40f;
@@ -34,7 +44,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
     private View invalidateTarget;
     private final Choreographer choreo = Choreographer.getInstance();
 
-    private ArrayList<MessageObject.TextLayoutBlock> blocks = new ArrayList<>();
+    private List<? extends Block> blocks = new ArrayList<>();
 
     // Current caret state (block/line/position within the visual line)
     private int   curBlockIdx = 0;
@@ -53,11 +63,12 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
     }
 
     /** Full replacement/update of blocks. Can be called frequently. */
-    public void setBlocks(ArrayList<MessageObject.TextLayoutBlock> newBlocks) {
+    public void setBlocks(List<? extends Block> newBlocks) {
         if (!blocks.isEmpty() && curBlockIdx >= blocks.size()) {
             curBlockIdx = blocks.size() - 1;
-            curLineIdx = Math.max(0, blocks.get(curBlockIdx).textLayout.getLineCount() - 1);
-            xPosition = blocks.get(curBlockIdx).textLayout.getLineWidth(curLineIdx);
+            Layout layout = blocks.get(curBlockIdx).getLayout();
+            curLineIdx = Math.max(0, layout == null ? 0 : layout.getLineCount() - 1);
+            xPosition = layout == null ? 0 : layout.getLineWidth(curLineIdx);
         }
 
         this.blocks = (newBlocks != null) ? newBlocks : new ArrayList<>();
@@ -118,10 +129,10 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
     public int getCurrentBlockIndex() { return curBlockIdx; }
 
     /** Fade parameters for the active line inside a given block. */
-    public int   getFadeLineIndex(MessageObject.TextLayoutBlock block) {
+    public int getFadeLineIndex(Block block) {
         return isFadeBlock(block) ? curLineIdx : -1;
     }
-    public float getFadeXPosition(MessageObject.TextLayoutBlock block) {
+    public float getFadeXPosition(Block block) {
         return isFadeBlock(block) ? xPosition : 0f;
     }
 
@@ -129,7 +140,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
      * Whether a block needs to be drawn at all.
      * Returns false only if the block is completely hidden (fully after the caret).
      */
-    public boolean needDraw(MessageObject.TextLayoutBlock block) {
+    public boolean needDraw(Block block) {
         int idx = indexOf(block);
         if (idx < 0 || blocks.isEmpty()) return false;
 
@@ -141,10 +152,10 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
     }
 
     /** Is this the block we should draw with a fade? */
-    public boolean isFadeBlock(MessageObject.TextLayoutBlock block) {
+    public boolean isFadeBlock(Block block) {
         int idx = indexOf(block);
         if (idx != curBlockIdx) return false;
-        Layout l = block.textLayout;
+        Layout l = block.getLayout();
         if (l == null || curLineIdx >= l.getLineCount()) return false;
         return true;
     }
@@ -186,7 +197,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
 
         while (delta > 0f) {
             if (curBlockIdx >= blocks.size()) { finished = true; break; }
-            Layout lay = blocks.get(curBlockIdx).textLayout;
+            Layout lay = blocks.get(curBlockIdx).getLayout();
             if (lay == null || lay.getLineCount() == 0) {
                 // Empty block — skip to next
                 curBlockIdx++;
@@ -265,7 +276,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
         float total = 0f;
 
         for (int bi = curBlockIdx; bi < blocks.size(); bi++) {
-            Layout l = blocks.get(bi).textLayout;
+            Layout l = blocks.get(bi).getLayout();
             if (l == null) continue;
 
             int startLine = 0;
@@ -298,7 +309,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
         int i = lastIdx;
         Layout lay = null;
         for (; i >= 0; i--) {
-            lay = blocks.get(i).textLayout;
+            lay = blocks.get(i).getLayout();
             if (lay != null && lay.getLineCount() > 0) break;
         }
         if (i < 0 || lay == null) return true;
@@ -317,11 +328,15 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
         return (w >= 0f) ? w : -w;
     }
 
-    public int indexOf(MessageObject.TextLayoutBlock block) {
+    public int indexOf(Block block) {
         for (int i = 0, n = blocks.size(); i < n; i++) {
             if (blocks.get(i) == block) return i;
         }
         return -1;
+    }
+
+    public float getBlockAlpha(Block block) {
+        return 1f;
     }
 
 
@@ -363,7 +378,18 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
             int lineIndex,
             float xPosition
     ) {
+        drawLayoutWithLastLineFade(canvas, layout, lineIndex, xPosition, null);
+    }
+
+    public static void drawLayoutWithLastLineFade(
+            Canvas canvas,
+            Layout layout,
+            int lineIndex,
+            float xPosition,
+            Renderer drawer
+    ) {
         if (layout == null) return;
+        final Renderer renderer = drawer != null ? drawer : layout::draw;
         final int lineCount = layout.getLineCount();
         if (lineIndex < 0 || lineIndex >= lineCount) return;
 
@@ -376,7 +402,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
         if (topLine > 0) {
             canvas.save();
             canvas.clipRect(0f, 0f, width, topLine);
-            layout.draw(canvas);
+            renderer.draw(canvas);
             canvas.restore();
         }
 
@@ -398,7 +424,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
         if (x >= lineW) {
             canvas.save();
             canvas.clipRect(0f, topLine, width, bottomLine);
-            layout.draw(canvas);
+            renderer.draw(canvas);
             canvas.restore();
             return;
         }
@@ -411,7 +437,7 @@ public final class MultiLayoutTypingAnimator implements Choreographer.FrameCallb
 
         canvas.save();
         canvas.clipRect(lineL, topLine, lineR, bottomLine);
-        layout.draw(canvas);
+        renderer.draw(canvas);
         canvas.restore();
 
         GRAD_MTX.reset();

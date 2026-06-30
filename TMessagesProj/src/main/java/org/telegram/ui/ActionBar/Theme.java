@@ -2053,6 +2053,10 @@ public class Theme {
         return ColorUtils.setAlphaComponent(color, MathUtils.clamp((int) (Color.alpha(color) * multiply), 0, 0xFF));
     }
 
+    public static int capAlpha(int color, float alpha) {
+        return ColorUtils.setAlphaComponent(color, MathUtils.clamp((int) (Color.alpha(color) * alpha), 0, 0xFF));
+    }
+
     public static int reverseBlendOver(float ax, int y, int z) {
         float ay = Color.alpha(y) / 255f,
               az = Color.alpha(z) / 255f;
