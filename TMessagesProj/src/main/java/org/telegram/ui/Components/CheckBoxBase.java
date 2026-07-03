@@ -171,6 +171,9 @@ public class CheckBoxBase {
     }
 
     private void invalidate() {
+        if (parentView == null) {
+            return;
+        }
         if (parentView.getParent() != null) {
             View parent = (View) parentView.getParent();
             parent.invalidate();

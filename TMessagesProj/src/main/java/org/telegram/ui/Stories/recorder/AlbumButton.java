@@ -19,6 +19,7 @@ import android.widget.LinearLayout;
 
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
+import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
@@ -54,6 +55,8 @@ public class AlbumButton extends View {
         subtitle = "" + count;
 
         imageReceiver.setRoundRadius(dp(4));
+        imageReceiver.setAllowLoadingOnAttachedOnly(true);
+        imageReceiver.setFileLoadingPriority(FileLoader.PRIORITY_LOW);
         final Drawable noPhotosIcon = context.getResources().getDrawable(R.drawable.msg_media_gallery).mutate();
         noPhotosIcon.setColorFilter(new PorterDuffColorFilter(0x4dFFFFFF, PorterDuff.Mode.MULTIPLY));
         final CombinedDrawable noGalleryDrawable = new CombinedDrawable(Theme.createRoundRectDrawable(dp(6), 0xFF2E2E2F), noPhotosIcon);

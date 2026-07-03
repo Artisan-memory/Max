@@ -478,37 +478,57 @@ public class TableLayout extends View {
     }
 
     public void addChild(TLRPC.TL_pageTableCell cell, int x, int y, int colspan) {
+        addChild(cell, x, y, colspan, cell == null ? 1 : cell.rowspan);
+    }
+
+    public void addChild(TLRPC.TL_pageTableCell cell, int x, int y, int colspan, int rowspan) {
+        if (cell == null) {
+            return;
+        }
         if (colspan == 0) {
             colspan = 1;
+        }
+        if (rowspan == 0) {
+            rowspan = 1;
         }
         Child child = new Child(childrens.size());
         child.cell = cell;
         LayoutParams layoutParams = new LayoutParams();
-        layoutParams.rowSpec = new Spec(false, new Interval(y, y + (cell.rowspan != 0 ? cell.rowspan : 1)), FILL, 0.0f);
+        layoutParams.rowSpec = new Spec(false, new Interval(y, y + rowspan), FILL, 0.0f);
         layoutParams.columnSpec = new Spec(false, new Interval(x, x + colspan), FILL, 1.0f);
         child.layoutParams = layoutParams;
         child.rowspan = y;
         childrens.add(child);
-        if (cell.rowspan > 1) {
-            rowSpans.add(new Point(y, y + cell.rowspan));
+        if (rowspan > 1) {
+            rowSpans.add(new Point(y, y + rowspan));
         }
         invalidateStructure();
     }
 
     public void addChild(TL_iv.pageTableCell cell, int x, int y, int colspan) {
+        addChild(cell, x, y, colspan, cell == null ? 1 : cell.rowspan);
+    }
+
+    public void addChild(TL_iv.pageTableCell cell, int x, int y, int colspan, int rowspan) {
+        if (cell == null) {
+            return;
+        }
         if (colspan == 0) {
             colspan = 1;
+        }
+        if (rowspan == 0) {
+            rowspan = 1;
         }
         Child child = new Child(childrens.size());
         child.cell = cell;
         LayoutParams layoutParams = new LayoutParams();
-        layoutParams.rowSpec = new Spec(false, new Interval(y, y + (cell.rowspan != 0 ? cell.rowspan : 1)), FILL, 0.0f);
+        layoutParams.rowSpec = new Spec(false, new Interval(y, y + rowspan), FILL, 0.0f);
         layoutParams.columnSpec = new Spec(false, new Interval(x, x + colspan), FILL, 1.0f);
         child.layoutParams = layoutParams;
         child.rowspan = y;
         childrens.add(child);
-        if (cell.rowspan > 1) {
-            rowSpans.add(new Point(y, y + cell.rowspan));
+        if (rowspan > 1) {
+            rowSpans.add(new Point(y, y + rowspan));
         }
         invalidateStructure();
     }

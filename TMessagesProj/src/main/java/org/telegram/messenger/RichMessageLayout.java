@@ -2474,34 +2474,34 @@ public class RichMessageLayout {
             tableLayout.setRtl(root.isRtl());
 
             int maxCols = 0;
-            if (!block.rows.isEmpty()) {
-                final TL_iv.pageTableRow row0 = block.rows.get(0);
-                for (int c = 0; c < row0.cells.size(); ++c) {
-                    final TL_iv.pageTableCell cell = row0.cells.get(c);
-                    maxCols += (cell.colspan != 0 ? cell.colspan : 1);
-                }
-            }
             for (int r = 0; r < block.rows.size(); ++r) {
                 final TL_iv.pageTableRow row = block.rows.get(r);
                 int cols = 0;
                 for (int c = 0; c < row.cells.size(); ++c) {
                     final TL_iv.pageTableCell cell = row.cells.get(c);
-                    final int colspan = (cell.colspan != 0 ? cell.colspan : 1);
-                    final int rowspan = (cell.rowspan != 0 ? cell.rowspan : 1);
+                    final int colspan = Math.max(1, cell.colspan);
+                    final int rowspan = Math.max(1, cell.rowspan);
                     if (cell.text != null) {
-                        tableLayout.addChild(cell, cols, r, colspan);
+                        tableLayout.addChild(cell, cols, r, colspan, rowspan);
                     } else {
                         tableLayout.addChild(cols, r, colspan, rowspan);
                     }
                     cols += colspan;
                 }
+                maxCols = Math.max(maxCols, cols);
             }
+            maxCols = Math.max(1, maxCols);
             tableLayout.setColumnCount(maxCols);
 
-            tableLayout.measure(
-                View.MeasureSpec.makeMeasureSpec(this.maxWidth, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            );
+            try {
+                tableLayout.measure(
+                    View.MeasureSpec.makeMeasureSpec(this.maxWidth, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                );
+            } catch (Throwable e) {
+                FileLog.e("NagramDiag rich.table_measure_failed rows=" + block.rows.size() + " cols=" + maxCols + " width=" + this.maxWidth + " desc=" + describeTable(block), e);
+                throw e;
+            }
             contentMeasuredWidth = tableLayout.getMeasuredWidth();
             contentHeight = tableLayout.getMeasuredHeight();
             maxScrollX = Math.max(0, contentMeasuredWidth - viewportWidth);
@@ -2514,6 +2514,37 @@ public class RichMessageLayout {
                 }
             }
             textsArr = cellTexts.toArray(new Text[0]);
+        }
+
+        private static String describeTable(TL_iv.pageBlockTable table) {
+            if (table == null || table.rows == null) {
+                return "null";
+            }
+            StringBuilder sb = new StringBuilder();
+            for (int r = 0; r < table.rows.size() && r < 8; r++) {
+                TL_iv.pageTableRow row = table.rows.get(r);
+                sb.append("r").append(r).append('=');
+                if (row == null || row.cells == null) {
+                    sb.append("null");
+                } else {
+                    sb.append(row.cells.size()).append('[');
+                    for (int c = 0; c < row.cells.size() && c < 8; c++) {
+                        TL_iv.pageTableCell cell = row.cells.get(c);
+                        if (c > 0) sb.append(',');
+                        if (cell == null) {
+                            sb.append("null");
+                        } else {
+                            sb.append(Math.max(1, cell.colspan)).append('x').append(Math.max(1, cell.rowspan));
+                        }
+                    }
+                    sb.append(']');
+                }
+                if (r + 1 < table.rows.size() && r < 7) sb.append(';');
+            }
+            if (table.rows.size() > 8) {
+                sb.append(";...");
+            }
+            return sb.toString();
         }
 
         @Override
