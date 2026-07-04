@@ -560,6 +560,7 @@ public class AnimatedEmojiDrawable extends Drawable {
                     boolean r = super.setImageBitmapByKey(drawable, key, type, memCache, guid);
                     if (preloading && hasImageLoaded()) {
                         preloading = false;
+                        setForceLoading(false);
                         AndroidUtilities.runOnUIThread(AnimatedEmojiDrawable.this::updateAttachState);
                     }
                     return r;
@@ -896,6 +897,7 @@ public class AnimatedEmojiDrawable extends Drawable {
         }
         boolean hasVisibleOwner = (views != null && views.size() > 0) || (holders != null && holders.size() > 0);
         boolean attach = hasVisibleOwner || preloading;
+        imageReceiver.setForceLoading(!hasVisibleOwner && preloading);
         imageReceiver.setFileLoadingPriority(hasVisibleOwner ? FileLoader.PRIORITY_NORMAL : FileLoader.PRIORITY_LOW);
         if (attach != attached) {
             attached = attach;

@@ -2114,6 +2114,7 @@ public class ImageLoader {
             if (key != null) {
                 imageLoadingByKeys.remove(key);
                 imageLoadingKeys.remove(cutFilter(key));
+                forceLoadingImages.remove(key);
             }
         }
     }
@@ -3581,6 +3582,9 @@ public class ImageLoader {
                         img.encryptionKeyPath = new File(FileLoader.getInternalCacheDir(), url + ".enc.key");
                     }
                     img.addImageReceiver(imageReceiver, key, filter, type, guid);
+                    if (imageReceiver.isForceLoding()) {
+                        forceLoadingImages.put(img.key, 0);
+                    }
 
                     if (onlyCache || cacheFileExists || cacheFileOnDisk) {
                         img.finalFilePath = cacheFile;
@@ -3629,9 +3633,6 @@ public class ImageLoader {
                                 FileLoader.getInstance(currentAccount).loadFile(imageLocation.secureDocument, loadingPriority);
                             } else if (imageLocation.webFile != null) {
                                 FileLoader.getInstance(currentAccount).loadFile(imageLocation.webFile, loadingPriority, cacheType);
-                            }
-                            if (imageReceiver.isForceLoding()) {
-                                forceLoadingImages.put(img.key, 0);
                             }
                         }
                     }
