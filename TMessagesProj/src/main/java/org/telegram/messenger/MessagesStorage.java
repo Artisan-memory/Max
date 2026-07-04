@@ -10676,6 +10676,19 @@ public class MessagesStorage extends BaseController {
             return;
         }
         ArrayList<Long> loadMore = null;
+        ArrayList<String> chunks = splitSqlIdList(chatsToLoad, 200);
+        for (int i = 0, N = chunks.size(); i < N; i++) {
+            loadMore = getChatsInternalChunk(chunks.get(i), result, parseFullData, loadMore, true);
+        }
+        if (loadMore != null) {
+            chunks = splitSqlIdList(TextUtils.join(",", loadMore), 200);
+            for (int i = 0, N = chunks.size(); i < N; i++) {
+                getChatsInternalChunk(chunks.get(i), result, parseFullData, null, false);
+            }
+        }
+    }
+
+    private ArrayList<Long> getChatsInternalChunk(String chatsToLoad, ArrayList<TLRPC.Chat> result, boolean parseFullData, ArrayList<Long> loadMore, boolean collectLinked) throws Exception {
         SQLiteCursor cursor = database.queryFinalized(String.format(Locale.US, "SELECT data FROM chats WHERE uid IN(%s)", chatsToLoad));
         while (cursor.next()) {
             try {
@@ -10685,7 +10698,7 @@ public class MessagesStorage extends BaseController {
                     data.reuse();
                     if (chat != null) {
                         result.add(chat);
-                        if (chat.linked_monoforum_id != 0) {
+                        if (collectLinked && chat.linked_monoforum_id != 0) {
                             if (loadMore == null) {
                                 loadMore = new ArrayList<>();
                             }
@@ -10698,24 +10711,37 @@ public class MessagesStorage extends BaseController {
             }
         }
         cursor.dispose();
-        if (loadMore != null) {
-            cursor = database.queryFinalized(String.format(Locale.US, "SELECT data FROM chats WHERE uid IN(%s)", TextUtils.join(", ", loadMore)));
-            while (cursor.next()) {
-                try {
-                    NativeByteBuffer data = cursor.byteBufferValue(0);
-                    if (data != null) {
-                        TLRPC.Chat chat = TLRPC.Chat.TLdeserialize(data, data.readInt32(false), false, parseFullData);
-                        data.reuse();
-                        if (chat != null) {
-                            result.add(chat);
-                        }
-                    }
-                } catch (Exception e) {
-                    checkSQLException(e);
-                }
-            }
-            cursor.dispose();
+        return loadMore;
+    }
+
+    private ArrayList<String> splitSqlIdList(String ids, int maxItems) {
+        ArrayList<String> result = new ArrayList<>();
+        if (ids == null || ids.length() == 0) {
+            return result;
         }
+        String[] values = ids.split(",");
+        StringBuilder chunk = new StringBuilder();
+        int count = 0;
+        for (int i = 0; i < values.length; i++) {
+            String value = values[i].trim();
+            if (value.length() == 0) {
+                continue;
+            }
+            if (chunk.length() > 0) {
+                chunk.append(',');
+            }
+            chunk.append(value);
+            count++;
+            if (count >= maxItems) {
+                result.add(chunk.toString());
+                chunk.setLength(0);
+                count = 0;
+            }
+        }
+        if (chunk.length() > 0) {
+            result.add(chunk.toString());
+        }
+        return result;
     }
 
     public void getEncryptedChatsInternal(String chatsToLoad, ArrayList<TLRPC.EncryptedChat> result, ArrayList<Long> usersToLoad) throws Exception {
@@ -13836,25 +13862,29 @@ public class MessagesStorage extends BaseController {
 
                 database.beginTransaction();
                 for (int i = 0; i < 4; i++) {
+                    boolean bindDialogId = false;
                     if (i == 0) {
                         if (dialogId != 0) {
-                            state = getMessagesStorage().getDatabase().executeFast("UPDATE messages_v2 SET replydata = ? WHERE reply_to_message_id IN(?) AND uid = ?");
+                            state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE messages_v2 SET replydata = ? WHERE reply_to_message_id IN(%s) AND uid = ?", ids));
+                            bindDialogId = true;
                         } else {
-                            state = getMessagesStorage().getDatabase().executeFast("UPDATE messages_v2 SET replydata = ? WHERE reply_to_message_id IN(?) AND is_channel = 0");
+                            state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE messages_v2 SET replydata = ? WHERE reply_to_message_id IN(%s) AND is_channel = 0", ids));
                         }
                     } else if (i == 1) {
                         if (dialogId != 0) {
-                            state = getMessagesStorage().getDatabase().executeFast("UPDATE scheduled_messages_v2 SET replydata = ? WHERE reply_to_message_id IN(?) AND uid = ?");
+                            state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE scheduled_messages_v2 SET replydata = ? WHERE reply_to_message_id IN(%s) AND uid = ?", ids));
+                            bindDialogId = true;
                         } else {
-                            state = getMessagesStorage().getDatabase().executeFast("UPDATE scheduled_messages_v2 SET replydata = ? WHERE reply_to_message_id IN(?)");
+                            state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE scheduled_messages_v2 SET replydata = ? WHERE reply_to_message_id IN(%s)", ids));
                         }
                     } else if (i == 2) {
-                        state = getMessagesStorage().getDatabase().executeFast("UPDATE quick_replies_messages SET replydata = ? WHERE reply_to_message_id IN(?)");
+                        state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE quick_replies_messages SET replydata = ? WHERE reply_to_message_id IN(%s)", ids));
                     } else {
                         if (dialogId == 0) {
                             continue;
                         }
-                        state = getMessagesStorage().getDatabase().executeFast("UPDATE messages_topics SET replydata = ? WHERE reply_to_message_id IN(?) AND uid = ?");
+                        state = getMessagesStorage().getDatabase().executeFast(String.format(Locale.US, "UPDATE messages_topics SET replydata = ? WHERE reply_to_message_id IN(%s) AND uid = ?", ids));
+                        bindDialogId = true;
                     }
                     TLRPC.TL_messageEmpty emptyMessage = new TLRPC.TL_messageEmpty();
                     NativeByteBuffer data = new NativeByteBuffer(emptyMessage.getObjectSize());
@@ -13862,9 +13892,8 @@ public class MessagesStorage extends BaseController {
 
                     state.requery();
                     state.bindByteBuffer(1, data);
-                    state.bindString(2, ids);
-                    if (dialogId != 0 && i != 2) {
-                        state.bindLong(3, dialogId);
+                    if (bindDialogId) {
+                        state.bindLong(2, dialogId);
                     }
                     state.step();
                     state.dispose();

@@ -880,6 +880,25 @@ public class ImageLoader {
             cacheImage = image;
         }
 
+        private boolean isCancelledOrOrphaned() {
+            synchronized (sync) {
+                if (isCancelled) {
+                    return true;
+                }
+            }
+            return cacheImage.imageReceiverArray.isEmpty() && !forceLoadingImages.containsKey(cacheImage.key);
+        }
+
+        private void recycleDecodedDrawable(Drawable drawable) {
+            if (drawable instanceof AnimatedFileDrawable) {
+                ((AnimatedFileDrawable) drawable).recycle();
+            } else if (drawable instanceof RLottieDrawable) {
+                ((RLottieDrawable) drawable).recycle(false);
+            } else if (drawable instanceof BitmapDrawable) {
+                AndroidUtilities.recycleBitmap(((BitmapDrawable) drawable).getBitmap());
+            }
+        }
+
         @Override
         public void run() {
             synchronized (sync) {
@@ -890,6 +909,9 @@ public class ImageLoader {
                 }
             }
             decodeStartedAt = SystemClock.elapsedRealtime();
+            if (isCancelledOrOrphaned()) {
+                return;
+            }
 
             if (cacheImage.imageLocation.photoSize instanceof TLRPC.TL_photoStrippedSize) {
                 TLRPC.TL_photoStrippedSize photoSize = (TLRPC.TL_photoStrippedSize) cacheImage.imageLocation.photoSize;
@@ -1353,10 +1375,8 @@ public class ImageLoader {
                 if (cacheImage.type == ImageReceiver.TYPE_THUMB) {
                     try {
                         lastCacheOutTime = SystemClock.elapsedRealtime();
-                        synchronized (sync) {
-                            if (isCancelled) {
-                                return;
-                            }
+                        if (isCancelledOrOrphaned()) {
+                            return;
                         }
 
                         if (opts.inPurgeable || secureDocumentKey != null) {
@@ -1463,10 +1483,8 @@ public class ImageLoader {
                             Thread.sleep(delay);
                         }
                         lastCacheOutTime = SystemClock.elapsedRealtime();
-                        synchronized (sync) {
-                            if (isCancelled) {
-                                return;
-                            }
+                        if (isCancelledOrOrphaned()) {
+                            return;
                         }
 
                         if (force8888 || cacheImage.filter == null || blurType != 0 || cacheImage.imageLocation.path != null) {
@@ -1714,6 +1732,10 @@ public class ImageLoader {
         }
 
         private void onPostExecute(final Drawable drawable) {
+            if (isCancelledOrOrphaned()) {
+                recycleDecodedDrawable(drawable);
+                return;
+            }
             if (BuildVars.LOGS_ENABLED) {
                 long elapsed = decodeStartedAt == 0 ? 0 : SystemClock.elapsedRealtime() - decodeStartedAt;
                 int width = 0;
@@ -1738,6 +1760,10 @@ public class ImageLoader {
                 }
             }
             AndroidUtilities.runOnUIThread(() -> {
+                if (isCancelledOrOrphaned()) {
+                    recycleDecodedDrawable(drawable);
+                    return;
+                }
                 // save deleted media from cache
                 if (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() && cacheImage.finalFilePath != null && cacheImage.parentObject instanceof MessageObject messageObject) {
                     if (messageObject.isAyuDeleted()) {
