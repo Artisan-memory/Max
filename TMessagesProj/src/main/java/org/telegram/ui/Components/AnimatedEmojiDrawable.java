@@ -894,7 +894,9 @@ public class AnimatedEmojiDrawable extends Drawable {
         if (imageReceiver == null) {
             return;
         }
-        boolean attach = (views != null && views.size() > 0) || (holders != null && holders.size() > 0) || preloading;
+        boolean hasVisibleOwner = (views != null && views.size() > 0) || (holders != null && holders.size() > 0);
+        boolean attach = hasVisibleOwner || preloading;
+        imageReceiver.setFileLoadingPriority(hasVisibleOwner ? FileLoader.PRIORITY_NORMAL : FileLoader.PRIORITY_LOW);
         if (attach != attached) {
             attached = attach;
             if (attached) {
