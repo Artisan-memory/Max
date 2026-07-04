@@ -34,6 +34,9 @@ object ExternalStickerCacheHelper {
     private const val MANAGED_DIRECTORY = "NagramStickerCache"
     private const val AUTO_SYNC_DELAY_MS = 1200L
     private const val PREFETCH_DELAY_MS = 20L
+    private val STICKER_TYPES = intArrayOf(MediaDataController.TYPE_IMAGE, MediaDataController.TYPE_MASK)
+    private val EMOJI_TYPES = intArrayOf(MediaDataController.TYPE_EMOJIPACKS, MediaDataController.TYPE_EMOJI)
+    private val ALL_TYPES = STICKER_TYPES + EMOJI_TYPES
 
     data class CacheStats(val totalBytes: Long, val cachedCount: Int, val totalCount: Int)
 
@@ -69,7 +72,7 @@ object ExternalStickerCacheHelper {
                 showToast(getString(R.string.ExternalStickerCacheFolderError))
             } else {
                 rebuildIndex()
-                cacheInstalledStickers(UserConfig.selectedAccount, prefetchMissing = false, publishProgress = false)
+                cacheInstalledStickers(UserConfig.selectedAccount, ALL_TYPES, prefetchMissing = false, publishProgress = false)
                 scheduleStatsRefresh()
                 showToast(getString(R.string.ExternalStickerCacheFolderReady))
             }
@@ -78,20 +81,34 @@ object ExternalStickerCacheHelper {
 
     @JvmStatic
     fun syncAllCaches() {
+        syncCaches(ALL_TYPES, R.string.ExternalStickerCacheSyncStarted, R.string.ExternalStickerCacheSyncQueued)
+    }
+
+    @JvmStatic
+    fun syncAllStickerCaches() {
+        syncCaches(STICKER_TYPES, R.string.ExternalStickerCacheSyncStarted, R.string.ExternalStickerCacheSyncQueued)
+    }
+
+    @JvmStatic
+    fun syncAllEmojiCaches() {
+        syncCaches(EMOJI_TYPES, R.string.ExternalEmojiCacheSyncStarted, R.string.ExternalEmojiCacheSyncQueued)
+    }
+
+    private fun syncCaches(types: IntArray, startString: Int, queuedString: Int) {
         if (NaConfig.externalStickerCacheUri == null) {
             showToast(getString(R.string.ExternalStickerCacheFolderRequired))
             return
         }
-        showToast(getString(R.string.ExternalStickerCacheSyncStarted))
+        showToast(getString(startString))
         val account = UserConfig.selectedAccount
-        loadStickerSets(account) {
+        loadStickerSets(account, types) {
             scope.launch {
                 try {
-                    val result = cacheInstalledStickers(account, prefetchMissing = true, publishProgress = true)
+                    val result = cacheInstalledStickers(account, types, prefetchMissing = true, publishProgress = true)
                     scheduleStatsRefresh()
                     showToast(
                         if (result.queued > 0) {
-                            getString(R.string.ExternalStickerCacheSyncQueued)
+                            getString(queuedString)
                         } else {
                             getString(R.string.Done)
                         }
@@ -178,7 +195,9 @@ object ExternalStickerCacheHelper {
     @JvmStatic
     fun addStatsListener(listener: StatsListener) {
         statsListeners.addIfAbsent(listener)
-        scheduleStatsRefresh()
+        loadStickerSets(UserConfig.selectedAccount, ALL_TYPES) {
+            scheduleStatsRefresh()
+        }
     }
 
     @JvmStatic
@@ -193,7 +212,7 @@ object ExternalStickerCacheHelper {
             autoSyncJob = scope.launch {
                 delay(AUTO_SYNC_DELAY_MS)
                 try {
-                    cacheInstalledStickers(account, prefetchMissing = false, publishProgress = false)
+                    cacheInstalledStickers(account, ALL_TYPES, prefetchMissing = false, publishProgress = false)
                     scheduleStatsRefresh()
                 } catch (e: Exception) {
                     FileLog.e(e)
@@ -204,13 +223,13 @@ object ExternalStickerCacheHelper {
 
     private data class SyncResult(val copied: Int, val queued: Int)
 
-    private suspend fun cacheInstalledStickers(account: Int, prefetchMissing: Boolean, publishProgress: Boolean): SyncResult {
+    private suspend fun cacheInstalledStickers(account: Int, types: IntArray, prefetchMissing: Boolean, publishProgress: Boolean): SyncResult {
         var copied = 0
         var queued = 0
         syncMutex.withLock {
             val root = getManagedRoot(create = true) ?: return SyncResult(0, 0)
             val fileLoader = FileLoader.getInstance(account)
-            for (set in getInstalledStickerSets(account)) {
+            for (set in getInstalledStickerSets(account, types)) {
                 val setDirectory = root.findFile(getStickerDirectoryName(set))
                     ?: root.createDirectory(getStickerDirectoryName(set))
                     ?: continue
@@ -236,10 +255,9 @@ object ExternalStickerCacheHelper {
         return SyncResult(copied, queued)
     }
 
-    private fun getInstalledStickerSets(account: Int): List<TL_messages_stickerSet> {
+    private fun getInstalledStickerSets(account: Int, types: IntArray = ALL_TYPES): List<TL_messages_stickerSet> {
         val controller = MediaDataController.getInstance(account)
-        return listOf(MediaDataController.TYPE_IMAGE, MediaDataController.TYPE_MASK, MediaDataController.TYPE_EMOJIPACKS)
-            .flatMap { controller.getStickerSets(it) }
+        return types.flatMap { controller.getStickerSets(it) }
     }
 
     private fun findLocalFile(sticker: TLRPC.Document): File? {
@@ -284,6 +302,9 @@ object ExternalStickerCacheHelper {
         if (existing?.let { it.isFile && it.length() > 0 } == true) {
             cachedDocuments[sticker.id] = existing
             return false
+        }
+        if (existing != null) {
+            existing.delete()
         }
 
         val destination = setDirectory.createFile(mimeTypeFor(sticker.mime_type), destinationName) ?: return false
@@ -379,10 +400,9 @@ object ExternalStickerCacheHelper {
             .replace(Regex("[\\\\/:*?\"<>|]"), "_")
     }
 
-    private fun loadStickerSets(account: Int, onDone: () -> Unit) {
+    private fun loadStickerSets(account: Int, types: IntArray = ALL_TYPES, onDone: () -> Unit) {
         AndroidUtilities.runOnUIThread {
             val controller = MediaDataController.getInstance(account)
-            val types = intArrayOf(MediaDataController.TYPE_IMAGE, MediaDataController.TYPE_MASK, MediaDataController.TYPE_EMOJIPACKS)
             var remaining = types.size
             fun done() {
                 remaining--
@@ -400,6 +420,7 @@ object ExternalStickerCacheHelper {
         return MessageObject.isStickerDocument(document)
                 || MessageObject.isAnimatedStickerDocument(document, true)
                 || MessageObject.isVideoStickerDocument(document)
+                || MessageObject.isAnimatedEmoji(document)
     }
 
     private fun extensionFor(mimeType: String?): String = when (mimeType) {
@@ -426,13 +447,15 @@ object ExternalStickerCacheHelper {
             notificationIds.forEach { addObserver(observer, it) }
         }
         if (NaConfig.externalStickerCacheUri != null) {
-            scope.launch {
-                try {
-                    rebuildIndex()
-                    cacheInstalledStickers(account, prefetchMissing = false, publishProgress = false)
-                    scheduleStatsRefresh()
-                } catch (e: Exception) {
-                    FileLog.e(e)
+            loadStickerSets(account, ALL_TYPES) {
+                scope.launch {
+                    try {
+                        rebuildIndex()
+                        cacheInstalledStickers(account, ALL_TYPES, prefetchMissing = false, publishProgress = false)
+                        scheduleStatsRefresh()
+                    } catch (e: Exception) {
+                        FileLog.e(e)
+                    }
                 }
             }
         }

@@ -146,7 +146,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell headerExternalStickerCache = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.ExternalStickerCache)));
     private final AbstractConfigCell externalStickerCacheRow = cellGroup.appendCell(new ConfigCellTextDetail(NaConfig.INSTANCE.getExternalStickerCache(), (view, position) -> pickExternalStickerCacheFolder(), getString(R.string.ExternalStickerCacheHint), ExternalStickerCacheHelper::getDisplayPath));
     private final AbstractConfigCell externalStickerCacheUsageRow = cellGroup.appendCell(new ConfigCellCustom("ExternalStickerCacheUsage", ConfigCellCustom.CUSTOM_ITEM_StickerCacheUsage, false));
-    private final AbstractConfigCell externalStickerCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheRefreshAll", ExternalStickerCacheHelper::syncAllCaches));
+    private final AbstractConfigCell externalStickerCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheRefreshAll", ExternalStickerCacheHelper::syncAllStickerCaches));
+    private final AbstractConfigCell externalEmojiCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalEmojiCacheRefreshAll", ExternalStickerCacheHelper::syncAllEmojiCaches));
     private final AbstractConfigCell externalStickerCacheDeleteAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheDeleteAll", ExternalStickerCacheHelper::deleteAllCaches));
     private final AbstractConfigCell dividerExternalStickerCache = cellGroup.appendCell(new ConfigCellDivider());
 
