@@ -778,23 +778,17 @@ public class ConnectionsManager extends BaseController {
         return native_checkProxy(currentAccount, address, port, username, password, secret, requestTimeDelegate);
     }
 
-    public void setAppPaused(final boolean value, final boolean byScreenState) {
+    public synchronized void setAppPaused(final boolean value, final boolean byScreenState) {
         if (!byScreenState) {
             appPaused = value;
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("app paused = " + value);
-            }
             if (value) {
-                appResumeCount--;
+                appResumeCount = Math.max(0, appResumeCount - 1);
             } else {
                 appResumeCount++;
             }
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("app resume count " + appResumeCount);
-            }
-            if (appResumeCount < 0) {
-                appResumeCount = 0;
-            }
+        }
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("connection lifecycle account=" + currentAccount + " source=" + (byScreenState ? "screen" : "holder") + " paused=" + value + " holders=" + appResumeCount + " action=" + (appResumeCount == 0 ? "pause" : appPaused ? "keep" : "resume"));
         }
         if (appResumeCount == 0) {
             if (lastPauseTime == 0) {
@@ -804,9 +798,6 @@ public class ConnectionsManager extends BaseController {
         } else {
             if (appPaused) {
                 return;
-            }
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("reset app pause time");
             }
             if (lastPauseTime != 0 && System.currentTimeMillis() - lastPauseTime > 5000) {
                 getContactsController().checkContacts();

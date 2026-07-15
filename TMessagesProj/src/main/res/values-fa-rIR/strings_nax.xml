@@ -244,4 +244,16 @@
     <string name="PinnedReactions_Apply">به‌روزرسانی واکنش‌های پین‌شده</string>
     <string name="HowToObtain">چگونه به دست آورم؟</string>
     <string name="SortByUnread">مرتب‌سازی بر اساس خوانده نشده</string>
+    <string name="BulkLeaveChannel">ترک کانال</string>
+    <string name="BulkLeaveChannels">ترک کانال‌ها</string>
+    <string name="BulkStopBot">توقف ربات</string>
+    <string name="BulkStopBots">توقف ربات‌ها</string>
+    <string name="BulkLeaveConfirm">از %1$d کانال انتخاب‌شده خارج می‌شوید؟</string>
+    <string name="BulkStopConfirm">%1$d ربات انتخاب‌شده متوقف شوند؟ می‌توانید گفتگوها را نگه دارید یا حذف کنید.</string>
+    <string name="BulkStopAndDelete">توقف و حذف گفتگوها</string>
+    <string name="BulkLeaveProgress">%1$d از %2$d کانال ترک شد</string>
+    <string name="BulkStopProgress">%1$d از %2$d ربات متوقف شد</string>
+    <string name="BulkFloodWaitProgress">محدودیت تلگرام فعال شد. ادامه تا %1$d ثانیه دیگر…</string>
+    <string name="BulkActionFinished">%1$d از %2$d انجام شد</string>
+    <string name="BulkActionFailed">%1$d از %2$d انجام شد. آخرین خطا: %3$s</string>
 </resources>

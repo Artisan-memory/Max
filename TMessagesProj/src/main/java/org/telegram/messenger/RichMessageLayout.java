@@ -100,6 +100,8 @@ import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ru.noties.jlatexmath.JLatexMathDrawable;
+
 public class RichMessageLayout {
 
     public final int currentAccount;
@@ -437,10 +439,42 @@ public class RichMessageLayout {
         blocks.add(new RichCaptionBlock(this, padding, maxWidth, text, credit));
     }
 
+    private SpannableStringBuilder formatPlainText(String text, int flags, String url) {
+        final SpannableStringBuilder out = new SpannableStringBuilder(text == null ? "" : text);
+        if (out.length() == 0) return out;
+        if (flags != 0) {
+            out.setSpan(new StyleSpan(this, flags), 0, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (!TextUtils.isEmpty(url)) {
+            out.setSpan(new URLSpanNoUnderline(url), 0, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return out;
+    }
+
+    private RichBlock emitPlainText(String text, String url, Rect padding, int flags) {
+        if (TextUtils.isEmpty(text)) return null;
+        final RichBlock block = new RichTextBlock(this, new Rect(padding), maxWidth, formatPlainText(text, flags, url));
+        blocks.add(block);
+        return block;
+    }
+
     private RichBlock emitBlock(TL_iv.PageBlock pageBlock, int level, Rect padding, int textFlags) {
         if (padding.left + padding.right >= maxWidth) return null;
         if (pageBlock instanceof TL_iv.pageBlockThinking) {
             final RichThinkingBlock block = new RichThinkingBlock(this, new Rect(), maxWidth, formatText(pageBlock.text));
+            blocks.add(block);
+            return block;
+        } else if (pageBlock instanceof TL_iv.pageBlockAuthorDate) {
+            final TL_iv.pageBlockAuthorDate authorDate = (TL_iv.pageBlockAuthorDate) pageBlock;
+            final int flags = setBlockFlags(textFlags, TEXT_FLAG_BLOCK_FOOTER);
+            final SpannableStringBuilder text = new SpannableStringBuilder(formatText(authorDate.author, flags));
+            if (authorDate.published_date != 0) {
+                if (text.length() > 0) text.append(" • ");
+                final int start = text.length();
+                text.append(LocaleController.formatDateChat(authorDate.published_date, true));
+                text.setSpan(new StyleSpan(this, flags), start, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            final RichBlock block = new RichTextBlock(this, new Rect(padding), maxWidth, text);
             blocks.add(block);
             return block;
         } else if (
@@ -711,6 +745,85 @@ public class RichMessageLayout {
         } else if (pageBlock instanceof TL_iv.pageBlockCover) {
             final TL_iv.pageBlockCover cover = (TL_iv.pageBlockCover) pageBlock;
             return emitBlock(cover.cover, level, padding, textFlags);
+        } else if (pageBlock instanceof TL_iv.pageBlockEmbed) {
+            final TL_iv.pageBlockEmbed embed = (TL_iv.pageBlockEmbed) pageBlock;
+            RichBlock first = null;
+            if (embed.poster_photo_id != 0 && getPhoto(embed.poster_photo_id) != null) {
+                final TL_iv.pageBlockPhoto poster = new TL_iv.pageBlockPhoto();
+                poster.photo_id = embed.poster_photo_id;
+                first = new RichPhotoBlock(this, new Rect(padding), maxWidth, poster);
+                blocks.add(first);
+            }
+            if (!TextUtils.isEmpty(embed.url)) {
+                final RichBlock link = emitPlainText(embed.url, embed.url, padding, textFlags);
+                if (first == null) first = link;
+            } else if (first == null) {
+                first = emitPlainText(LocaleController.getString(R.string.UnsupportedMedia2), null, padding, setBlockFlags(textFlags, TEXT_FLAG_BLOCK_FOOTER));
+            }
+            emitCaption(embed.caption, padding, textFlags);
+            return first;
+        } else if (pageBlock instanceof TL_iv.pageBlockEmbedPost) {
+            final TL_iv.pageBlockEmbedPost post = (TL_iv.pageBlockEmbedPost) pageBlock;
+            final int startIndex = blocks.size();
+            final StringBuilder byline = new StringBuilder();
+            if (!TextUtils.isEmpty(post.author)) byline.append(post.author);
+            if (post.date != 0) {
+                if (byline.length() > 0) byline.append(" • ");
+                byline.append(LocaleController.formatDateChat(post.date, true));
+            }
+            RichBlock first = emitPlainText(byline.toString(), post.url, new Rect(padding.left + dp(12), padding.top, padding.right + dp(12), padding.bottom), setBlockFlags(textFlags, TEXT_FLAG_BLOCK_FOOTER));
+            for (int i = 0; i < post.blocks.size(); ++i) {
+                final RichBlock child = emitBlock(post.blocks.get(i), level + 1, new Rect(padding.left + dp(12), padding.top, padding.right + dp(12), padding.bottom), textFlags);
+                if (first == null && child != null) first = child;
+            }
+            emitCaption(post.caption, new Rect(padding.left + dp(12), padding.top, padding.right + dp(12), padding.bottom), textFlags);
+            if (blocks.size() > startIndex) {
+                quotes.add(new QuoteBackground(startIndex, blocks.size() - 1, padding.left, level));
+            }
+            return first;
+        } else if (pageBlock instanceof TL_iv.pageBlockChannel) {
+            final TLRPC.Chat channel = ((TL_iv.pageBlockChannel) pageBlock).channel;
+            if (channel == null) return null;
+            final String username = ChatObject.getPublicUsername(channel);
+            final String title = !TextUtils.isEmpty(channel.title) ? channel.title : (!TextUtils.isEmpty(username) ? "@" + username : null);
+            return emitPlainText(title, TextUtils.isEmpty(username) ? null : "https://t.me/" + username, padding, setBlockFlags(textFlags, TEXT_FLAG_BOLD));
+        } else if (pageBlock instanceof TL_iv.pageBlockRelatedArticles) {
+            final TL_iv.pageBlockRelatedArticles related = (TL_iv.pageBlockRelatedArticles) pageBlock;
+            RichBlock first = null;
+            if (related.title != null) {
+                first = new RichTextBlock(this, new Rect(padding), maxWidth, formatText(related.title, setBlockFlags(textFlags, TEXT_FLAG_BLOCK_SUBHEADER)));
+                blocks.add(first);
+            }
+            final Rect itemPadding = new Rect(padding);
+            if (isRtl()) itemPadding.right += dp(20); else itemPadding.left += dp(20);
+            for (int i = 0; i < related.articles.size(); ++i) {
+                final TL_iv.pageRelatedArticle article = related.articles.get(i);
+                String title = article.title;
+                if (TextUtils.isEmpty(title)) title = article.description;
+                if (TextUtils.isEmpty(title)) title = article.url;
+                final SpannableStringBuilder itemText = formatPlainText(title, setBlockFlags(textFlags, TEXT_FLAG_BOLD), article.url);
+                if (!TextUtils.isEmpty(article.description) && !TextUtils.equals(article.description, title)) {
+                    final int start = itemText.length();
+                    itemText.append("\n").append(article.description);
+                    itemText.setSpan(new StyleSpan(this, textFlags), start, itemText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+                final StringBuilder meta = new StringBuilder();
+                if (!TextUtils.isEmpty(article.author)) meta.append(article.author);
+                if (article.published_date != 0) {
+                    if (meta.length() > 0) meta.append(" • ");
+                    meta.append(LocaleController.formatDateChat(article.published_date, true));
+                }
+                if (meta.length() > 0) {
+                    final int start = itemText.length();
+                    itemText.append("\n").append(meta);
+                    itemText.setSpan(new StyleSpan(this, setBlockFlags(textFlags, TEXT_FLAG_BLOCK_FOOTER)), start, itemText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+                final RichBlock item = new RichTextBlock(this, new Rect(itemPadding), maxWidth, itemText);
+                item.setNum("•");
+                blocks.add(item);
+                if (first == null) first = item;
+            }
+            return first;
         } else if (pageBlock instanceof TL_iv.pageBlockAnchor) {
             final TL_iv.pageBlockAnchor anchor = (TL_iv.pageBlockAnchor) pageBlock;
             if (anchor.name != null) {
@@ -718,7 +831,7 @@ public class RichMessageLayout {
             }
             return null;
         } else if (pageBlock instanceof TL_iv.pageBlockUnsupported) {
-            // TODO
+            return emitPlainText(LocaleController.getString(R.string.UnsupportedMedia2), null, padding, setBlockFlags(textFlags, TEXT_FLAG_BLOCK_FOOTER));
         } else if (pageBlock instanceof TL_iv.pageBlockDetails) {
             final TL_iv.pageBlockDetails details = (TL_iv.pageBlockDetails) pageBlock;
             final RichDetailsBlock header = new RichDetailsBlock(this, padding, maxWidth, details, formatText(details.title, setBlockFlags(textFlags, TEXT_FLAG_BOLD)));
@@ -1208,6 +1321,10 @@ public class RichMessageLayout {
     public static final int TEXT_FLAG_BLOCK_QUOTE    = 9;
     public static final int TEXT_FLAG_BLOCK_CAPTION  = 10;
     public static final int TEXT_FLAG_BLOCK_PULLQUOTE_CAPTION = 11;
+    public static final int TEXT_FLAG_BLOCK_TITLE    = 12;
+    public static final int TEXT_FLAG_BLOCK_SUBTITLE = 13;
+    public static final int TEXT_FLAG_BLOCK_SUBHEADER = 14;
+    public static final int TEXT_FLAG_BLOCK_KICKER   = 15;
 
     public static final int TEXT_FLAG_BOLD           = 1 << 4;
     public static final int TEXT_FLAG_ITALIC         = 1 << 5;
@@ -1227,6 +1344,10 @@ public class RichMessageLayout {
         if (block instanceof TL_iv.pageBlockHeading4) return TEXT_FLAG_BLOCK_HEADING4;
         if (block instanceof TL_iv.pageBlockHeading5) return TEXT_FLAG_BLOCK_HEADING5;
         if (block instanceof TL_iv.pageBlockHeading6) return TEXT_FLAG_BLOCK_HEADING6;
+        if (block instanceof TL_iv.pageBlockTitle) return TEXT_FLAG_BLOCK_TITLE;
+        if (block instanceof TL_iv.pageBlockSubtitle || block instanceof TL_iv.pageBlockHeader) return TEXT_FLAG_BLOCK_SUBTITLE;
+        if (block instanceof TL_iv.pageBlockSubheader) return TEXT_FLAG_BLOCK_SUBHEADER;
+        if (block instanceof TL_iv.pageBlockKicker) return TEXT_FLAG_BLOCK_KICKER;
 
         if (block instanceof TL_iv.pageBlockBlockquote) return TEXT_FLAG_BLOCK_QUOTE;
         if (block instanceof TL_iv.pageBlockBlockquoteBlocks) return TEXT_FLAG_BLOCK_QUOTE;
@@ -1238,7 +1359,12 @@ public class RichMessageLayout {
     }
 
     private static boolean isHeadingBlock(TL_iv.PageBlock block) {
-        return block instanceof TL_iv.pageBlockHeading1 ||
+        return block instanceof TL_iv.pageBlockTitle ||
+            block instanceof TL_iv.pageBlockSubtitle ||
+            block instanceof TL_iv.pageBlockHeader ||
+            block instanceof TL_iv.pageBlockSubheader ||
+            block instanceof TL_iv.pageBlockKicker ||
+            block instanceof TL_iv.pageBlockHeading1 ||
             block instanceof TL_iv.pageBlockHeading2 ||
             block instanceof TL_iv.pageBlockHeading3 ||
             block instanceof TL_iv.pageBlockHeading4 ||
@@ -1358,7 +1484,39 @@ public class RichMessageLayout {
             formatTextAndSetSpan(text.text, out, flags, new AnchorSpan(anchor.name == null ? "" : anchor.name.toLowerCase()));
         } else if (text instanceof TL_iv.textMath) {
             final TL_iv.textMath textLatex = (TL_iv.textMath) text;
-            return textLatex.source == null ? "" : textLatex.source;
+            if (textLatex.bitmap == null && !textLatex.tried) {
+                textLatex.tried = true;
+                try {
+                    final JLatexMathDrawable drawable = JLatexMathDrawable.builder(textLatex.source)
+                        .textSize(dp(4 + fontSize))
+                        .build();
+                    final int w = drawable.getIntrinsicWidth();
+                    final int h = drawable.getIntrinsicHeight();
+                    if (w > 0 && h > 0) {
+                        final Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8);
+                        drawable.setBounds(0, 0, w, h);
+                        drawable.draw(new Canvas(bitmap));
+                        textLatex.w = w;
+                        textLatex.h = h;
+                        try {
+                            textLatex.depth = drawable.icon().getIconDepth();
+                        } catch (Throwable e) {
+                            FileLog.e(e);
+                        }
+                        textLatex.bitmap = bitmap;
+                    }
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+            }
+            if (textLatex.bitmap == null) {
+                return textLatex.source == null ? "" : textLatex.source;
+            }
+
+            final int start = out.length();
+            out.append(TextUtils.isEmpty(textLatex.source) ? " " : textLatex.source);
+            final int end = out.length();
+            out.setSpan(new TextPaintImageReceiverSpan(null, textLatex.bitmap, textLatex.w, textLatex.h, Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider), textLatex.depth), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (text instanceof TL_iv.textCustomEmoji) {
             final TL_iv.textCustomEmoji customEmoji = (TL_iv.textCustomEmoji) text;
             final String alt = TextUtils.isEmpty(customEmoji.alt) ? "😀" : customEmoji.alt;
@@ -1492,6 +1650,10 @@ public class RichMessageLayout {
                 case TEXT_FLAG_BLOCK_HEADING4: return dp(baseSize - 1);
                 case TEXT_FLAG_BLOCK_HEADING5: return dp(baseSize - 2);
                 case TEXT_FLAG_BLOCK_HEADING6: return dp(baseSize - 3);
+                case TEXT_FLAG_BLOCK_TITLE:    return dp(baseSize + 7);
+                case TEXT_FLAG_BLOCK_SUBTITLE: return dp(baseSize + 4);
+                case TEXT_FLAG_BLOCK_SUBHEADER:return dp(baseSize + 1);
+                case TEXT_FLAG_BLOCK_KICKER:   return dp(baseSize - 2);
 
                 case TEXT_FLAG_BLOCK_FOOTER:   return dp(baseSize - 2);
                 case TEXT_FLAG_BLOCK_CODE:     return dp(Math.max(8, baseSize - 2));
@@ -1517,7 +1679,7 @@ public class RichMessageLayout {
         public Typeface getTypeface() {
             if ((flags & TEXT_FLAG_BLOCKS) == TEXT_FLAG_BLOCK_CODE) {
                 return Typeface.MONOSPACE;
-            } else if ((flags & TEXT_FLAG_BLOCKS) >= 1 && (flags & TEXT_FLAG_BLOCKS) <= 6) {
+            } else if (((flags & TEXT_FLAG_BLOCKS) >= 1 && (flags & TEXT_FLAG_BLOCKS) <= 6) || (flags & TEXT_FLAG_BLOCKS) >= TEXT_FLAG_BLOCK_TITLE) {
                 return AndroidUtilities.getTypeface("fonts/mw_bold.ttf");
             } else if (hasFlag(flags, TEXT_FLAG_MONO)) {
                 return Typeface.MONOSPACE;
@@ -2748,7 +2910,8 @@ public class RichMessageLayout {
             if (act == MotionEvent.ACTION_MOVE) {
                 if (velocityTracker != null) velocityTracker.addMovement(event);
                 final float dx = event.getX() - downX;
-                if (!dragging && Math.abs(dx) > touchSlop) {
+                final float dy = event.getY() - downY;
+                if (!dragging && Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
                     dragging = true;
                     requestDisallowParentIntercept(true);
                 }
@@ -2877,7 +3040,7 @@ public class RichMessageLayout {
         private final int maxScrollX;
         private int scrollX;
 
-        private float downX;
+        private float downX, downY;
         private int downScrollX;
         private boolean dragging;
         private boolean textHandlingTouch;
@@ -3047,6 +3210,7 @@ public class RichMessageLayout {
                     scroller.forceFinished(true);
                 }
                 downX = event.getX();
+                downY = event.getY();
                 downScrollX = scrollX;
                 dragging = false;
                 if (velocityTracker == null) velocityTracker = VelocityTracker.obtain();
@@ -3060,7 +3224,8 @@ public class RichMessageLayout {
             if (act == MotionEvent.ACTION_MOVE) {
                 if (velocityTracker != null) velocityTracker.addMovement(event);
                 final float dx = event.getX() - downX;
-                if (!dragging && maxScrollX > 0 && Math.abs(dx) > touchSlop) {
+                final float dy = event.getY() - downY;
+                if (!dragging && maxScrollX > 0 && Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
                     dragging = true;
                     requestDisallowParentIntercept(true);
                     if (textHandlingTouch) {
@@ -3167,7 +3332,7 @@ public class RichMessageLayout {
         private final int maxScrollX;
         private int scrollX;
 
-        private float downX;
+        private float downX, downY;
         private int downScrollX;
         private boolean dragging;
         private int touchSlop;
@@ -3187,9 +3352,27 @@ public class RichMessageLayout {
             this.viewportWidth = this.maxWidth;
 
             if (block != null && !TextUtils.isEmpty(block.source)) {
-                text = new Text(root, block.source, Math.max(1, maxWidth - padding.left - padding.right));
-                contentW = text.getMinWidth();
-                contentH = text.getHeight();
+                try {
+                    final JLatexMathDrawable drawable = JLatexMathDrawable.builder(block.source)
+                        .textSize(dp(4 + root.fontSize))
+                        .build();
+                    final int w = drawable.getIntrinsicWidth();
+                    final int h = drawable.getIntrinsicHeight();
+                    if (w > 0 && h > 0) {
+                        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8);
+                        drawable.setBounds(0, 0, w, h);
+                        drawable.draw(new Canvas(bitmap));
+                        contentW = w;
+                        contentH = h;
+                    }
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+                if (bitmap == null) {
+                    text = new Text(root, block.source, Math.max(1, maxWidth - padding.left - padding.right));
+                    contentW = text.getMinWidth();
+                    contentH = text.getHeight();
+                }
             }
             contentWidth = contentW + dp(HPAD) * 2;
             maxScrollX = Math.max(0, contentWidth - viewportWidth);
@@ -3287,6 +3470,7 @@ public class RichMessageLayout {
                     scroller.forceFinished(true);
                 }
                 downX = event.getX();
+                downY = event.getY();
                 downScrollX = scrollX;
                 dragging = false;
                 if (velocityTracker == null) velocityTracker = VelocityTracker.obtain();
@@ -3297,7 +3481,8 @@ public class RichMessageLayout {
             if (act == MotionEvent.ACTION_MOVE) {
                 if (velocityTracker != null) velocityTracker.addMovement(event);
                 final float dx = event.getX() - downX;
-                if (!dragging && Math.abs(dx) > touchSlop) {
+                final float dy = event.getY() - downY;
+                if (!dragging && Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
                     dragging = true;
                     requestDisallowParentIntercept(true);
                 }

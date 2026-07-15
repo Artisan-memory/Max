@@ -310,4 +310,16 @@
     <string name="SetLocalName">Definir nome local</string>
     <string name="DeleteChatForBothSides">Usar \"Apagar também para\" por padrão</string>
     <string name="AutoPingProxy">Ping automático do proxy</string>
+    <string name="BulkLeaveChannel">Sair do canal</string>
+    <string name="BulkLeaveChannels">Sair dos canais</string>
+    <string name="BulkStopBot">Parar o bot</string>
+    <string name="BulkStopBots">Parar bots</string>
+    <string name="BulkLeaveConfirm">Sair de %1$d canal(is) selecionado(s)?</string>
+    <string name="BulkStopConfirm">Parar %1$d bot(s) selecionado(s)? Você pode manter ou excluir os chats.</string>
+    <string name="BulkStopAndDelete">Parar e excluir chats</string>
+    <string name="BulkLeaveProgress">Saiu de %1$d de %2$d</string>
+    <string name="BulkStopProgress">Parou %1$d de %2$d</string>
+    <string name="BulkFloodWaitProgress">Limite do Telegram atingido. Continuando em %1$d segundos…</string>
+    <string name="BulkActionFinished">Concluído %1$d de %2$d</string>
+    <string name="BulkActionFailed">Concluído %1$d de %2$d. Último erro: %3$s</string>
 </resources>

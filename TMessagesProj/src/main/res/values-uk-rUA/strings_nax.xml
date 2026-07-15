@@ -310,4 +310,16 @@
     <string name="SetLocalName">Встановити локальне ім\'я</string>
     <string name="DeleteChatForBothSides">Використовувати «Також видалити для» за замовчуванням</string>
     <string name="AutoPingProxy">Автоматичний пінг проксі</string>
+    <string name="BulkLeaveChannel">Покинути канал</string>
+    <string name="BulkLeaveChannels">Покинути канали</string>
+    <string name="BulkStopBot">Зупинити бота</string>
+    <string name="BulkStopBots">Зупинити ботів</string>
+    <string name="BulkLeaveConfirm">Покинути вибрані канали: %1$d?</string>
+    <string name="BulkStopConfirm">Зупинити вибраних ботів: %1$d? Чати можна зберегти або видалити.</string>
+    <string name="BulkStopAndDelete">Зупинити й видалити чати</string>
+    <string name="BulkLeaveProgress">Покинуто %1$d з %2$d</string>
+    <string name="BulkStopProgress">Зупинено %1$d з %2$d</string>
+    <string name="BulkFloodWaitProgress">Досягнуто обмеження Telegram. Продовження через %1$d с…</string>
+    <string name="BulkActionFinished">Виконано %1$d з %2$d</string>
+    <string name="BulkActionFailed">Виконано %1$d з %2$d. Остання помилка: %3$s</string>
 </resources>

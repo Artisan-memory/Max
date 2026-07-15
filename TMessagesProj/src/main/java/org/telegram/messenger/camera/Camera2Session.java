@@ -73,6 +73,7 @@ public class Camera2Session {
     private Rect sensorSize;
     private float maxZoom = 1f;
     private float currentZoom = 1f;
+    private Range<Integer> recordingFpsRange;
 
     private final Size previewSize;
 
@@ -194,6 +195,7 @@ public class Camera2Session {
         try {
             cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
             sensorSize = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+            recordingFpsRange = chooseRecordingFpsRange(cameraCharacteristics);
             final Float value = cameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
             maxZoom = (value == null || value < 1f) ? 1f : value;
             cameraManager.openCamera(cameraId, cameraStateCallback, handler);
@@ -203,6 +205,38 @@ public class Camera2Session {
                 isError = true;
             });
         }
+    }
+
+    private static Range<Integer> chooseRecordingFpsRange(CameraCharacteristics characteristics) {
+        final Range<Integer>[] ranges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+        if (ranges == null || ranges.length == 0) {
+            return null;
+        }
+
+        final int target = 30;
+        Range<Integer> bestContaining = null;
+        Range<Integer> bestBelow = null;
+        Range<Integer> bestAbove = null;
+        for (Range<Integer> range : ranges) {
+            if (range == null) {
+                continue;
+            }
+            if (range.contains(target)) {
+                if (bestContaining == null
+                        || Math.abs(range.getUpper() - target) < Math.abs(bestContaining.getUpper() - target)
+                        || Math.abs(range.getUpper() - target) == Math.abs(bestContaining.getUpper() - target)
+                        && range.getLower() > bestContaining.getLower()) {
+                    bestContaining = range;
+                }
+            } else if (range.getUpper() < target) {
+                if (bestBelow == null || range.getUpper() > bestBelow.getUpper()) {
+                    bestBelow = range;
+                }
+            } else if (bestAbove == null || range.getLower() < bestAbove.getLower()) {
+                bestAbove = range;
+            }
+        }
+        return bestContaining != null ? bestContaining : bestBelow != null ? bestBelow : bestAbove;
     }
 
     private Runnable doneCallback;
@@ -490,7 +524,10 @@ public class Camera2Session {
             captureRequestBuilder.set(CaptureRequest.FLASH_MODE, flashing ? (recordingVideo ? CaptureRequest.FLASH_MODE_TORCH : CaptureRequest.FLASH_MODE_SINGLE) : CaptureRequest.FLASH_MODE_OFF);
 
             if (recordingVideo) {
-                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 60));
+                if (recordingFpsRange != null) {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, recordingFpsRange);
+                    FileLog.d("Camera2Session camera #" + cameraId + " recording fps range " + recordingFpsRange);
+                }
                 captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
             }
 

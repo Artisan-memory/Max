@@ -56,6 +56,24 @@ public class BubbleActivity extends BasePermissionsActivity implements INavigati
     private Runnable lockRunnable;
 
     private long dialogId;
+    private int resumedConnectionsAccount = -1;
+
+    private void resumeConnectionsForAccount(int account) {
+        if (resumedConnectionsAccount == account) {
+            return;
+        }
+        pauseResumedConnections();
+        AccountInstance.getInstance(account).getConnectionsManager().setAppPaused(false, false);
+        resumedConnectionsAccount = account;
+    }
+
+    private void pauseResumedConnections() {
+        if (resumedConnectionsAccount == -1) {
+            return;
+        }
+        AccountInstance.getInstance(resumedConnectionsAccount).getConnectionsManager().setAppPaused(true, false);
+        resumedConnectionsAccount = -1;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -179,7 +197,7 @@ public class BubbleActivity extends BasePermissionsActivity implements INavigati
         actionBarLayout.removeAllFragments();
         actionBarLayout.addFragmentToStack(chatActivity);
         AccountInstance.getInstance(currentAccount).getNotificationsController().setOpenedInBubble(dialogId, true);
-        AccountInstance.getInstance(currentAccount).getConnectionsManager().setAppPaused(false, false);
+        resumeConnectionsForAccount(currentAccount);
         actionBarLayout.showLastFragment();
 
         return true;
@@ -228,8 +246,8 @@ public class BubbleActivity extends BasePermissionsActivity implements INavigati
         super.onDestroy();
         if (currentAccount != -1) {
             AccountInstance.getInstance(currentAccount).getNotificationsController().setOpenedInBubble(dialogId, false);
-            AccountInstance.getInstance(currentAccount).getConnectionsManager().setAppPaused(false, false);
         }
+        pauseResumedConnections();
         onFinish();
         instance = null;
     }

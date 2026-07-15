@@ -316,4 +316,16 @@
     <string name="SetLocalName">Установить локальное имя</string>
     <string name="DeleteChatForBothSides">Использовать «Также удалить для» по умолчанию</string>
     <string name="AutoPingProxy">Автоматический пинг прокси</string>
+    <string name="BulkLeaveChannel">Покинуть канал</string>
+    <string name="BulkLeaveChannels">Покинуть каналы</string>
+    <string name="BulkStopBot">Остановить бота</string>
+    <string name="BulkStopBots">Остановить ботов</string>
+    <string name="BulkLeaveConfirm">Покинуть выбранные каналы: %1$d?</string>
+    <string name="BulkStopConfirm">Остановить выбранных ботов: %1$d? Чаты можно сохранить или удалить.</string>
+    <string name="BulkStopAndDelete">Остановить и удалить чаты</string>
+    <string name="BulkLeaveProgress">Покинуто %1$d из %2$d</string>
+    <string name="BulkStopProgress">Остановлено %1$d из %2$d</string>
+    <string name="BulkFloodWaitProgress">Сработало ограничение Telegram. Продолжение через %1$d сек.</string>
+    <string name="BulkActionFinished">Выполнено %1$d из %2$d</string>
+    <string name="BulkActionFailed">Выполнено %1$d из %2$d. Последняя ошибка: %3$s</string>
 </resources>

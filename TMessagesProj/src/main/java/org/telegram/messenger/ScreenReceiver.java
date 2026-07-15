@@ -16,20 +16,28 @@ import org.telegram.tgnet.ConnectionsManager;
 
 public class ScreenReceiver extends BroadcastReceiver {
 
+    private void setScreenPausedForActivatedAccounts(boolean paused) {
+        for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
+            if (UserConfig.getInstance(account).isClientActivated()) {
+                ConnectionsManager.getInstance(account).setAppPaused(paused, true);
+            }
+        }
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.d("screen off");
             }
-            ConnectionsManager.getInstance(UserConfig.selectedAccount).setAppPaused(true, true);
             ApplicationLoader.isScreenOn = false;
+            setScreenPausedForActivatedAccounts(true);
         } else if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.d("screen on");
             }
-            ConnectionsManager.getInstance(UserConfig.selectedAccount).setAppPaused(false, true);
             ApplicationLoader.isScreenOn = true;
+            setScreenPausedForActivatedAccounts(false);
         }
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.screenStateChanged);
     }

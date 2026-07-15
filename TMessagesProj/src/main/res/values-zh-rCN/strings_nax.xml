@@ -314,4 +314,16 @@
     <string name="BackAnimationClassic">经典</string>
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">预测</string>
+    <string name="BulkLeaveChannel">退出频道</string>
+    <string name="BulkLeaveChannels">退出多个频道</string>
+    <string name="BulkStopBot">停止机器人</string>
+    <string name="BulkStopBots">停止多个机器人</string>
+    <string name="BulkLeaveConfirm">退出选中的 %1$d 个频道吗？</string>
+    <string name="BulkStopConfirm">停止选中的 %1$d 个机器人吗？你可以保留或删除聊天。</string>
+    <string name="BulkStopAndDelete">停止并删除聊天</string>
+    <string name="BulkLeaveProgress">已退出 %1$d/%2$d</string>
+    <string name="BulkStopProgress">已停止 %1$d/%2$d</string>
+    <string name="BulkFloodWaitProgress">已达到 Telegram 频率限制，将在 %1$d 秒后继续…</string>
+    <string name="BulkActionFinished">已完成 %1$d/%2$d</string>
+    <string name="BulkActionFailed">已完成 %1$d/%2$d。最后错误：%3$s</string>
 </resources>

@@ -329,4 +329,16 @@
     <string name="BackAnimationClassic">Classic</string>
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">Predictive</string>
+    <string name="BulkLeaveChannel">Leave the channel</string>
+    <string name="BulkLeaveChannels">Leave channels</string>
+    <string name="BulkStopBot">Stop the bot</string>
+    <string name="BulkStopBots">Stop bots</string>
+    <string name="BulkLeaveConfirm">Leave %1$d selected channel(s)?</string>
+    <string name="BulkStopConfirm">Stop %1$d selected bot(s)? You can keep or delete their chats.</string>
+    <string name="BulkStopAndDelete">Stop &amp; delete chats</string>
+    <string name="BulkLeaveProgress">Left %1$d of %2$d</string>
+    <string name="BulkStopProgress">Stopped %1$d of %2$d</string>
+    <string name="BulkFloodWaitProgress">Telegram rate limit reached. Continuing in %1$d seconds…</string>
+    <string name="BulkActionFinished">Completed %1$d of %2$d</string>
+    <string name="BulkActionFailed">Completed %1$d of %2$d. Last error: %3$s</string>
 </resources>

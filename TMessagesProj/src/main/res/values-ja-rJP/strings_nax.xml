@@ -314,4 +314,16 @@
     <string name="BackAnimationClassic">クラシック</string>
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">予測型</string>
+    <string name="BulkLeaveChannel">チャンネルから退出</string>
+    <string name="BulkLeaveChannels">チャンネルから退出</string>
+    <string name="BulkStopBot">ボットを停止</string>
+    <string name="BulkStopBots">ボットを停止</string>
+    <string name="BulkLeaveConfirm">選択した%1$d件のチャンネルから退出しますか？</string>
+    <string name="BulkStopConfirm">選択した%1$d件のボットを停止しますか？チャットは保持または削除できます。</string>
+    <string name="BulkStopAndDelete">停止してチャットを削除</string>
+    <string name="BulkLeaveProgress">%2$d件中%1$d件から退出</string>
+    <string name="BulkStopProgress">%2$d件中%1$d件を停止</string>
+    <string name="BulkFloodWaitProgress">Telegramの制限に達しました。%1$d秒後に続行します…</string>
+    <string name="BulkActionFinished">%2$d件中%1$d件完了</string>
+    <string name="BulkActionFailed">%2$d件中%1$d件完了。最後のエラー: %3$s</string>
 </resources>

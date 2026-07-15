@@ -248,4 +248,16 @@
     <string name="DisableInAppBrowserGestures">Deshabilitar gestos</string>
     <string name="HowToObtain">¿Cómo obtener?</string>
     <string name="SortByUnread">Ordenar por no leído</string>
+    <string name="BulkLeaveChannel">Salir del canal</string>
+    <string name="BulkLeaveChannels">Salir de los canales</string>
+    <string name="BulkStopBot">Detener el bot</string>
+    <string name="BulkStopBots">Detener bots</string>
+    <string name="BulkLeaveConfirm">¿Salir de %1$d canal(es) seleccionado(s)?</string>
+    <string name="BulkStopConfirm">¿Detener %1$d bot(s) seleccionado(s)? Puedes conservar o eliminar sus chats.</string>
+    <string name="BulkStopAndDelete">Detener y eliminar chats</string>
+    <string name="BulkLeaveProgress">Abandonados %1$d de %2$d</string>
+    <string name="BulkStopProgress">Detenidos %1$d de %2$d</string>
+    <string name="BulkFloodWaitProgress">Límite de Telegram alcanzado. Continuando en %1$d segundos…</string>
+    <string name="BulkActionFinished">Completados %1$d de %2$d</string>
+    <string name="BulkActionFailed">Completados %1$d de %2$d. Último error: %3$s</string>
 </resources>

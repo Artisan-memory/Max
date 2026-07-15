@@ -39,6 +39,10 @@ if (properties != null) {
 keystorePwd = keystorePwd ?: System.getenv('KEYSTORE_PASS')
 alias = alias ?: System.getenv('ALIAS_NAME')
 pwd = pwd ?: System.getenv('ALIAS_PASS')
+// Keep the signing identity outside of the source tree. This project must only
+// use the controlled copy under C:\Users\Silly\Keys.
+def releaseKeystore = new File('C:/Users/Silly/Keys/Max-release.keystore')
+def hasReleaseSigning = releaseKeystore.isFile() && keystorePwd && alias && pwd
 
 def nativeTarget = System.getenv('NATIVE_TARGET') ?: ''
 
@@ -134,11 +138,13 @@ android {
     }
 
     signingConfigs {
-        release {
-            storeFile project.file('release.keystore')
-            storePassword keystorePwd
-            keyAlias alias
-            keyPassword pwd
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseKeystore
+                storePassword keystorePwd
+                keyAlias alias
+                keyPassword pwd
+            }
         }
     }
 
@@ -148,7 +154,9 @@ android {
             debuggable = true
             jniDebuggable = true
             multiDexEnabled = true
-            signingConfig = signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
         }
 
         staging {
@@ -159,7 +167,9 @@ android {
             multiDexEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             matchingFallbacks = ['release', 'staging', 'debug']
-            signingConfig = signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
         }
 
         release {
@@ -170,7 +180,9 @@ android {
             multiDexEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             matchingFallbacks = ['release', 'staging', 'debug']
-            signingConfig = signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
 
@@ -219,6 +231,7 @@ dependencies {
     implementation 'com.googlecode.mp4parser:isoparser:1.0.6'
     implementation 'com.google.mlkit:language-id:17.0.6'
     implementation 'com.google.code.gson:gson:2.13.2'
+    implementation 'io.noties.markwon:ext-latex:4.6.2'
     implementation ('com.google.guava:guava:33.5.0-android') { // 31.1
         exclude group: 'com.google.code.findbugs', module: 'jsr305'
         exclude group: 'org.checkerframework', module: 'checker-compat-qual'

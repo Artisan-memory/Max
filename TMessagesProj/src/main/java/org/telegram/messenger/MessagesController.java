@@ -8532,8 +8532,25 @@ public class MessagesController extends BaseController implements NotificationCe
                 return;
             }
         }
-        if (blockePeers.indexOfKey(id) >= 0) {
+        final TLRPC.InputPeer inputPeer = user != null ? getInputPeer(user) : getInputPeer(chat);
+        if (inputPeer == null || !markPeerBlockedInternal(id, user)) {
             return;
+        }
+        TLRPC.TL_contacts_block req = new TLRPC.TL_contacts_block();
+        req.id = inputPeer;
+        getConnectionsManager().sendRequest(req, (response, error) -> {
+
+        });
+    }
+
+    public void markPeerBlocked(long id) {
+        final TLRPC.User user = id > 0 ? getUser(id) : null;
+        markPeerBlockedInternal(id, user);
+    }
+
+    private boolean markPeerBlockedInternal(long id, TLRPC.User user) {
+        if (blockePeers.indexOfKey(id) >= 0) {
+            return false;
         }
         blockePeers.put(id, 1);
         if (user != null) {
@@ -8547,15 +8564,7 @@ public class MessagesController extends BaseController implements NotificationCe
             totalBlockedCount++;
         }
         getNotificationCenter().postNotificationName(NotificationCenter.blockedUsersDidLoad);
-        TLRPC.TL_contacts_block req = new TLRPC.TL_contacts_block();
-        if (user != null) {
-            req.id = getInputPeer(user);
-        } else {
-            req.id = getInputPeer(chat);
-        }
-        getConnectionsManager().sendRequest(req, (response, error) -> {
-
-        });
+        return true;
     }
 
     public void setParticipantBannedRole(long chatId, TLRPC.User user, TLRPC.Chat chat, TLRPC.TL_chatBannedRights rights, boolean isChannel, BaseFragment parentFragment) {
@@ -9676,6 +9685,10 @@ public class MessagesController extends BaseController implements NotificationCe
         deleteDialog(did, 1, onlyHistory, 0, revoke, null, 0);
     }
 
+    public void deleteDialogLocally(final long did) {
+        deleteDialog(did, 2, 0, 0, false, null, 0, true);
+    }
+
     public void setDialogHistoryTTL(long did, int ttl) {
         TLRPC.TL_messages_setHistoryTTL req = new TLRPC.TL_messages_setHistoryTTL();
         req.peer = getInputPeer(did);
@@ -9727,6 +9740,10 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId) {
+        deleteDialog(did, first, onlyHistory, max_id, revoke, peer, taskId, false);
+    }
+
+    private void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId, boolean localOnly) {
         if (onlyHistory == 3 && NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool()) {
             return;
         }
@@ -9888,6 +9905,10 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
             }
             getMessagesStorage().getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> getNotificationsController().removeNotificationsForDialog(did)));
+        }
+
+        if (localOnly) {
+            return;
         }
 
         if (onlyHistory == 3) {

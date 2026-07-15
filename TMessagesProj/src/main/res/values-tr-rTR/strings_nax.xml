@@ -276,4 +276,16 @@
     <string name="PasskeyUnsupportedMessage">**Bitwarden** veya **KeePassDX** gibi diğer parola yöneticilerini deneyin.</string>
     <string name="PasskeyNoCredentialAvailable">Geçerli bir kimlik bilgisi bulunmuyor.</string>
     <string name="SortByUnread">Okunmamışa Göre Sırala</string>
+    <string name="BulkLeaveChannel">Kanaldan ayrıl</string>
+    <string name="BulkLeaveChannels">Kanallardan ayrıl</string>
+    <string name="BulkStopBot">Botu durdur</string>
+    <string name="BulkStopBots">Botları durdur</string>
+    <string name="BulkLeaveConfirm">Seçilen %1$d kanaldan ayrılmak istiyor musunuz?</string>
+    <string name="BulkStopConfirm">Seçilen %1$d bot durdurulsun mu? Sohbetleri tutabilir veya silebilirsiniz.</string>
+    <string name="BulkStopAndDelete">Durdur ve sohbetleri sil</string>
+    <string name="BulkLeaveProgress">%2$d kanalın %1$d tanesinden ayrılındı</string>
+    <string name="BulkStopProgress">%2$d botun %1$d tanesi durduruldu</string>
+    <string name="BulkFloodWaitProgress">Telegram sınırına ulaşıldı. %1$d saniye sonra devam edilecek…</string>
+    <string name="BulkActionFinished">%2$d işlemin %1$d tanesi tamamlandı</string>
+    <string name="BulkActionFailed">%2$d işlemin %1$d tanesi tamamlandı. Son hata: %3$s</string>
 </resources>

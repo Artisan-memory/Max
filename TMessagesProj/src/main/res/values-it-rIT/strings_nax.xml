@@ -314,4 +314,16 @@ Non possiamo aiutarti in questo caso; se hai problemi di accesso, contatta il Su
     <string name="SetLocalName">Imposta Nome Locale</string>
     <string name="DeleteChatForBothSides">Usa \"Elimina anche per\" di default</string>
     <string name="AutoPingProxy">Proxy Ping Automatico</string>
+    <string name="BulkLeaveChannel">Lascia il canale</string>
+    <string name="BulkLeaveChannels">Lascia i canali</string>
+    <string name="BulkStopBot">Arresta il bot</string>
+    <string name="BulkStopBots">Arresta i bot</string>
+    <string name="BulkLeaveConfirm">Lasciare %1$d canale/i selezionato/i?</string>
+    <string name="BulkStopConfirm">Arrestare %1$d bot selezionato/i? Puoi conservare o eliminare le chat.</string>
+    <string name="BulkStopAndDelete">Arresta ed elimina le chat</string>
+    <string name="BulkLeaveProgress">Lasciati %1$d di %2$d</string>
+    <string name="BulkStopProgress">Arrestati %1$d di %2$d</string>
+    <string name="BulkFloodWaitProgress">Limite Telegram raggiunto. Continuazione tra %1$d secondi…</string>
+    <string name="BulkActionFinished">Completati %1$d di %2$d</string>
+    <string name="BulkActionFailed">Completati %1$d di %2$d. Ultimo errore: %3$s</string>
 </resources>

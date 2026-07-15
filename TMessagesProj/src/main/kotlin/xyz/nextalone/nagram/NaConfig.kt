@@ -13,6 +13,7 @@ import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
 import tw.nekomimi.nekogram.config.ConfigItemKeyLinked
 import tw.nekomimi.nekogram.translate.Translator
+import tw.nekomimi.nekogram.helpers.remote.UpdateHelper
 import java.io.ByteArrayInputStream
 import java.io.ObjectInputStream
 
@@ -1249,7 +1250,7 @@ object NaConfig {
         addConfig(
             "AutoUpdateChannel",
             ConfigItem.configTypeInt,
-            1 // 0: off; 1: release; 2: beta
+            UpdateHelper.DEFAULT_UPDATE_CHANNEL
         )
     val userAvatarsInMessagePreview =
         addConfig(

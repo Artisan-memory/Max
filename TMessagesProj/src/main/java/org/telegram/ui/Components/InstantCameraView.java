@@ -1095,7 +1095,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private void saveLastCameraBitmap() {
         Bitmap bitmap = textureView.getBitmap();
         if (bitmap != null && bitmap.getPixel(0, 0) != 0) {
-            lastBitmap = Bitmap.createScaledBitmap(textureView.getBitmap(), 50, 50, true);
+            Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 50, 50, true);
+            if (scaledBitmap != bitmap) {
+                bitmap.recycle();
+            }
+            if (lastBitmap != null && lastBitmap != scaledBitmap) {
+                lastBitmap.recycle();
+            }
+            lastBitmap = scaledBitmap;
             if (lastBitmap != null) {
                 Utilities.blurBitmap(lastBitmap, 7, 1, lastBitmap.getWidth(), lastBitmap.getHeight(), lastBitmap.getRowBytes());
                 try {
@@ -1107,6 +1114,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 }
             }
+        } else if (bitmap != null) {
+            bitmap.recycle();
         }
     }
 
@@ -1905,16 +1914,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             egl10.eglSwapBuffers(eglDisplay, eglSurface);
 
             if (captureFirstFrameThumb) {
-                AndroidUtilities.runOnUIThread(() -> {
-                    if (textureView == null) {
-                        return;
-                    }
-                    if (firstFrameThumb != null) {
-                        firstFrameThumb.recycle();
-                        firstFrameThumb = null;
-                    }
-                    firstFrameThumb = textureView.getBitmap();
-                });
+                recorder.captureFirstFrameThumb();
             }
         }
 
@@ -2114,9 +2114,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     break;
                 }
                 case MSG_VIDEOFRAME_AVAILABLE: {
-                    long timestamp = (((long) inputMessage.arg1) << 32) | (((long) inputMessage.arg2) & 0xffffffffL);
-                    Integer cameraId = (Integer) inputMessage.obj;
-                    encoder.handleVideoFrameAvailable(timestamp, cameraId);
+                    encoder.handlePendingVideoFrame();
                     break;
                 }
                 case MSG_AUDIOFRAME_AVAILABLE: {
@@ -2251,6 +2249,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private ArrayList<Bitmap> keyframeThumbs = new ArrayList<>();
         private DispatchQueue generateKeyframeThumbsQueue;
         private int frameCount;
+        private final Object pendingVideoFrameLock = new Object();
+        private boolean pendingVideoFrameMessage;
+        private long pendingVideoFrameTimestamp;
+        private Integer pendingVideoFrameCameraId;
+        private long receivedVideoFrames;
+        private long coalescedVideoFrames;
 
         DispatchQueue fileWriteQueue;
 
@@ -2268,6 +2272,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     " size=" + videoWidth + "x" + videoHeight +
                     " bitrate=" + videoBitrate +
                     " frames=" + frameCount +
+                    " receivedFrames=" + receivedVideoFrames +
+                    " coalescedFrames=" + coalescedVideoFrames +
                     " videoFirst=" + videoFirst +
                     " videoLast=" + videoLast +
                     " audioFirst=" + audioFirst +
@@ -2438,6 +2444,11 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
             keyframeThumbs.clear();
             frameCount = 0;
+            synchronized (pendingVideoFrameLock) {
+                pendingVideoFrameMessage = false;
+                receivedVideoFrames = 0;
+                coalescedVideoFrames = 0;
+            }
             DispatchQueue queue = generateKeyframeThumbsQueue;
             if (queue != null) {
                 queue.cleanupQueue();
@@ -2488,7 +2499,58 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 zeroTimeStamps = 0;
             }
             prevTimestamp = timestamp;
-            handler.sendMessage(handler.obtainMessage(MSG_VIDEOFRAME_AVAILABLE, (int) (timestamp >> 32), (int) timestamp, cameraId));
+            synchronized (pendingVideoFrameLock) {
+                receivedVideoFrames++;
+                pendingVideoFrameTimestamp = timestamp;
+                pendingVideoFrameCameraId = cameraId;
+                if (pendingVideoFrameMessage) {
+                    coalescedVideoFrames++;
+                    return;
+                }
+                pendingVideoFrameMessage = true;
+            }
+            handler.sendEmptyMessage(MSG_VIDEOFRAME_AVAILABLE);
+        }
+
+        private void handlePendingVideoFrame() {
+            final long timestamp;
+            final Integer cameraId;
+            synchronized (pendingVideoFrameLock) {
+                timestamp = pendingVideoFrameTimestamp;
+                cameraId = pendingVideoFrameCameraId;
+                pendingVideoFrameMessage = false;
+            }
+            handleVideoFrameAvailable(timestamp, cameraId);
+        }
+
+        private void captureFirstFrameThumb() {
+            final DispatchQueue queue = generateKeyframeThumbsQueue;
+            final TextureView currentTextureView = InstantCameraView.this.textureView;
+            if (queue == null || currentTextureView == null) {
+                return;
+            }
+            queue.postRunnable(() -> {
+                final int width = currentTextureView.getWidth();
+                final int height = currentTextureView.getHeight();
+                if (width <= 0 || height <= 0) {
+                    return;
+                }
+                final int thumbSize = Math.min(dp(320), Math.min(width, height));
+                final Bitmap bitmap = currentTextureView.getBitmap(thumbSize, thumbSize);
+                if (bitmap == null) {
+                    return;
+                }
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (InstantCameraView.this.videoEncoder != this) {
+                        bitmap.recycle();
+                        return;
+                    }
+                    if (firstFrameThumb != null) {
+                        firstFrameThumb.recycle();
+                    }
+                    firstFrameThumb = bitmap;
+                });
+            });
         }
 
         @Override
