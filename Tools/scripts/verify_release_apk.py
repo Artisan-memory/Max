@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 
-CERT_RE = re.compile(r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)")
+CERT_RE = re.compile(r"certificate SHA-256 digest:\s*([0-9a-fA-F:]+)", re.IGNORECASE)
 BADGING_RE = re.compile(r"versionCode='([0-9]+)'\s+versionName='([^']+)'", re.DOTALL)
 
 
@@ -19,20 +19,23 @@ def find_android_tool(name: str) -> Path:
     executable_names = [name]
     if os.name == "nt":
         executable_names = [f"{name}.bat", f"{name}.exe", name]
+    sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if sdk_root:
+        candidates = []
+        for executable in executable_names:
+            candidates.extend((Path(sdk_root) / "build-tools").glob(f"*/{executable}"))
+        candidates = sorted(
+            candidates,
+            key=lambda candidate: tuple(int(part) for part in re.findall(r"\d+", candidate.parent.name)),
+            reverse=True,
+        )
+        if candidates:
+            return candidates[0]
     for executable in executable_names:
         from_path = shutil.which(executable)
         if from_path:
             return Path(from_path)
-    sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
-    if not sdk_root:
-        raise SystemExit("ANDROID_HOME/ANDROID_SDK_ROOT is not set")
-    candidates = []
-    for executable in executable_names:
-        candidates.extend((Path(sdk_root) / "build-tools").glob(f"*/{executable}"))
-    candidates = sorted(candidates, reverse=True)
-    if not candidates:
-        raise SystemExit(f"Android build tool not found: {name}")
-    return candidates[0]
+    raise SystemExit(f"Android build tool not found: {name}")
 
 
 def run(tool: Path, *args: str) -> str:
@@ -56,11 +59,11 @@ def main() -> None:
     if "unsigned" in args.apk.name.lower():
         raise SystemExit(f"Unsigned APK filename is forbidden: {args.apk.name}")
 
-    signature_output = run(find_android_tool("apksigner"), "verify", "--print-certs", str(args.apk))
+    signature_output = run(find_android_tool("apksigner"), "verify", "--verbose", "--print-certs", str(args.apk))
     cert_match = CERT_RE.search(signature_output)
     if not cert_match:
-        raise SystemExit("APK signature certificate digest was not reported")
-    actual_cert = cert_match.group(1).lower()
+        raise SystemExit("APK signature certificate digest was not reported:\n" + signature_output.strip())
+    actual_cert = cert_match.group(1).lower().replace(":", "")
     expected_cert = args.expected_cert_sha256.lower().replace(":", "")
     if actual_cert != expected_cert:
         raise SystemExit(f"Signing certificate mismatch: expected {expected_cert}, got {actual_cert}")
