@@ -103,6 +103,7 @@ import org.telegram.messenger.BirthdayController;
 import org.telegram.messenger.BotWebViewVibrationEffect;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.BuildVars;
+import org.telegram.messenger.BulkDialogActionController;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
@@ -657,7 +658,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     };
 
     private Bulletin topBulletin;
-    private BulkDialogActionRunner bulkDialogActionRunner;
 
     private AnimationNotificationsLocker notificationsLocker = new AnimationNotificationsLocker();
     private boolean searchIsShowed;
@@ -2794,6 +2794,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             currentConnectionState = getConnectionsManager().getConnectionState();
 
             getNotificationCenter().addObserver(this, NotificationCenter.dialogsNeedReload);
+            getNotificationCenter().addObserver(this, NotificationCenter.bulkDialogActionFinished);
             NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
             if (!onlySelect) {
                 NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.closeSearchByActiveAction);
@@ -2998,13 +2999,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public void onFragmentDestroy() {
-        if (bulkDialogActionRunner != null) {
-            bulkDialogActionRunner.cancel();
-            bulkDialogActionRunner = null;
-        }
         super.onFragmentDestroy();
         if (searchString == null) {
             getNotificationCenter().removeObserver(this, NotificationCenter.dialogsNeedReload);
+            getNotificationCenter().removeObserver(this, NotificationCenter.bulkDialogActionFinished);
             NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
             if (!onlySelect) {
                 NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.closeSearchByActiveAction);
@@ -6952,7 +6950,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         new AlertDialog.Builder(getParentActivity())
                 .setTitle(LocaleController.getString(count == 1 ? R.string.BulkLeaveChannel : R.string.BulkLeaveChannels))
                 .setMessage(LocaleController.formatString(R.string.BulkLeaveConfirm, count))
-                .setPositiveButton(LocaleController.getString(R.string.LeaveChannelMenu), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionRunner.TYPE_LEAVE_CHANNELS, false))
+                .setPositiveButton(LocaleController.getString(R.string.LeaveChannelMenu), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionController.TYPE_LEAVE_CHANNELS, false))
                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                 .show();
     }
@@ -6965,297 +6963,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         new AlertDialog.Builder(getParentActivity())
                 .setTitle(LocaleController.getString(count == 1 ? R.string.BulkStopBot : R.string.BulkStopBots))
                 .setMessage(LocaleController.formatString(R.string.BulkStopConfirm, count))
-                .setPositiveButton(LocaleController.getString(R.string.BulkStopBot), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionRunner.TYPE_STOP_BOTS, false))
-                .setNeutralButton(LocaleController.getString(R.string.BulkStopAndDelete), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionRunner.TYPE_STOP_BOTS, true))
+                .setPositiveButton(LocaleController.getString(R.string.BulkStopBot), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionController.TYPE_STOP_BOTS, false))
+                .setNeutralButton(LocaleController.getString(R.string.BulkStopAndDelete), (dialog, which) -> startBulkDialogAction(dialogIds, BulkDialogActionController.TYPE_STOP_BOTS, true))
                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                 .show();
     }
 
     private void startBulkDialogAction(ArrayList<Long> dialogIds, int type, boolean deleteBotChats) {
-        if (bulkDialogActionRunner != null) {
-            bulkDialogActionRunner.cancel();
-        }
         hideActionMode(true);
-        bulkDialogActionRunner = new BulkDialogActionRunner(dialogIds, type, deleteBotChats);
-        bulkDialogActionRunner.start();
-    }
-
-    private final class BulkDialogActionRunner {
-        private static final int TYPE_LEAVE_CHANNELS = 0;
-        private static final int TYPE_STOP_BOTS = 1;
-        private static final long REQUEST_DELAY_MS = 3_000L;
-
-        private final ArrayList<Long> dialogIds;
-        private final int type;
-        private final boolean deleteBotChats;
-        private int index;
-        private int succeeded;
-        private int failed;
-        private int botStep;
-        private int currentRequestId;
-        private String lastError;
-        private boolean cancelled;
-        private Runnable scheduledRunnable;
-        private AlertDialog progressDialog;
-
-        private BulkDialogActionRunner(ArrayList<Long> dialogIds, int type, boolean deleteBotChats) {
-            this.dialogIds = dialogIds;
-            this.type = type;
-            this.deleteBotChats = deleteBotChats;
-        }
-
-        private void start() {
-            if (getParentActivity() == null || dialogIds.isEmpty()) {
-                finish();
-                return;
-            }
-            progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
-            progressDialog.setCancelable(false);
-            updateProgressMessage();
-            showDialog(progressDialog);
-            sendCurrentStep();
-        }
-
-        private void updateProgressMessage() {
-            if (progressDialog == null) {
-                return;
-            }
-            progressDialog.setMessage(LocaleController.formatString(
-                    type == TYPE_LEAVE_CHANNELS ? R.string.BulkLeaveProgress : R.string.BulkStopProgress,
-                    succeeded,
-                    dialogIds.size()
-            ));
-        }
-
-        private void sendCurrentStep() {
-            if (cancelled) {
-                return;
-            }
-            if (index >= dialogIds.size()) {
-                finish();
-                return;
-            }
-            if (type == TYPE_LEAVE_CHANNELS) {
-                sendLeaveChannel(dialogIds.get(index));
-            } else if (botStep == 0) {
-                sendStopBot(dialogIds.get(index));
-            } else {
-                sendDeleteBotHistory(dialogIds.get(index));
-            }
-        }
-
-        private void sendLeaveChannel(long dialogId) {
-            final TLRPC.Chat chat = getMessagesController().getChat(-dialogId);
-            if (chat == null || !ChatObject.isChannel(chat) || chat.megagroup || chat.creator || chat.left) {
-                failCurrent("CHANNEL_NOT_AVAILABLE");
-                return;
-            }
-            final TLRPC.InputChannel inputChannel = getMessagesController().getInputChannel(chat);
-            if (inputChannel == null || inputChannel instanceof TLRPC.TL_inputChannelEmpty) {
-                failCurrent("CHANNEL_NOT_AVAILABLE");
-                return;
-            }
-            final TLRPC.TL_channels_leaveChannel request = new TLRPC.TL_channels_leaveChannel();
-            request.channel = inputChannel;
-            currentRequestId = getConnectionsManager().sendRequest(request, (response, error) -> {
-                if (error == null && response instanceof TLRPC.Updates) {
-                    getMessagesController().processUpdates((TLRPC.Updates) response, false);
-                }
-                AndroidUtilities.runOnUIThread(() -> {
-                    currentRequestId = 0;
-                    if (cancelled) {
-                        return;
-                    }
-                    if (handleFloodWait(error)) {
-                        return;
-                    }
-                    if (error != null) {
-                        failCurrent(error.text);
-                        return;
-                    }
-                    chat.left = true;
-                    getMessagesController().deleteDialogLocally(dialogId);
-                    completeCurrent();
-                });
-            }, ConnectionsManager.RequestFlagInvokeAfter);
-        }
-
-        private void sendStopBot(long dialogId) {
-            final TLRPC.User user = getMessagesController().getUser(dialogId);
-            if (user == null || !user.bot || MessagesController.isSupportUser(user)) {
-                failCurrent("BOT_NOT_AVAILABLE");
-                return;
-            }
-            final TLRPC.InputPeer inputPeer = getMessagesController().getInputPeer(user);
-            if (inputPeer == null || inputPeer instanceof TLRPC.TL_inputPeerEmpty) {
-                failCurrent("BOT_NOT_AVAILABLE");
-                return;
-            }
-            final TLRPC.TL_contacts_block request = new TLRPC.TL_contacts_block();
-            request.id = inputPeer;
-            currentRequestId = getConnectionsManager().sendRequest(request, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
-                currentRequestId = 0;
-                if (cancelled) {
-                    return;
-                }
-                if (handleFloodWait(error)) {
-                    return;
-                }
-                if (error != null) {
-                    failCurrent(error.text);
-                    return;
-                }
-                getMessagesController().markPeerBlocked(dialogId);
-                if (deleteBotChats) {
-                    botStep = 1;
-                    scheduleNext(REQUEST_DELAY_MS);
-                } else {
-                    completeCurrent();
-                }
-            }), ConnectionsManager.RequestFlagInvokeAfter);
-        }
-
-        private void sendDeleteBotHistory(long dialogId) {
-            final TLRPC.InputPeer peer = getMessagesController().getInputPeer(dialogId);
-            if (peer == null || peer instanceof TLRPC.TL_inputPeerEmpty) {
-                failCurrent("BOT_NOT_AVAILABLE");
-                return;
-            }
-            final TLRPC.TL_messages_deleteHistory request = new TLRPC.TL_messages_deleteHistory();
-            request.peer = peer;
-            request.max_id = Integer.MAX_VALUE;
-            request.just_clear = false;
-            request.revoke = false;
-            currentRequestId = getConnectionsManager().sendRequest(request, (response, error) -> {
-                if (error == null && response instanceof TLRPC.TL_messages_affectedHistory) {
-                    final TLRPC.TL_messages_affectedHistory result = (TLRPC.TL_messages_affectedHistory) response;
-                    getMessagesController().processNewDifferenceParams(-1, result.pts, -1, result.pts_count);
-                }
-                AndroidUtilities.runOnUIThread(() -> {
-                    currentRequestId = 0;
-                    if (cancelled) {
-                        return;
-                    }
-                    if (handleFloodWait(error)) {
-                        return;
-                    }
-                    if (error != null || !(response instanceof TLRPC.TL_messages_affectedHistory)) {
-                        failCurrent(error != null ? error.text : "DELETE_HISTORY_FAILED");
-                        return;
-                    }
-                    final TLRPC.TL_messages_affectedHistory result = (TLRPC.TL_messages_affectedHistory) response;
-                    if (result.offset > 0) {
-                        scheduleNext(REQUEST_DELAY_MS);
-                        return;
-                    }
-                    getMessagesController().deleteDialogLocally(dialogId);
-                    completeCurrent();
-                });
-            }, ConnectionsManager.RequestFlagInvokeAfter);
-        }
-
-        private boolean handleFloodWait(TLRPC.TL_error error) {
-            final int seconds = parseFloodWaitSeconds(error);
-            if (seconds <= 0) {
-                return false;
-            }
-            if (progressDialog != null) {
-                progressDialog.setMessage(LocaleController.formatString(R.string.BulkFloodWaitProgress, seconds + 1));
-            }
-            scheduleNext((seconds + 1L) * 1_000L);
-            return true;
-        }
-
-        private int parseFloodWaitSeconds(TLRPC.TL_error error) {
-            if (error == null || error.text == null || !error.text.contains("FLOOD_WAIT")) {
-                return 0;
-            }
-            final int separator = error.text.lastIndexOf('_');
-            if (separator < 0 || separator + 1 >= error.text.length()) {
-                return 0;
-            }
-            try {
-                return Math.max(1, Integer.parseInt(error.text.substring(separator + 1)));
-            } catch (NumberFormatException ignore) {
-                return 0;
-            }
-        }
-
-        private void completeCurrent() {
-            succeeded++;
-            index++;
-            botStep = 0;
-            updateProgressMessage();
-            if (index >= dialogIds.size()) {
-                finish();
-            } else {
-                scheduleNext(REQUEST_DELAY_MS);
-            }
-        }
-
-        private void failCurrent(String error) {
-            failed++;
-            lastError = error;
-            index++;
-            botStep = 0;
-            updateProgressMessage();
-            if (index >= dialogIds.size()) {
-                finish();
-            } else {
-                scheduleNext(REQUEST_DELAY_MS);
-            }
-        }
-
-        private void scheduleNext(long delay) {
-            if (scheduledRunnable != null) {
-                AndroidUtilities.cancelRunOnUIThread(scheduledRunnable);
-            }
-            scheduledRunnable = () -> {
-                scheduledRunnable = null;
-                sendCurrentStep();
-            };
-            AndroidUtilities.runOnUIThread(scheduledRunnable, delay);
-        }
-
-        private void finish() {
-            if (progressDialog != null) {
-                try {
-                    progressDialog.dismiss();
-                } catch (Exception ignore) {
-                }
-                progressDialog = null;
-            }
-            if (!cancelled && getParentActivity() != null) {
-                if (failed == 0) {
-                    BulletinFactory.of(DialogsActivity.this).createSimpleBulletin(
-                            R.raw.done,
-                            LocaleController.formatString(R.string.BulkActionFinished, succeeded, dialogIds.size())
-                    ).show();
-                } else {
-                    new AlertDialog.Builder(getParentActivity())
-                            .setTitle(LocaleController.getString(R.string.ErrorOccurred))
-                            .setMessage(LocaleController.formatString(R.string.BulkActionFailed, succeeded, dialogIds.size(), lastError == null ? "" : lastError))
-                            .setPositiveButton(LocaleController.getString(R.string.OK), null)
-                            .show();
-                }
-            }
-            if (bulkDialogActionRunner == this) {
-                bulkDialogActionRunner = null;
-            }
-        }
-
-        private void cancel() {
-            cancelled = true;
-            if (currentRequestId != 0) {
-                getConnectionsManager().cancelRequest(currentRequestId, true);
-                currentRequestId = 0;
-            }
-            if (scheduledRunnable != null) {
-                AndroidUtilities.cancelRunOnUIThread(scheduledRunnable);
-                scheduledRunnable = null;
-            }
-            finish();
-        }
+        BulkDialogActionController.getInstance(currentAccount).enqueue(dialogIds, type, deleteBotChats);
     }
 
     public void closeSearching() {
@@ -11237,7 +10953,21 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.dialogsNeedReload) {
+        if (id == NotificationCenter.bulkDialogActionFinished) {
+            if (fragmentView == null || args.length < 5) {
+                return;
+            }
+            int succeeded = (int) args[1];
+            int total = (int) args[2];
+            int failed = (int) args[3];
+            String lastError = (String) args[4];
+            BulletinFactory.of(this).createSimpleBulletin(
+                    failed == 0 ? R.raw.done : R.raw.error,
+                    failed == 0
+                            ? LocaleController.formatString(R.string.BulkActionFinished, succeeded, total)
+                            : LocaleController.formatString(R.string.BulkActionFailed, succeeded, total, lastError == null ? "" : lastError)
+            ).show();
+        } else if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {
                 return;
             }

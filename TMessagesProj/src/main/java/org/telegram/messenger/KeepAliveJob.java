@@ -9,6 +9,7 @@
 package org.telegram.messenger;
 
 import android.content.Intent;
+import android.os.SystemClock;
 
 import org.telegram.messenger.support.JobIntentService;
 
@@ -18,6 +19,7 @@ public class KeepAliveJob extends JobIntentService {
 
     private static volatile CountDownLatch countDownLatch;
     private static volatile boolean startingJob;
+    private static volatile long jobStartedAt;
     private static final Object sync = new Object();
 
     public static void startJob() {
@@ -29,6 +31,7 @@ public class KeepAliveJob extends JobIntentService {
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("starting keep-alive job");
                 }
+                FileLog.d("DEBUG_HUNT battery component=keep_alive_job event=enqueue");
                 synchronized (sync) {
                     startingJob = true;
                 }
@@ -73,6 +76,8 @@ public class KeepAliveJob extends JobIntentService {
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("started keep-alive job");
         }
+        jobStartedAt = SystemClock.elapsedRealtime();
+        FileLog.d("DEBUG_HUNT battery component=keep_alive_job event=start timeout_ms=60000");
         Utilities.globalQueue.postRunnable(finishJobByTimeoutRunnable, 60 * 1000);
         try {
             countDownLatch.await();
@@ -86,5 +91,7 @@ public class KeepAliveJob extends JobIntentService {
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("ended keep-alive job");
         }
+        FileLog.d("DEBUG_HUNT battery component=keep_alive_job event=end elapsed_ms="
+                + Math.max(0, SystemClock.elapsedRealtime() - jobStartedAt));
     }
 }

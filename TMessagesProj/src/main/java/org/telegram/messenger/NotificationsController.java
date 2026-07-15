@@ -242,6 +242,7 @@ public class NotificationsController extends BaseController {
             try {
                 if (notificationDelayWakelock.isHeld()) {
                     notificationDelayWakelock.release();
+                    FileLog.d("DEBUG_HUNT battery component=notification_delay_wakelock event=release account=" + currentAccount + " reason=delay_complete");
                 }
             } catch (Exception e) {
                 FileLog.e(e);
@@ -386,6 +387,7 @@ public class NotificationsController extends BaseController {
             try {
                 if (notificationDelayWakelock.isHeld()) {
                     notificationDelayWakelock.release();
+                    FileLog.d("DEBUG_HUNT battery component=notification_delay_wakelock event=release account=" + currentAccount + " reason=cleanup");
                 }
             } catch (Exception e) {
                 FileLog.e(e);
@@ -1013,6 +1015,10 @@ public class NotificationsController extends BaseController {
     public void processNewMessages(ArrayList<MessageObject> messageObjects, boolean isLast, boolean isFcm, CountDownLatch countDownLatch) {
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("NotificationsController: processNewMessages msgs.size()=" + (messageObjects == null ? "null" : messageObjects.size()) + " isLast=" + isLast + " isFcm=" + isFcm + ")");
+        }
+        if (!ApplicationLoader.isScreenOn && messageObjects != null && !messageObjects.isEmpty()) {
+            FileLog.d("DEBUG_HUNT battery component=background_message_batch account=" + currentAccount
+                    + " count=" + messageObjects.size() + " is_last=" + isLast + " is_fcm=" + isFcm);
         }
 
         if (messageObjects != null) {
@@ -3322,7 +3328,12 @@ public class NotificationsController extends BaseController {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.d("delay notification start, onlineReason = " + onlineReason);
             }
+            boolean wasHeld = notificationDelayWakelock.isHeld();
             notificationDelayWakelock.acquire(10000);
+            if (!wasHeld) {
+                FileLog.d("DEBUG_HUNT battery component=notification_delay_wakelock event=acquire account=" + currentAccount
+                        + " timeout_ms=10000 online_reason=" + onlineReason);
+            }
             notificationsQueue.cancelRunnable(notificationDelayRunnable);
             notificationsQueue.postRunnable(notificationDelayRunnable, (onlineReason ? 3 * 1000 : 1000));
         } catch (Exception e) {

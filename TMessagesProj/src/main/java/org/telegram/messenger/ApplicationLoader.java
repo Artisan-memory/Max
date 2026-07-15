@@ -68,6 +68,8 @@ import static android.os.Build.VERSION.SDK_INT;
 
 public class ApplicationLoader extends Application {
 
+    private static final long PUSH_SERVICE_RESTART_INTERVAL_MS = 10 * 60 * 1000L;
+
     public static ApplicationLoader applicationLoaderInstance;
 
     private static PendingIntent pendingIntent;
@@ -388,6 +390,7 @@ public class ApplicationLoader extends Application {
 
     private static void startPushServiceInternal() {
         if (PushListenerController.getProvider().hasServices()) {
+            FileLog.d("DEBUG_HUNT battery component=push_service event=skip reason=system_push_available");
             return;
         }
         SharedPreferences preferences = MessagesController.getNotificationsSettings(UserConfig.selectedAccount);
@@ -406,35 +409,77 @@ public class ApplicationLoader extends Application {
             AndroidUtilities.runOnUIThread(() -> {
                 try {
                     Log.d("TFOSS", "Starting push service...");
-                    if (NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool()) {
+                    boolean foreground = NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool();
+                    if (foreground) {
                         applicationContext.startForegroundService(new Intent(applicationContext, NotificationsService.class));
                     } else {
                         applicationContext.startService(new Intent(applicationContext, NotificationsService.class));
                     }
 
                     Log.d("TFOSS", "Trying to start push service every 10 minutes");
-                    // Telegram-FOSS: unconditionally enable push service
                     AlarmManager am = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
-                    Intent i = new Intent(applicationContext, NotificationsService.class);
-                    pendingIntent = PendingIntent.getBroadcast(applicationContext, 0, i, PendingIntent.FLAG_IMMUTABLE);
-
+                    cancelPushServiceAlarms(am);
+                    pendingIntent = createPushServicePendingIntent(foreground, PendingIntent.FLAG_UPDATE_CURRENT);
                     am.cancel(pendingIntent);
-                    am.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 10 * 60 * 1000, pendingIntent);
+                    long firstTrigger = SystemClock.elapsedRealtime() + PUSH_SERVICE_RESTART_INTERVAL_MS;
+                    am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, firstTrigger, PUSH_SERVICE_RESTART_INTERVAL_MS, pendingIntent);
+                    FileLog.d("DEBUG_HUNT battery component=push_service event=schedule_restart_alarm foreground=" + foreground
+                            + " interval_ms=" + PUSH_SERVICE_RESTART_INTERVAL_MS + " first_in_ms=" + PUSH_SERVICE_RESTART_INTERVAL_MS);
                 } catch (Throwable e) {
                     Log.e("TFOSS", "Failed to start push service");
+                    FileLog.e("DEBUG_HUNT battery component=push_service event=start_failed", e);
                 }
             });
 
         } else AndroidUtilities.runOnUIThread(() -> {
             applicationContext.stopService(new Intent(applicationContext, NotificationsService.class));
-
-            PendingIntent pintent = PendingIntent.getService(applicationContext, 0, new Intent(applicationContext, NotificationsService.class), PendingIntent.FLAG_MUTABLE);
             AlarmManager alarm = (AlarmManager)applicationContext.getSystemService(Context.ALARM_SERVICE);
-            alarm.cancel(pintent);
-            if (pendingIntent != null) {
-                alarm.cancel(pendingIntent);
-            }
+            cancelPushServiceAlarms(alarm);
+            FileLog.d("DEBUG_HUNT battery component=push_service event=disabled");
         });
+    }
+
+    private static PendingIntent createPushServicePendingIntent(boolean foreground, int extraFlags) {
+        Intent intent = new Intent(applicationContext, NotificationsService.class);
+        int flags = PendingIntent.FLAG_IMMUTABLE | extraFlags;
+        if (foreground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return PendingIntent.getForegroundService(applicationContext, 0, intent, flags);
+        }
+        return PendingIntent.getService(applicationContext, 0, intent, flags);
+    }
+
+    private static void cancelPushServiceAlarms(AlarmManager alarmManager) {
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent);
+            pendingIntent.cancel();
+            pendingIntent = null;
+        }
+        PendingIntent serviceIntent = createPushServicePendingIntent(false, PendingIntent.FLAG_NO_CREATE);
+        if (serviceIntent != null) {
+            alarmManager.cancel(serviceIntent);
+            serviceIntent.cancel();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent foregroundIntent = createPushServicePendingIntent(true, PendingIntent.FLAG_NO_CREATE);
+            if (foregroundIntent != null) {
+                alarmManager.cancel(foregroundIntent);
+                foregroundIntent.cancel();
+            }
+        }
+        // Cancel the broken getBroadcast() alarm created by older builds. A PendingIntent's
+        // sender type is part of its identity, so cancelling only service intents leaves it alive.
+        Intent legacyIntent = new Intent(applicationContext, NotificationsService.class);
+        PendingIntent legacyBroadcast = PendingIntent.getBroadcast(
+                applicationContext,
+                0,
+                legacyIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE
+        );
+        if (legacyBroadcast != null) {
+            alarmManager.cancel(legacyBroadcast);
+            legacyBroadcast.cancel();
+            FileLog.d("DEBUG_HUNT battery component=push_service event=cancel_legacy_broadcast_alarm");
+        }
     }
 
     @Override
