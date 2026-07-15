@@ -10,8 +10,44 @@ plugins {
 
 def buildTimestamp = System.getenv('BUILD_TIMESTAMP') ?: '0'
 def commitId = System.getenv('COMMIT_ID')
-def verName = "${APP_VERSION_NAME}${commitId?.take(7) ? "-${commitId.take(7)}" : ''}"
-def verCode = 1236
+
+def incrementPatchVersion = { String version ->
+    def parts = version.tokenize('.')
+    if (parts.size() < 1 || !parts.last().isInteger()) {
+        throw new GradleException("MAX_VERSION_NAME must end with a numeric patch component: ${version}")
+    }
+    parts[parts.size() - 1] = (parts.last().toInteger() + 1).toString()
+    return parts.join('.')
+}
+
+def maxVersionCode = MAX_VERSION_CODE.toString().toInteger()
+def maxVersionName = MAX_VERSION_NAME.toString()
+try {
+    def tagOutput = providers.exec {
+        workingDir rootProject.projectDir
+        commandLine 'git', 'tag', '--list', 'max-build-v*-code*'
+        ignoreExitValue = true
+    }.standardOutput.asText.get().trim()
+    def tagPattern = ~/^max-build-v([0-9]+(?:\.[0-9]+)*)-code([0-9]+)$/
+    tagOutput.readLines().each { tag ->
+        def matcher = tagPattern.matcher(tag.trim())
+        if (matcher.matches()) {
+            def taggedCode = matcher.group(2).toInteger()
+            if (taggedCode > maxVersionCode) {
+                maxVersionCode = taggedCode
+                maxVersionName = matcher.group(1)
+            }
+        }
+    }
+} catch (Exception ignored) {
+    // Source archives may not contain Git metadata; the committed base is used.
+}
+
+def versionCodeOverride = System.getenv('MAX_VERSION_CODE_OVERRIDE')
+def versionNameOverride = System.getenv('MAX_VERSION_NAME_OVERRIDE')
+def verCode = versionCodeOverride ? versionCodeOverride.toInteger() : maxVersionCode + 1
+def baseVerName = versionNameOverride ?: incrementPatchVersion(maxVersionName)
+def verName = "${baseVerName}${commitId?.take(7) ? "-${commitId.take(7)}" : ''}"
 
 def officialVer = APP_VERSION_NAME
 def officialCode = APP_VERSION_CODE
@@ -39,10 +75,27 @@ if (properties != null) {
 keystorePwd = keystorePwd ?: System.getenv('KEYSTORE_PASS')
 alias = alias ?: System.getenv('ALIAS_NAME')
 pwd = pwd ?: System.getenv('ALIAS_PASS')
-// Keep the signing identity outside of the source tree. This project must only
-// use the controlled copy under C:\Users\Silly\Keys.
-def releaseKeystore = new File('C:/Users/Silly/Keys/Max-release.keystore')
+// Local signing must use the controlled external copy. GitHub Actions cannot
+// access the workstation and therefore uses the byte-identical tracked key
+// together with the existing encrypted LOCAL_PROPERTIES secret.
+def isGitHubActions = System.getenv('GITHUB_ACTIONS') == 'true'
+def isDebugCiBuild = System.getenv('DEBUG_BUILD') == 'true'
+def releaseKeystore = isGitHubActions
+        ? project.file('release.keystore')
+        : new File('C:/Users/Silly/Keys/Max/Max-release.keystore')
 def hasReleaseSigning = releaseKeystore.isFile() && keystorePwd && alias && pwd
+def releasePackagingRequested = gradle.startParameter.taskNames.any { taskName ->
+    def normalized = taskName.toLowerCase(Locale.ROOT)
+    return normalized.contains('assemblerelease') ||
+            normalized.contains('assemblestaging') ||
+            normalized.contains('bundlerelease') ||
+            normalized.contains('bundlestaging') ||
+            normalized.contains('packagerelease') ||
+            normalized.contains('packagestaging')
+}
+if (!hasReleaseSigning && (releasePackagingRequested || isGitHubActions && !isDebugCiBuild)) {
+    throw new GradleException("Release signing is required but unavailable. keystore=${releaseKeystore}, credentials=${keystorePwd && alias && pwd ? 'present' : 'missing'}")
+}
 
 def nativeTarget = System.getenv('NATIVE_TARGET') ?: ''
 

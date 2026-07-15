@@ -15,8 +15,12 @@ on:
         description: 'Skip Upload: Set to "y" to skip uploading the build.'
         required: false
 
+concurrency:
+  group: max-version-sequence
+  cancel-in-progress: false
+
 permissions:
-  contents: read
+  contents: write
   actions: read
   models: read
 
@@ -32,9 +36,14 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_MAXSIZE: "10G"
       NATIVE_TARGET: "arm64-v8a"
+      EXPECTED_RELEASE_CERT_SHA256: "a98f6b7112fb341b2b981aabd6e250da917c5a83868df6b5a5884c666dc5be77"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select next build version
+        run: python3 Tools/scripts/next_build_version.py
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -73,20 +82,27 @@ jobs:
       - name: Staging Build
         id: staging_build_step
         env:
-          COMMIT_ID: ${{ github.event.head_commit.id }}
+          COMMIT_ID: ${{ github.sha }}
         run: |
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export BUILD_TIMESTAMP=$(date +%s)
           echo "build_timestamp=$BUILD_TIMESTAMP" >> "$GITHUB_OUTPUT"
           ./gradlew TMessagesProj:assembleStaging
 
-          APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
-          APK=$(dirname $APK)
-          echo "APK=$APK" >> $GITHUB_ENV
+          APK=$(find TMessagesProj/build/outputs/apk -type f -name '*arm64-v8a*.apk' ! -name '*-unsigned.apk' -print -quit)
+          test -n "$APK" || { echo "Signed arm64-v8a APK was not produced" >&2; exit 1; }
+          python3 Tools/scripts/verify_release_apk.py "$APK" "$MAX_VERSION_CODE_OVERRIDE" "$MAX_VERSION_NAME_OVERRIDE" "$EXPECTED_RELEASE_CERT_SHA256"
+          echo "APK=$(dirname "$APK")" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
           name: Staging
           path: ${{ env.APK }}
+      - name: Record successful build version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$MAX_VERSION_TAG" -m "Successful signed build $MAX_VERSION_NAME_OVERRIDE ($MAX_VERSION_CODE_OVERRIDE)"
+          git push origin "refs/tags/$MAX_VERSION_TAG"
   upload:
     name: Upload staging
     if: github.event.inputs.upload != 'y' && !contains(github.event.head_commit.message, '[skip upload]')
