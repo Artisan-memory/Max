@@ -167,8 +167,10 @@ private:
     bool updatingDcSettingsWorkaround = false;
     int32_t disconnectTimeoutAmount = 0;
     bool requestingSecondAddressByTlsHashMismatch = false;
+    int64_t lastNonGenericTlsMismatchEscalation = 0;
     int32_t requestingSecondAddress = 0;
     int32_t updatingDcStartTime = 0;
+    int32_t updatingDcSettingsWorkaroundStartTime = 0;
     int32_t lastDcUpdateTime = 0;
     int64_t lastPingTime = getCurrentTimeMonotonicMillis();
     bool networkPaused = false;

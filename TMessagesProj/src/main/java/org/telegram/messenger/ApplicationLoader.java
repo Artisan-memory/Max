@@ -59,6 +59,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
@@ -381,6 +382,60 @@ public class ApplicationLoader extends Application {
 
         LauncherIconController.tryFixLauncherIconIfNeeded();
         ProxyRotationController.init();
+        startMainThreadWatchdog();
+    }
+
+    private static volatile Thread mainThreadWatchdog;
+
+    /**
+     * DEBUG_HUNT freeze: pings the main looper once a second from a background
+     * thread and reports how long the reply took whenever it exceeds 500 ms.
+     * Log analysis could show that the UI was unresponsive but never how long
+     * the main thread was actually blocked, which is what this measures.
+     */
+    private static void startMainThreadWatchdog() {
+        if (!BuildVars.LOGS_ENABLED || mainThreadWatchdog != null) {
+            return;
+        }
+        Thread thread = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (!BuildVars.LOGS_ENABLED) {
+                    continue;
+                }
+                final long postedAt = SystemClock.elapsedRealtime();
+                final CountDownLatch latch = new CountDownLatch(1);
+                applicationHandler.post(latch::countDown);
+                try {
+                    // Report while still stuck, so a freeze that outlives the
+                    // process still leaves a trace, then wait for the real end.
+                    if (!latch.await(10, TimeUnit.SECONDS)) {
+                        FileLog.w("DEBUG_HUNT freeze component=main_thread event=blocked blocked_ms=10000+ foreground=" + isForegroundForLog());
+                        latch.await();
+                    }
+                } catch (InterruptedException e) {
+                    return;
+                }
+                long blockedMs = SystemClock.elapsedRealtime() - postedAt;
+                if (blockedMs >= 500) {
+                    FileLog.w("DEBUG_HUNT freeze component=main_thread event=slow blocked_ms=" + blockedMs
+                            + " foreground=" + isForegroundForLog());
+                }
+            }
+        }, "MainThreadWatchdog");
+        thread.setPriority(Thread.MIN_PRIORITY);
+        thread.setDaemon(true);
+        mainThreadWatchdog = thread;
+        thread.start();
+    }
+
+    private static boolean isForegroundForLog() {
+        ForegroundDetector detector = ForegroundDetector.getInstance();
+        return detector != null && detector.isForeground();
     }
 
     // Local Push Service, TFoss implementation

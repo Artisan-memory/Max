@@ -1748,7 +1748,9 @@ public class ImageLoader {
                     }
                 }
                 recordDecodeStorm(cacheImage, elapsed, width, height);
-                if (elapsed > 24 || cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE) {
+                // A slow decode is worth reporting always; a routine animation
+                // or lottie decode is not, and used to fire on every frame set.
+                if (elapsed > 24 || (BuildVars.LOGS_VERBOSE_IMAGES && (cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE))) {
                     FileLog.w("NagramDiag image.decode time=" + elapsed +
                             " key=" + cacheImage.key +
                             " type=" + cacheImage.type +
@@ -3552,7 +3554,7 @@ public class ImageLoader {
                             }
                         }
                     }
-                    if (BuildVars.LOGS_ENABLED) {
+                    if (BuildVars.LOGS_VERBOSE_IMAGES) {
                         FileLog.d("NagramDiag image.request key=" + key +
                                 " url=" + url +
                                 " type=" + type +

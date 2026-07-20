@@ -20,6 +20,11 @@ public class BuildVars {
 
     public static boolean DEBUG_VERSION = BuildConfig.BUILD_TYPE.equals("debug");
     public static boolean LOGS_ENABLED = false;
+    // Per-item diagnostic logs that sit on hot paths (every image request, every
+    // decode). Each FileLog call walks the whole stack in mkTag() and does a
+    // blocking write to logd, so leaving these on LOGS_ENABLED made the UI
+    // thread pay that cost for every cell bind. Opt-in only.
+    public static boolean LOGS_VERBOSE_IMAGES = false;
     public static boolean DEBUG_PRIVATE_VERSION = false;
     public static boolean USE_CLOUD_STRINGS = true;
     public static boolean CHECK_UPDATES = true;
@@ -49,6 +54,7 @@ public class BuildVars {
         if (ApplicationLoader.applicationContext != null) {
             SharedPreferences sharedPreferences = ApplicationLoader.applicationContext.getSharedPreferences("systemConfig", Context.MODE_PRIVATE);
             LOGS_ENABLED = DEBUG_VERSION || sharedPreferences.getBoolean("logsEnabled", DEBUG_VERSION);
+            LOGS_VERBOSE_IMAGES = LOGS_ENABLED && sharedPreferences.getBoolean("logsVerboseImages", false);
             if (LOGS_ENABLED) {
                 final Thread.UncaughtExceptionHandler pastHandler = Thread.getDefaultUncaughtExceptionHandler();
                 Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
