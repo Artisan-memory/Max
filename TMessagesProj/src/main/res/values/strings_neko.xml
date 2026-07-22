@@ -271,4 +271,21 @@
     <string name="EmojiUseDefault">Use system emoji</string>
     <string name="Chat">Chats</string>
     <string name="Appearance">Appearance</string>
+    <string name="TransparentStatusBar">Transparent Status Bar</string>
+    <string name="ChristmasHat">Show Santa Hat Every Day</string>
+    <string name="DisablePhotoViewerSideAction">Disable Side-Tap to Switch Photos</string>
+    <string name="DisableAppBarShadow">Hide Top Panel Divider</string>
+    <string name="AvatarAsBackground">Background Type</string>
+    <string name="BlurAvatarBackground">Blur Background</string>
+    <string name="DarkenAvatarBackground">Darken Background</string>
+    <string name="UseMediaStreamInVoip">Use Media Stream in VoIP</string>
+    <string name="forceBlurInChat">Force Enable Chat Blur</string>
+    <string name="ChatBlurAlphaValue">Chat Blur Alpha</string>
+    <string name="UseProxyItem">Show Proxy in Drawer</string>
+    <string name="HideProxyByDefault">Hide Proxy When Inactive</string>
+    <string name="ImportProxyList">Import proxy servers</string>
+    <string name="valuesLargeAvatarInDrawer">Default\nAvatar\nBig Avatar\nWallpaper</string>
+    <string name="channelAlias">Channel Alias</string>
+    <string name="ChannelAliasDetails">Label channel users with a custom name. Enable to set alias in channel profile menu.</string>
+    <string name="setChannelAliasName">Set Alias</string>
 </resources>

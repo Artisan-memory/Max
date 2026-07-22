@@ -816,6 +816,18 @@ public class FileLoader extends BaseController {
         loadFile(document, null, null, null, null, parentObject, null, 0, priority, cacheType);
     }
 
+    // Max: used by ExternalStickerCacheHelper to mark a sticker restored from the
+    // user's external cache folder as already loaded, so the UI picks it up
+    // without re-downloading. Dropped by the upstream merge; re-added here.
+    public void notifyFileLoadedFromLocalStickerCache(TLRPC.Document document, File finalFile, Object parentObject) {
+        String fileName = getAttachFileName(document);
+        loadOperationPathsUI.remove(fileName);
+        getFileDatabase().putPath(document.id, document.dc_id, MEDIA_DIR_CACHE, 0, finalFile.toString());
+        if (delegate != null) {
+            delegate.fileDidLoaded(fileName, finalFile, parentObject, MEDIA_DIR_CACHE);
+        }
+    }
+
     public void loadFile(WebFile document, int priority, int cacheType) {
         loadFile(null, null, document, null, null, null, null, 0, priority, cacheType);
     }
