@@ -77,6 +77,19 @@ public class NekoConfig {
     public static ConfigItem unreadBadgeOnBackButton = addConfig("unreadBadgeOnBackButton", configTypeBool, false);
     public static ConfigItem useCustomEmoji = addConfig("useCustomEmoji", configTypeBool, false);
     public static ConfigItem repeatConfirm = addConfig("repeatConfirm", configTypeBool, true);
+    // Max-owned NekoConfig members dropped by the upstream merge but still
+    // referenced by the surviving drawer files (DrawerLayoutAdapter,
+    // DrawerProfileCell). Re-added for the classic sidebar. scheduleMessages was
+    // per-account (AccountBoolConfigItem) upstream in our fork; kept as a plain
+    // global bool here to avoid porting that whole subsystem — the drawer item
+    // only reads/toggles it.
+    public static ConfigItem largeAvatarInDrawer = addConfig("AvatarAsBackground", configTypeInt, DRAWER_BACKGROUND_WALLPAPER);
+    public static ConfigItem avatarBackgroundBlur = addConfig("BlurAvatarBackground", configTypeBool, false);
+    public static ConfigItem avatarBackgroundDarken = addConfig("DarkenAvatarBackground", configTypeBool, false);
+    public static ConfigItem hideProxyByDefault = addConfig("HideProxyByDefault", configTypeBool, true);
+    public static ConfigItem useProxyItem = addConfig("UseProxyItem", configTypeBool, true);
+    public static ConfigItem scheduleMessages = addConfig("ScheduleMessage", configTypeBool, false);
+    public static ConfigItem showScheduleMessagesInDrawer = addConfig("ScheduleMessageInDrawer", configTypeBool, false);
     public static ConfigItem disableInstantCamera = addConfig("DisableInstantCamera", configTypeBool, true);
     public static ConfigItem showSeconds = addConfig("showSeconds", configTypeBool, false);
 
