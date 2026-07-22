@@ -19,9 +19,7 @@
 
 extern "C" {
 #ifdef __cplusplus
-#ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS
-#endif
 #ifdef _STDINT_H
 #undef _STDINT_H
 #endif
@@ -149,7 +147,8 @@ AUDIO_DECODER_FUNC(jint, ffmpegDecode, jlong context, jobject inputData,
   }
   uint8_t *inputBuffer = (uint8_t *)env->GetDirectBufferAddress(inputData);
   uint8_t *outputBuffer = (uint8_t *)env->GetDirectBufferAddress(outputData);
-  AVPacket packet = {};
+  AVPacket packet;
+  av_init_packet(&packet);
   packet.data = inputBuffer;
   packet.size = inputSize;
   return decodePacket((AVCodecContext *)context, &packet, outputBuffer,
@@ -327,6 +326,7 @@ int decodePacket(AVCodecContext *context, AVPacket *packet,
     }
 
     // Resample output.
+    AVSampleFormat sampleFormat = context->sample_fmt;
     int channelCount = context->channels;
     int sampleCount = frame->nb_samples;
 
@@ -338,6 +338,7 @@ int decodePacket(AVCodecContext *context, AVPacket *packet,
         return transformError(result);
     }
 
+    int inSampleSize = av_get_bytes_per_sample(sampleFormat);
     int outSampleSize = av_get_bytes_per_sample(context->request_sample_fmt);
     int outSamples = swr_get_out_samples(resampleContext, sampleCount);
     int bufferOutSize = outSampleSize * channelCount * outSamples;

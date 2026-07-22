@@ -4,15 +4,10 @@ import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
 import android.view.View;
-import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.R;
-import org.telegram.ui.ActionBar.AlertDialog;
-import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.RadioColorCell;
+import org.telegram.messenger.FileLog;
 import org.telegram.ui.Cells.TextSettingsCell;
 
 import kotlin.Unit;
@@ -22,31 +17,32 @@ import tw.nekomimi.nekogram.ui.PopupBuilder;
 
 // TextSettingsCell, select from a list
 // Can be used without select list（custom）
-public class ConfigCellSelectBox extends AbstractConfigCell {
+public class ConfigCellSelectBox extends AbstractConfigCell implements WithBindConfig, WithKey {
     private final ConfigItem bindConfig;
     private final String[] selectList; // split by \n
+    private final int[] selectValues;
     private final String title;
     private final Runnable onClickCustom;
-    private Context ctxCustom;
     private final String key;
 
     // default: customTitle=null customOnClick=null
     public ConfigCellSelectBox(String key, ConfigItem bind, Object selectList_s, Runnable customOnClick) {
+        this(key, bind, selectList_s, null, customOnClick);
+    }
+
+    public ConfigCellSelectBox(String key, ConfigItem bind, Object selectList_s, int[] selectValues, Runnable customOnClick) {
         this.bindConfig = bind;
         String key1 = key;
         if (key == null) {
             key1 = bindConfig.getKey();
         }
         this.key = key1;
-        if (selectList_s == null) {
-            this.selectList = null;
-        } else if (selectList_s instanceof String) {
-            this.selectList = ((String) selectList_s).split("\n");
-        } else if (selectList_s instanceof String[]) {
-            this.selectList = (String[]) selectList_s;
-        } else {
-            this.selectList = null;
+        switch (selectList_s) {
+            case String s -> this.selectList = s.split("\n");
+            case String[] strings -> this.selectList = strings;
+            case null, default -> this.selectList = null;
         }
+        this.selectValues = selectValues;
         title = getString(this.key);
         this.onClickCustom = customOnClick;
     }
@@ -70,50 +66,11 @@ public class ConfigCellSelectBox extends AbstractConfigCell {
     public void onBindViewHolder(RecyclerView.ViewHolder holder) {
         TextSettingsCell cell = (TextSettingsCell) holder.itemView;
         String valueText = "";
-        if (selectList != null && bindConfig.Int() < selectList.length) {
-            valueText = selectList[bindConfig.Int()];
+        int selectedIndex = getSelectedIndex(bindConfig.Int());
+        if (selectList != null && selectedIndex >= 0 && selectedIndex < selectList.length) {
+            valueText = selectList[selectedIndex];
         }
         cell.setTextAndValue(title, valueText, false, cellGroup.needSetDivider(this), true);
-    }
-
-    public void onClickWithDialog(Context ctx) {
-        ctxCustom = ctx;
-        Context context = ctxCustom != null ? ctxCustom : cellGroup.thisFragment.getParentActivity();
-        if (context == null)
-            return;
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(context); //TODO Replace with pop-up menu
-        builder.setTitle(getString(bindConfig.getKey()));
-        final LinearLayout linearLayout = new LinearLayout(context);
-        linearLayout.setOrientation(LinearLayout.VERTICAL);
-        builder.setView(linearLayout);
-
-        for (int i = 0; i < selectList.length; i++) {
-            RadioColorCell cell = new RadioColorCell(context);
-            cell.setPadding(AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4), 0);
-            cell.setTag(i);
-            cell.setCheckColor(Theme.getColor(Theme.key_radioBackground), Theme.getColor(Theme.key_dialogRadioBackgroundChecked));
-            cell.setTextAndValue(selectList[i], bindConfig.Int() == i);
-            linearLayout.addView(cell);
-            cell.setOnClickListener(v -> {
-                Integer which = (Integer) v.getTag();
-                bindConfig.setConfigInt(which);
-
-                if (cellGroup.listAdapter != null)
-                    cellGroup.listAdapter.notifyItemChanged(cellGroup.rows.indexOf(this));
-                builder.getDismissRunnable().run();
-                if (cellGroup.thisFragment != null)
-                    cellGroup.thisFragment.getParentLayout().rebuildAllFragmentViews(false, false);
-
-                cellGroup.runCallback(bindConfig.getKey(), which);
-            });
-        }
-        builder.setNegativeButton(getString(R.string.Cancel), null);
-        if (ctxCustom == null) {
-            cellGroup.thisFragment.showDialog(builder.create());
-        } else {
-            builder.show();
-        }
     }
 
     public void onClick(View view) {
@@ -121,11 +78,12 @@ public class ConfigCellSelectBox extends AbstractConfigCell {
             try {
                 onClickCustom.run();
             } catch (Exception e) {
+                FileLog.e(e);
             }
             return;
         }
 
-        Context context = ctxCustom != null ? ctxCustom : cellGroup.thisFragment.getParentActivity();
+        Context context = cellGroup.thisFragment.getParentActivity();
         if (context == null) {
             return;
         }
@@ -133,19 +91,39 @@ public class ConfigCellSelectBox extends AbstractConfigCell {
         PopupBuilder builder = new PopupBuilder(view);
 
         builder.setItems(this.selectList, (i, __) -> {
-            bindConfig.setConfigInt(i);
+            int selectedValue = getSelectedValue(i);
+            bindConfig.setConfigInt(selectedValue);
 
             if (cellGroup.listAdapter != null)
                 cellGroup.listAdapter.notifyItemChanged(cellGroup.rows.indexOf(this));
             if (cellGroup.thisFragment != null)
                 cellGroup.thisFragment.getParentLayout().rebuildAllFragmentViews(false, false);
 
-            cellGroup.runCallback(bindConfig.getKey(), i);
+            cellGroup.runCallback(bindConfig.getKey(), selectedValue);
 
             return Unit.INSTANCE;
         });
         builder.show();
 
 
+    }
+
+    private int getSelectedIndex(int value) {
+        if (selectValues == null) {
+            return value;
+        }
+        for (int i = 0; i < selectValues.length; i++) {
+            if (selectValues[i] == value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int getSelectedValue(int index) {
+        if (selectValues == null || index < 0 || index >= selectValues.length) {
+            return index;
+        }
+        return selectValues[index];
     }
 }

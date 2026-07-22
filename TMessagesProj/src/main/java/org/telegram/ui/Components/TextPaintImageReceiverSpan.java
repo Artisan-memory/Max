@@ -8,8 +8,8 @@
 
 package org.telegram.ui.Components;
 
-import android.graphics.Canvas;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
@@ -21,6 +21,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
+import org.telegram.messenger.R;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.web.WebInstantView;
 
@@ -46,13 +47,12 @@ public class TextPaintImageReceiverSpan extends ReplacementSpan {
                 if (!imageReceiver.canInvertBitmap()) {
                     return;
                 }
-                float[] NEGATIVE = {
-                        -1.0f, 0, 0, 0, 255,
-                        0, -1.0f, 0, 0, 255,
-                        0, 0, -1.0f, 0, 255,
-                        0, 0, 0, 1.0f, 0
-                };
-                imageReceiver.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
+                imageReceiver.setColorFilter(new ColorMatrixColorFilter(new float[] {
+                    -1.0f, 0, 0, 0, 255,
+                    0, -1.0f, 0, 0, 255,
+                    0, 0, -1.0f, 0, 255,
+                    0, 0, 0, 1.0f, 0
+                }));
             });
         }
         TLRPC.PhotoSize thumb = FileLoader.getClosestPhotoSizeWithSize(document.thumbs, 90);
@@ -61,7 +61,6 @@ public class TextPaintImageReceiverSpan extends ReplacementSpan {
     }
 
     public TextPaintImageReceiverSpan(View parentView, WebInstantView.WebPhoto webPhoto, Object parentObject, int w, int h, boolean top, boolean invert) {
-        String filter = String.format(Locale.US, "%d_%d_i", w, h);
         width = w;
         height = h;
         imageReceiver = new ImageReceiver(parentView);
@@ -71,16 +70,25 @@ public class TextPaintImageReceiverSpan extends ReplacementSpan {
                 if (!imageReceiver.canInvertBitmap()) {
                     return;
                 }
-                float[] NEGATIVE = {
-                        -1.0f, 0, 0, 0, 255,
-                        0, -1.0f, 0, 0, 255,
-                        0, 0, -1.0f, 0, 255,
-                        0, 0, 0, 1.0f, 0
-                };
-                imageReceiver.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
+                imageReceiver.setColorFilter(new ColorMatrixColorFilter(new float[] {
+                    -1.0f, 0, 0, 0, 255,
+                    0, -1.0f, 0, 0, 255,
+                    0, 0, -1.0f, 0, 255,
+                    0, 0, 0, 1.0f, 0
+                }));
             });
         }
         WebInstantView.loadPhoto(webPhoto, imageReceiver, () -> {});
+        alignTop = top;
+    }
+
+    public TextPaintImageReceiverSpan(View parentView, Bitmap bitmap, int w, int h, boolean top, int color) {
+        width = w;
+        height = h;
+        imageReceiver = new ImageReceiver(parentView);
+        imageReceiver.setInvalidateAll(true);
+        imageReceiver.setImageBitmap(bitmap);
+        imageReceiver.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
         alignTop = top;
     }
 
@@ -92,7 +100,7 @@ public class TextPaintImageReceiverSpan extends ReplacementSpan {
         imageReceiver.setImageBitmap(bitmap);
         imageReceiver.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
         this.depth = depth;
-        baselineMode = true;
+        this.baselineMode = true;
     }
 
     @Override

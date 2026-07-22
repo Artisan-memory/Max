@@ -58,6 +58,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.Vector;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.tgnet.tl.TL_stars;
+import org.telegram.tgnet.tl.TL_update;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
@@ -1597,14 +1598,14 @@ public class StarsController {
                 });
 
                 long dialogId = 0;
-                if (result.updates.update instanceof TLRPC.TL_updateChannel) {
-                    TLRPC.TL_updateChannel upd = (TLRPC.TL_updateChannel) result.updates.update;
+                if (result.updates.update instanceof TL_update.TL_updateChannel) {
+                    TL_update.TL_updateChannel upd = (TL_update.TL_updateChannel) result.updates.update;
                     dialogId = -upd.channel_id;
                 }
                 if (result.updates.updates != null) {
                     for (int i = 0; i < result.updates.updates.size(); ++i) {
-                        if (result.updates.updates.get(i) instanceof TLRPC.TL_updateChannel) {
-                            TLRPC.TL_updateChannel upd = (TLRPC.TL_updateChannel) result.updates.updates.get(i);
+                        if (result.updates.updates.get(i) instanceof TL_update.TL_updateChannel) {
+                            TL_update.TL_updateChannel upd = (TL_update.TL_updateChannel) result.updates.updates.get(i);
                             dialogId = -upd.channel_id;
                         }
                     }
@@ -3587,33 +3588,48 @@ public class StarsController {
             if (load || shown) load();
         }
 
+        private long craftingGiftId = 0;
+        public void forCrafting(long gift_id) {
+            craftingGiftId = gift_id;
+        }
+
         public void load() {
             if (loading || endReached) return;
 
             boolean first = lastOffset == null;
             loading = true;
-            final TL_stars.getSavedStarGifts req = new TL_stars.getSavedStarGifts();
-            req.sort_by_value = !sort_by_date;
-            req.exclude_unupgradable = !isInclude_limited();
-            req.exclude_upgradable = !isInclude_upgradable();
-            req.exclude_unlimited = !isInclude_unlimited();
-            req.exclude_unique = !isInclude_unique();
-            req.exclude_saved = !isInclude_displayed();
-            req.exclude_unsaved = !isInclude_hidden();
-            req.peer_color_available = peer_color_available;
-            if (dialogId == 0) {
-                req.peer = new TLRPC.TL_inputPeerSelf();
+            final TLObject request;
+            if (craftingGiftId != 0) {
+                final TL_stars.getCraftStarGifts req = new TL_stars.getCraftStarGifts();
+                req.gift_id = craftingGiftId;
+                req.offset = first ? "" : lastOffset;
+                req.limit = first ? 15 : 30;
+                request = req;
             } else {
-                req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                final TL_stars.getSavedStarGifts req = new TL_stars.getSavedStarGifts();
+                req.sort_by_value = !sort_by_date;
+                req.exclude_unupgradable = !isInclude_limited();
+                req.exclude_upgradable = !isInclude_upgradable();
+                req.exclude_unlimited = !isInclude_unlimited();
+                req.exclude_unique = !isInclude_unique();
+                req.exclude_saved = !isInclude_displayed();
+                req.exclude_unsaved = !isInclude_hidden();
+                req.peer_color_available = peer_color_available;
+                if (dialogId == 0) {
+                    req.peer = new TLRPC.TL_inputPeerSelf();
+                } else {
+                    req.peer = MessagesController.getInstance(currentAccount).getInputPeer(dialogId);
+                }
+                req.offset = first ? "" : lastOffset;
+                req.limit = first ? Math.max(MessagesController.getInstance(currentAccount).stargiftsPinnedToTopLimit, 15) : 30;
+                if (isCollection) {
+                    req.flags |= 64;
+                    req.collection_id = collectionId;
+                }
+                request = req;
             }
-            req.offset = first ? "" : lastOffset;
-            req.limit = first ? Math.max(MessagesController.getInstance(currentAccount).stargiftsPinnedToTopLimit, 15) : 30;
             final int[] reqId = new int[1];
-            if (isCollection) {
-                req.flags |= 64;
-                req.collection_id = collectionId;
-            }
-            reqId[0] = currentRequestId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+            reqId[0] = currentRequestId = ConnectionsManager.getInstance(currentAccount).sendRequest(request, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
                 if (reqId[0] != currentRequestId) return;
                 loading = false;
                 currentRequestId = -1;
@@ -3643,6 +3659,46 @@ public class StarsController {
                 currentRequestId = -1;
             }
             loading = false;
+        }
+
+        public void processCrafting(ArrayList<TL_stars.StarGift> giftsToRemove, TL_stars.StarGift giftToAdd) {
+            if (giftsToRemove != null && !giftsToRemove.isEmpty()) {
+                boolean changed = false;
+                for (final TL_stars.StarGift gift : giftsToRemove) {
+                    for (int i = 0; i < gifts.size(); ++i) {
+                        final TL_stars.SavedStarGift savedGift = gifts.get(i);
+                        if (savedGift.gift != null && savedGift.gift.id == gift.id) {
+                            gifts.remove(i);
+                            totalCount = Math.max(0, totalCount - 1);
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+                if (changed) {
+                    NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.starUserGiftsLoaded, dialogId, GiftsList.this);
+                }
+            }
+            if (giftToAdd != null) {
+                final TL_stars.getSavedStarGift req = new TL_stars.getSavedStarGift();
+                final TL_stars.TL_inputSavedStarGiftSlug input = new TL_stars.TL_inputSavedStarGiftSlug();
+                input.slug = giftToAdd.slug;
+                req.stargift.add(input);
+                ConnectionsManager.getInstance(currentAccount).sendRequest(req, (res, err) -> AndroidUtilities.runOnUIThread(() -> {
+                    if (res instanceof TL_stars.TL_payments_savedStarGifts) {
+                        final TL_stars.TL_payments_savedStarGifts r = (TL_stars.TL_payments_savedStarGifts) res;
+                        MessagesController.getInstance(currentAccount).putUsers(r.users, false);
+                        MessagesController.getInstance(currentAccount).putChats(r.chats, false);
+                        if (r.gifts.size() > 0) {
+                            final TL_stars.SavedStarGift savedGift = r.gifts.get(0);
+                            int index = 0;
+                            while (index < gifts.size() && gifts.get(index).pinned_to_top) index++;
+                            gifts.add(index, savedGift);
+                            NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.starUserGiftsLoaded, dialogId, GiftsList.this);
+                        }
+                    }
+                }));
+            }
         }
 
         public int getCount() {
@@ -3903,7 +3959,7 @@ public class StarsController {
     }
 
     public void stopPaidMessages(long user_id, long parent_id, boolean refund, boolean stop) {
-        TL_account.toggleNoPaidMessagesException req = new TL_account.toggleNoPaidMessagesException();
+        final TL_account.toggleNoPaidMessagesException req = new TL_account.toggleNoPaidMessagesException();
         req.user_id = MessagesController.getInstance(currentAccount).getInputUser(user_id);
         if (parent_id != 0) {
             req.parent_peer = MessagesController.getInstance(currentAccount).getInputPeer(parent_id);
@@ -3922,9 +3978,9 @@ public class StarsController {
                     }
                     MessagesController.getNotificationsSettings(currentAccount).edit().putLong("dialog_bar_paying_" + user_id, 0L).apply();
                     MessagesController.getInstance(currentAccount).loadPeerSettings(
-                            MessagesController.getInstance(currentAccount).getUser(user_id),
-                            MessagesController.getInstance(currentAccount).getChat(-user_id),
-                            true
+                        MessagesController.getInstance(currentAccount).getUser(user_id),
+                        MessagesController.getInstance(currentAccount).getChat(-user_id),
+                        true
                     );
                     ContactsController.getInstance(currentAccount).loadPrivacySettings(true);
                     NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.messagesFeeUpdated, user_id);

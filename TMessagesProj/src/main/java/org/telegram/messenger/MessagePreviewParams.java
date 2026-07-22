@@ -7,24 +7,17 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.CharacterStyle;
-import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
 import android.text.util.Linkify;
-import android.util.Log;
 import android.util.LongSparseArray;
 import android.util.SparseBooleanArray;
 
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ChatActivity;
-import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.MessagePreviewView;
 
-import java.io.File;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class MessagePreviewParams {
 
@@ -464,8 +457,9 @@ public class MessagePreviewParams {
         message.peer_id = messageObject.messageOwner.peer_id;
         message.from_id = messageObject.messageOwner.from_id;
         message.message = messageObject.messageOwner.message;
+        message.rich_message = messageObject.messageOwner.rich_message;
         message.media = messageObject.messageOwner.media;
-        message.action =  messageObject.messageOwner.action;
+        message.action = messageObject.messageOwner.action;
         message.edit_date = 0;
         if (messageObject.messageOwner.entities != null) {
             message.entities.addAll(messageObject.messageOwner.entities);

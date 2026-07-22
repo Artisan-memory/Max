@@ -28,8 +28,6 @@ public class NotificationsService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        FileLog.d("DEBUG_HUNT battery component=notifications_service event=create foreground="
-                + NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool());
         ApplicationLoader.postInitApplication();
         if (NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool()) {
             String CHANNEL_ID = "push_service_channel";
@@ -56,7 +54,6 @@ public class NotificationsService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        FileLog.d("DEBUG_HUNT battery component=notifications_service event=start start_id=" + startId + " flags=" + flags);
         return START_STICKY;
     }
 
@@ -66,7 +63,6 @@ public class NotificationsService extends Service {
     }
 
     public void onDestroy() {
-        FileLog.d("DEBUG_HUNT battery component=notifications_service event=destroy");
         super.onDestroy();
         try {
             stopForeground(true);
@@ -86,7 +82,6 @@ public class NotificationsService extends Service {
 
     @Override
     public void onTimeout(int startId, int fgsType) {
-        FileLog.d("DEBUG_HUNT battery component=notifications_service event=timeout start_id=" + startId + " type=" + fgsType);
         super.onTimeout(startId, fgsType);
         stopSelf();
     }

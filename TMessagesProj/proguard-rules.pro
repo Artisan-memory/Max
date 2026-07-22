@@ -105,6 +105,13 @@
   <init>(com.google.android.exoplayer2.upstream.DataSource$Factory);
 }
 
+-keep class io.nano.tex.** {*;}
+
+# JLatexMath: macro/atom classes are loaded reflectively by Class.forName
+-keep class org.scilab.forge.jlatexmath.** { *; }
+-keep class ru.noties.jlatexmath.** { *; }
+-dontwarn org.scilab.forge.jlatexmath.**
+
 # Used by AtomicReferenceFieldUpdater and sun.misc.Unsafe
 -keepclassmembers class com.google.common.util.concurrent.AbstractFuture** {
   *** waiters;
@@ -205,11 +212,12 @@
 }
 
 # TransferData is an inner static class used only via Gson reflection; keep its fields
--keep class tw.nekomimi.nekogram.settings.RegexFiltersSettingActivity$TransferData { *; }
+-keep class tw.nekomimi.nekogram.filters.RegexFiltersSettingActivity$TransferData { *; }
 
 # Be explicit for AyuFilter models to be safe
--keepclassmembers class tw.nekomimi.nekogram.helpers.AyuFilter$FilterModel { <fields>; }
--keepclassmembers class tw.nekomimi.nekogram.helpers.AyuFilter$ChatFilterEntry { <fields>; }
+-keepclassmembers class tw.nekomimi.nekogram.filters.AyuFilter$FilterModel { <fields>; }
+-keepclassmembers class tw.nekomimi.nekogram.filters.AyuFilter$ChatFilterEntry { <fields>; }
+-keepclassmembers class tw.nekomimi.nekogram.filters.AyuFilter$CustomFilteredUser { <fields>; }
 
 # https://github.com/osmdroid/osmdroid/issues/633
 -dontwarn org.osmdroid.tileprovider.modules.NetworkAvailabliltyCheck

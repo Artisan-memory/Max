@@ -82,7 +82,11 @@ public class AwayMessagesActivity extends BaseFragment implements NotificationCe
         }
 
         listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, null);
+        listView.setSections();
+        listView.adapter.setApplyBackground(false);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        actionBar.setAdaptiveBackground(listView, true);
+
         setValue();
 
         return fragmentView = contentView;
@@ -287,7 +291,7 @@ public class AwayMessagesActivity extends BaseFragment implements NotificationCe
     private static final int SCHEDULE_CUSTOM = 2;
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        items.add(UItem.asTopView(getString(R.string.BusinessAwayInfo), "RestrictedEmoji", "💤"));
+        items.add(UItem.asTopView(getString(R.string.BusinessAway), getString(R.string.BusinessAwayInfo), "RestrictedEmoji", "💤"));
         items.add(UItem.asCheck(BUTTON_ENABLE, getString(R.string.BusinessAwaySend)).setChecked(enabled));
         items.add(UItem.asShadow(null));
         if (enabled) {
@@ -314,10 +318,10 @@ public class AwayMessagesActivity extends BaseFragment implements NotificationCe
             items.add(UItem.asCheck(BUTTON_ONLY_OFFLINE, LocaleController.getString(R.string.BusinessAwayOnlyOffline)).setChecked(offline_only));
             items.add(UItem.asShadow(LocaleController.getString(R.string.BusinessAwayOnlyOfflineInfo)));
             items.add(UItem.asHeader(getString(R.string.BusinessRecipients)));
-            items.add(UItem.asRadio(RADIO_PRIVATE_CHATS, getString(R.string.BusinessChatsAllPrivateExcept)).setChecked(exclude));
-            items.add(UItem.asRadio(RADIO_ALL_CHATS, getString(R.string.BusinessChatsOnlySelected)).setChecked(!exclude));
+            items.add(UItem.asRadio(RADIO_PRIVATE_CHATS, getString(R.string.BusinessChatsAllPrivateExcept2)).setChecked(exclude));
+            items.add(UItem.asRadio(RADIO_ALL_CHATS, getString(R.string.BusinessChatsOnlySelected2)).setChecked(!exclude));
             items.add(UItem.asShadow(null));
-            recipientsHelper.fillItems(items);
+            recipientsHelper.fillItems(items, adapter);
             items.add(UItem.asShadow(null));
         }
     }
@@ -401,4 +405,14 @@ public class AwayMessagesActivity extends BaseFragment implements NotificationCe
         super.onFragmentDestroy();
     }
 
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        listView.setPadding(0, 0, 0, bottom);
+        listView.setClipToPadding(false);
+    }
 }

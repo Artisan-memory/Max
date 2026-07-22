@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">Max-設定</string>
-    <string name="ForceCopy">強制コピー</string>
+    <string name="N_Config">N-設定</string>
     <string name="CombineMessage">メッセージを結合</string>
     <string name="TextStyle">テキストスタイル</string>
     <string name="NoiseSuppressAndVoiceEnhance">ノイズ抑制と音声強調</string>
@@ -20,7 +19,6 @@
     <string name="ShowMessageID">メッセージ ID を表示</string>
     <string name="ShowRPCError">RPC エラーを表示</string>
     <string name="ShowPremiumStickersAnimation">プレミアムステッカーアニメーションを表示</string>
-    <string name="AlwaysSaveChatOffset">常にチャットオフセットを保存</string>
     <string name="AppIconColorful">カラフル</string>
     <string name="AppIconDarkGreen">ダークグリーン</string>
     <string name="AppIconNeon">ネオン</string>
@@ -32,16 +30,12 @@
     <string name="ToTheMessage">メッセージに移動</string>
     <string name="ZalgoFilter">「Zalgo」文字をフィルタリング</string>
     <string name="ZalgoFilterNotice">ニックネームやメッセージの「Z̷͍͌ā̸̜l̸̞̂g̷̝͘o̶̩̓」文字はフィルタリングされます。</string>
-    <string name="labelChannelUser">チャンネルユーザーをラベル付け</string>
-    <string name="CustomChannelLabel">カスタムチャンネルユーザーのラベル</string>
     <string name="AlwaysShowDownloadIcon">常にダウンロードアイコンを表示</string>
     <string name="HideTitle">タイトルを非表示</string>
     <string name="IgnoreUnreadCount">未読数を非表示</string>
     <string name="SendWithoutMarkdown">Markdown なしで送信</string>
     <string name="SendAsEmoji">絵文字として送信</string>
-    <string name="CustomArtworkApi">カスタムアートワーク API</string>
     <string name="CustomEditedMessage">編集ありメッセージのマーク</string>
-    <string name="IconDecoration">アイコンデコレーション</string>
     <string name="NotificationIcon">通知アイコンスタイル</string>
     <string name="Official">公式</string>
     <string name="HalloWeen">ハロウィン</string>
@@ -67,7 +61,6 @@
     <string name="ShowSmallGIF">GIF を小さく表示</string>
     <string name="DisableClickCommandToSend">ボットコマンドを送信する前に確認</string>
     <string name="DisableDialogsFloatingButton">フローティングボタンを非表示</string>
-    <string name="DisableFlagSecure">FLAG_SECURE を無効化</string>
     <string name="CenterActionBarTitleType">タイトルを中央揃えにする</string>
     <string name="ShowQuickReplyInBotCommands">ボットコマンドでクイック返信を表示</string>
     <string name="PushServiceType">通知プッシュサービス</string>
@@ -79,14 +72,13 @@
     <string name="DisableChannelMuteButton">チャンネルでボトムバーを非表示</string>
     <string name="DisablePreviewVideoSoundShortcut">プレビュー音声ショートカットを無効化</string>
     <string name="DisablePreviewVideoSoundShortcutNotice">音量ボタンによるプレビュー動画の音声オンを無効にします。</string>
-    <string name="DisableAutoWebLogin">公式 Web サイトの自動ログインを無効化</string>
     <string name="PreviewSendPhoto">画像を送信</string>
     <string name="PreviewSendVideo">動画を送信</string>
     <string name="PreviewSendFile">ファイルを送信</string>
     <string name="UnblockDeleted">削除済みアカウントのブロックを解除</string>
     <string name="UnblockDeletedWarn">**すべての削除済みアカウント**のブロックを解除してもよろしいですか？</string>
     <string name="RegexFilters">メッセージフィルター</string>
-    <string name="RegexFiltersHeader">メッセージフィルター</string>
+    <string name="RegexFiltersHeader">フィルター</string>
     <string name="RegexFiltersSharedHeader">共通フィルター</string>
     <string name="RegexFiltersSubMenuDescription">このチャットで共通フィルターを除外することができます。</string>
     <string name="RegexFiltersChatHeader">チャットフィルター</string>

@@ -2,7 +2,6 @@ package org.telegram.messenger;
 
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 
 import androidx.collection.LongSparseArray;
 
@@ -12,16 +11,15 @@ import org.telegram.SQLite.SQLitePreparedStatement;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_update;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.LaunchActivity;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 
 public class SavedMessagesController {
@@ -470,6 +468,7 @@ public class SavedMessagesController {
     public boolean updatedDialogCount(long dialogId, int messagesCount, boolean forceIfCountNotLoaded) {
         for (int i = 0; i < allDialogs.size(); ++i) {
             SavedDialog d = allDialogs.get(i);
+            if (d == null) continue;
             if (d.dialogId == dialogId) {
                 if (d.messagesCount != messagesCount || (!d.messagesCountLoaded && forceIfCountNotLoaded)) {
                     d.messagesCount = messagesCount;
@@ -693,15 +692,15 @@ public class SavedMessagesController {
     }
 
     private boolean processUpdateInternal(TLRPC.Update update) {
-        if (update instanceof TLRPC.TL_updateSavedDialogPinned) {
-            TLRPC.TL_updateSavedDialogPinned upd = (TLRPC.TL_updateSavedDialogPinned) update;
+        if (update instanceof TL_update.TL_updateSavedDialogPinned) {
+            TL_update.TL_updateSavedDialogPinned upd = (TL_update.TL_updateSavedDialogPinned) update;
             if (!(upd.peer instanceof TLRPC.TL_dialogPeer)) return false;
             long dialogId = DialogObject.getPeerDialogId(((TLRPC.TL_dialogPeer) upd.peer).peer);
             ArrayList<Long> ids = new ArrayList<>();
             ids.add(dialogId);
             return updatePinned(ids, upd.pinned, false);
-        } else if (update instanceof TLRPC.TL_updatePinnedSavedDialogs) {
-            TLRPC.TL_updatePinnedSavedDialogs upd = (TLRPC.TL_updatePinnedSavedDialogs) update;
+        } else if (update instanceof TL_update.TL_updatePinnedSavedDialogs) {
+            TL_update.TL_updatePinnedSavedDialogs upd = (TL_update.TL_updatePinnedSavedDialogs) update;
             ArrayList<Long> newOrder = new ArrayList<>(upd.order.size());
             for (int i = 0; i < upd.order.size(); ++i) {
                 TLRPC.DialogPeer dialogPeer = upd.order.get(i);
@@ -1122,6 +1121,17 @@ public class SavedMessagesController {
         }
         Bundle args = new Bundle();
         args.putLong("user_id", UserConfig.getInstance(lastFragment.getCurrentAccount()).getClientUserId());
+        lastFragment.presentFragment(new ChatActivity(args));
+    }
+
+    public static void openSavedMessagesReminders() {
+        BaseFragment lastFragment = LaunchActivity.getLastFragment();
+        if (lastFragment == null) {
+            return;
+        }
+        Bundle args = new Bundle();
+        args.putLong("user_id", UserConfig.getInstance(lastFragment.getCurrentAccount()).getClientUserId());
+        args.putInt("chatMode", ChatActivity.MODE_SCHEDULED);
         lastFragment.presentFragment(new ChatActivity(args));
     }
 

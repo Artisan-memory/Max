@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-settings</string>
+    <string name="NekoSettings">N-Settings</string>
     <string name="IPv6">Prefer IPv6</string>
     <string name="MessageMenu">Message Menu</string>
     <string name="HidePhone">Hide Phone Number</string>
@@ -20,8 +20,6 @@
     <string name="Repeat">Repost</string>
     <string name="AddToSavedMessages">Save</string>
     <string name="CreateMention">Create Mention</string>
-    <string name="TransparentStatusBar">Transparent Status Bar</string>
-    <string name="ChristmasHat">Show Santa Hat Every Day</string>
     <string name="ActionBarDecoration">Title Bar Decoration</string>
     <string name="DependsOnDate">Depends on date</string>
     <string name="Christmas">Yule</string>
@@ -51,7 +49,6 @@
     <string name="TranslateApiUnsupported">The translation provider you selected don\'t support your language.</string>
     <string name="ProviderLingocloud">LingoCloud Translate</string>
     <string name="UndoTranslate">Hide Translation</string>
-    <string name="DisablePhotoViewerSideAction">Disable Side-Tap to Switch Photos</string>
     <string name="BotToken">Token</string>
     <string name="UnlimitedPinnedDialogs">Unlimited Pinned Dialogs</string>
     <string name="UnlimitedPinnedDialogsAbout">Pin unlimited dialogs by turn their sync off.</string>
@@ -73,26 +70,21 @@
     <string name="CallTo">Call to **%1$s**?</string>
     <string name="DisableNumberRounding">Disable Number Rounding</string>
     <string name="Categories">Categories</string>
-    <string name="OfficialChannel">Max Channel</string>
+    <string name="OfficialChannel">Nagram Channel</string>
     <string name="About">About</string>
     <string name="IgnoreBlockedAbout">You\'ll no longer see messages from blocked users in groups.</string>
     <string name="SourceCode">Source Code</string>
     <string name="ResetStickerSize">Reset sticker size</string>
     <string name="RestartAppToTakeEffect">Restart app to apply changes.</string>
-    <string name="DisableAppBarShadow">Hide Top Panel Divider</string>
     <string name="MediaPreview">Media Preview in Chat List</string>
     <string name="AutoPauseVideo">Auto Pause Video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
     <string name="DisableProximityEvents">Disable Proximity Events</string>
     <string name="SelectBetween">Select Range</string>
-    <string name="AvatarAsBackground">Background Type</string>
-    <string name="BlurAvatarBackground">Blur Background</string>
-    <string name="DarkenAvatarBackground">Darken Background</string>
     <string name="ProviderDeepLTranslate">DeepL Translate</string>
     <string name="ProviderMicrosoftTranslator">Bing Translator</string>
     <string name="DontSendGreetingSticker">Don\'t Send Greeting Sticker</string>
     <string name="TakeGIFasVideo">Take GIF as Video</string>
-    <string name="UseMediaStreamInVoip">Use Media Stream in VoIP</string>
     <string name="HideTimeForSticker">Hide Time on Stickers</string>
     <string name="hideGroupSticker">Hide Group Sticker</string>
     <string name="customGroupVoipAudioBitrate">Group VoIP Audio Bitrate</string>
@@ -111,8 +103,6 @@
     <string name="customSavePath">Custom Storage Path</string>
     <string name="customSavePathHint">Leave blank to save directly</string>
     <string name="channelLabel">channel</string>
-    <string name="forceBlurInChat">Force Enable Chat Blur</string>
-    <string name="ChatBlurAlphaValue">Chat Blur Alpha</string>
     <string name="MutualContact">Mutual contact</string>
     <string name="MutualContactDescription">This contact is a mutual contact.</string>
     <string name="DatacenterStatusAbout">Check the status of Telegram\'s **datacenters**.</string>
@@ -163,7 +153,7 @@
     <string name="ClearRecentChatAlert">Do you want to clear your recent chats?</string>
     <string name="CloudConfig">Cloud Settings</string>
     <string name="CloudConfigDesc">Save your N-Settings to Telegram cloud.</string>
-    <string name="CloudConfigSyncDate">Last synced: %1$s, cloud: %2$s</string>
+    <string name="CloudConfigSyncDate">Last synced: %s, cloud: %s</string>
     <string name="CloudConfigSyncDateNever">never</string>
     <string name="CloudConfigSync">Sync to cloud</string>
     <string name="CloudConfigSyncShort">Sync</string>
@@ -207,8 +197,6 @@
     <string name="DisableSystemAccount">Disable System Account</string>
     <string name="FilterMenu">Dialogs Filter Menu</string>
     <string name="DisableProxyWhenVpnEnabled">Disable Proxy When VPN is Enabled</string>
-    <string name="UseProxyItem">Show Proxy in Drawer</string>
-    <string name="HideProxyByDefault">Hide Proxy When Inactive</string>
     <string name="SkipOpenLinkConfirm">Skip Open Link Confirmation</string>
     <string name="DeleteAllInChatAlert">Warning! This will **delete all messages** in this chat for **all** participants.</string>
     <string name="UnblockAll">Unblock All</string>
@@ -217,7 +205,6 @@
     <string name="AddProxySocks5">Add SOCKS5 Proxy</string>
     <string name="AddProxyTelegram">Add MTProto Proxy</string>
     <string name="RetestPing">Retest ping for all servers</string>
-    <string name="ImportProxyList">Import proxy servers</string>
     <string name="ExportStickers">Export Stickers</string>
     <string name="ImportStickersX">Import stickers from file</string>
     <string name="ImportStickersList">Import stickers</string>
@@ -262,14 +249,10 @@
     <string name="useCustomEmojiInvalid">Not a valid emoji pack.</string>
     <string name="repeatConfirm">Ask Before Repost</string>
     <string name="repeatConfirmText">Are you sure you want to Repost?</string>
-    <string name="valuesLargeAvatarInDrawer">Default\nAvatar\nBig Avatar\nWallpaper</string>
     <string name="rememberAllBackMessages">Remember All Clicked Replies</string>
     <string name="DisableInstantCamera">Disable Instant Camera</string>
     <string name="showSeconds">Show Timestamp in Seconds</string>
     <string name="Name">Name</string>
-    <string name="channelAlias">Channel Alias</string>
-    <string name="ChannelAliasDetails">Label channel users with a custom name. Enable to set alias in channel profile menu.</string>
-    <string name="setChannelAliasName">Set Alias</string>
     <string name="StickerSettings">Stickers</string>
     <string name="ConfirmSettings">Confirmations</string>
     <string name="InteractionSettings">Interactions</string>

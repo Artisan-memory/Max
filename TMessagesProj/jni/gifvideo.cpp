@@ -13,11 +13,13 @@
 #include "voip/webrtc/common_video/h264/sps_parser.h"
 #include "voip/webrtc/common_video/h264/h264_common.h"
 #include "c_utils.h"
+#include "sws_context_holder.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavformat/isom.h>
 #include <libavcodec/bytestream.h>
+#include <libavcodec/get_bits.h>
 #include <libavcodec/golomb.h>
 #include <libavutil/eval.h>
 #include <libavutil/intmath.h>
@@ -43,7 +45,7 @@ jmethodID jclass_AnimatedFileDrawableStream_isCanceled;
 jmethodID jclass_AnimatedFileDrawableStream_isFinishedLoadingFile;
 jmethodID jclass_AnimatedFileDrawableStream_getFinishedFilePath;
 
-struct VideoInfo {
+typedef struct VideoInfo {
 
     ~VideoInfo() {
         if (video_dec_ctx) {
@@ -88,10 +90,6 @@ struct VideoInfo {
             avio_context_free(&ioContext);
             ioContext = nullptr;
         }
-        if (sws_ctx != nullptr) {
-            sws_freeContext(sws_ctx);
-            sws_ctx = nullptr;
-        }
         if (fd >= 0) {
             close(fd);
             fd = -1;
@@ -122,9 +120,7 @@ struct VideoInfo {
 
     bool dropFrames = false;
 
-    int32_t dst_linesize[1];
-
-    struct SwsContext *sws_ctx = nullptr;
+    struct SwsContextHolder sws_ctx_holder;
 
     AVIOContext *ioContext = nullptr;
     unsigned char *ioBuffer = nullptr;
@@ -144,7 +140,19 @@ void custom_log(void *ptr, int level, const char* fmt, va_list vl){
     av_log_format_line(ptr, level, fmt, vl2, line, sizeof(line), &print_prefix);
     va_end(vl2);
 
-    LOGE("%s", line);
+    LOGE(line);
+}
+
+static enum AVPixelFormat get_format(AVCodecContext *ctx,
+                                        const enum AVPixelFormat *pix_fmts)
+{
+    const enum AVPixelFormat *p;
+
+    for (p = pix_fmts; *p != -1; p++) {
+        LOGE("available format %d", p);
+    }
+
+    return pix_fmts[0];
 }
 
 int open_codec_context(int *stream_idx, AVCodecContext **dec_ctx, AVFormatContext *fmt_ctx, enum AVMediaType type) {
@@ -328,7 +336,23 @@ enum PARAM_NUM {
     PARAM_NUM_COUNT = 11,
 };
 
-extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_getVideoInfo(JNIEnv *env, jclass clazz, jint sdkVersion, jstring src, jintArray data) {
+struct OffsetIOContext {
+    int fd;
+    int64_t offset;
+};
+
+static int offsetRead(void *opaque, uint8_t *buf, int size) {
+    OffsetIOContext *ctx = (OffsetIOContext *)opaque;
+    return read(ctx->fd, buf, size);
+}
+
+static int64_t offsetSeek(void *opaque, int64_t pos, int whence) {
+    OffsetIOContext *ctx = (OffsetIOContext *)opaque;
+    if (whence == AVSEEK_SIZE) return -1;  // unknown size, FFmpeg handles this
+    return lseek(ctx->fd, ctx->offset + pos, whence);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nGetVideoInfo(JNIEnv *env, jclass clazz, jint sdkVersion, jstring src, jintArray data, jlong fileOffset) {
     VideoInfo *info = new VideoInfo();
 
     char const *srcString = env->GetStringUTFChars(src, 0);
@@ -341,10 +365,45 @@ extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDr
     }
 
     int ret;
-    if ((ret = avformat_open_input(&info->fmt_ctx, info->src, NULL, NULL)) < 0) {
-        LOGE("can't open source file %s, %s", info->src, av_err2str(ret));
-        delete info;
-        return;
+    if (fileOffset > 0) {
+        int fd = open(info->src, O_RDONLY);
+        if (fd < 0) {
+            LOGE("can't open source file %s", info->src);
+            delete info;
+            return;
+        }
+        if (lseek(fd, fileOffset, SEEK_SET) < 0) {
+            LOGE("can't seek to offset %lld in file %s", (long long)fileOffset, info->src);
+            close(fd);
+            delete info;
+            return;
+        }
+
+        OffsetIOContext *ioCtx = new OffsetIOContext{fd, fileOffset};
+        uint8_t *ioBuf = (uint8_t *)av_malloc(32 * 1024);
+        AVIOContext *avio = avio_alloc_context(ioBuf, 32 * 1024, 0, ioCtx, offsetRead, nullptr, offsetSeek);
+
+        info->fmt_ctx = avformat_alloc_context();
+        info->fmt_ctx->pb = avio;
+
+        if ((ret = avformat_open_input(&info->fmt_ctx, nullptr, nullptr, nullptr)) < 0) {
+            LOGE("can't open source file at offset %s (offset=%lld), %s", info->src, fileOffset, av_err2str(ret));
+            info->fmt_ctx = nullptr;
+            if (avio) {
+                av_freep(&avio->buffer);
+                avio_context_free(&avio);
+            }
+            close(fd);
+            delete ioCtx;
+            delete info;
+            return;
+        }
+    } else {
+        if ((ret = avformat_open_input(&info->fmt_ctx, info->src, nullptr, nullptr)) < 0) {
+            LOGE("can't open source file %s, %s", info->src, av_err2str(ret));
+            delete info;
+            return;
+        }
     }
 
     if ((ret = avformat_find_stream_info(info->fmt_ctx, NULL)) < 0) {
@@ -430,7 +489,7 @@ extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDr
     }
 }
 
-extern "C" JNIEXPORT jlong JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_createDecoder(JNIEnv *env, jclass clazz, jstring src, jintArray data, jint account, jlong streamFileSize, jobject stream, jboolean preview) {
+extern "C" JNIEXPORT jlong JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nCreateDecoder(JNIEnv *env, jclass clazz, jstring src, jintArray data, jint account, jlong streamFileSize, jobject stream, jboolean preview) {
     VideoInfo *info = new VideoInfo();
 
     char const *srcString = env->GetStringUTFChars(src, 0);
@@ -504,7 +563,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_org_telegram_ui_Components_AnimatedFileD
         return 0;
     }
 
-    info->pkt = {};
+    av_init_packet(&info->pkt);
     info->pkt.data = NULL;
     info->pkt.size = 0;
 
@@ -539,7 +598,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_org_telegram_ui_Components_AnimatedFileD
             } else if(video_stream->r_frame_rate.den && video_stream->r_frame_rate.num) {
                 fps = av_q2d(video_stream->r_frame_rate);
             } else {
-                int ticks = info->video_dec_ctx->ticks_per_frame;
+                int ticks = video_stream->codec->ticks_per_frame;
                 fps = 1.0 / (ticks * av_q2d(video_stream->time_base));
             }
         }
@@ -553,8 +612,8 @@ extern "C" JNIEXPORT jlong JNICALL Java_org_telegram_ui_Components_AnimatedFileD
     return (jlong) (intptr_t) info;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_destroyDecoder(JNIEnv *env, jclass clazz, jlong ptr) {
-    if (ptr == 0) {
+extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nDestroyDecoder(JNIEnv *env, jclass clazz, jlong ptr) {
+    if (ptr == NULL) {
         return;
     }
     VideoInfo *info = (VideoInfo *) (intptr_t) ptr;
@@ -578,16 +637,16 @@ extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDr
     delete info;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_stopDecoder(JNIEnv *env, jclass clazz, jlong ptr) {
-    if (ptr == 0) {
+extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nStopDecoder(JNIEnv *env, jclass clazz, jlong ptr) {
+    if (ptr == NULL) {
         return;
     }
     VideoInfo *info = (VideoInfo *) (intptr_t) ptr;
     info->stopped = true;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_prepareToSeek(JNIEnv *env, jclass clazz, jlong ptr) {
-    if (ptr == 0) {
+extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nPrepareToSeek(JNIEnv *env, jclass clazz, jlong ptr) {
+    if (ptr == NULL) {
         return;
     }
     VideoInfo *info = (VideoInfo *) (intptr_t) ptr;
@@ -600,8 +659,8 @@ void push_time(JNIEnv *env, VideoInfo* info, jintArray data) {
     env->ReleaseIntArrayElements(data, dataArr, 0);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_seekToMs(JNIEnv *env, jclass clazz, jlong ptr, jlong ms, jintArray data, jboolean precise) {
-    if (ptr == 0) {
+extern "C" JNIEXPORT void JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nSeekToMs(JNIEnv *env, jclass clazz, jlong ptr, jlong ms, jintArray data, jboolean precise) {
+    if (ptr == NULL) {
         return;
     }
     VideoInfo *info = (VideoInfo *) (intptr_t) ptr;
@@ -685,7 +744,7 @@ uint32_t premultiply_channel_value(const uint32_t pixel, const uint8_t offset, c
     return ((uint32_t)std::min(multipliedValue, 255.0f)) << offset;
 }
 
-static inline void writeFrameToBitmap(JNIEnv *env, VideoInfo *info, jintArray data, jobject bitmap, jint stride) {
+static inline void writeFrameToBitmap(JNIEnv *env, VideoInfo *info, jintArray data, jobject bitmap) {
     if (env->IsSameObject(bitmap, NULL)) {
         push_time(env, info, data);
         return;
@@ -698,6 +757,8 @@ static inline void writeFrameToBitmap(JNIEnv *env, VideoInfo *info, jintArray da
     AndroidBitmap_getInfo(env, bitmap, &bitmapInfo);
     int32_t bitmapWidth = bitmapInfo.width;
     int32_t bitmapHeight = bitmapInfo.height;
+    int32_t bitmapStride = bitmapInfo.stride;
+
     if (dataArr != nullptr) {
         wantedWidth = dataArr[0];
         wantedHeight = dataArr[1];
@@ -708,43 +769,110 @@ static inline void writeFrameToBitmap(JNIEnv *env, VideoInfo *info, jintArray da
         wantedHeight = bitmapHeight;
     }
 
-    if (wantedWidth == info->frame->width && wantedHeight == info->frame->height || wantedWidth == info->frame->height && wantedHeight == info->frame->width) {
-        void *pixels;
-        if (AndroidBitmap_lockPixels(env, bitmap, &pixels) >= 0) {
-            if (info->sws_ctx == nullptr) {
-                if (info->frame->format > AV_PIX_FMT_NONE && info->frame->format < AV_PIX_FMT_NB && info->frame->format != AV_PIX_FMT_YUVA420P) {
-                    info->sws_ctx = sws_getContext(info->frame->width, info->frame->height, (AVPixelFormat) info->frame->format, bitmapWidth, bitmapHeight, AV_PIX_FMT_RGBA, SWS_BILINEAR, NULL, NULL, NULL);
-                } else if (info->video_dec_ctx->pix_fmt > AV_PIX_FMT_NONE && info->video_dec_ctx->pix_fmt < AV_PIX_FMT_NB && info->frame->format != AV_PIX_FMT_YUVA420P) {
-                    info->sws_ctx = sws_getContext(info->video_dec_ctx->width, info->video_dec_ctx->height, info->video_dec_ctx->pix_fmt, bitmapWidth, bitmapHeight, AV_PIX_FMT_RGBA, SWS_BILINEAR, NULL, NULL, NULL);
-                }
-            }
-            if (info->sws_ctx == nullptr || ((intptr_t) pixels) % 16 != 0) {
-                if (info->frame->format == AV_PIX_FMT_YUVA420P) {
-                    libyuv::I420AlphaToARGBMatrix(info->frame->data[0], info->frame->linesize[0], info->frame->data[2], info->frame->linesize[2], info->frame->data[1], info->frame->linesize[1], info->frame->data[3], info->frame->linesize[3], (uint8_t *) pixels, bitmapWidth * 4, &libyuv::kYvuI601Constants, bitmapWidth, bitmapHeight, 1);
-                } else if (info->frame->format == AV_PIX_FMT_YUV444P) {
-                    libyuv::H444ToARGB(info->frame->data[0], info->frame->linesize[0], info->frame->data[2], info->frame->linesize[2], info->frame->data[1], info->frame->linesize[1], (uint8_t *) pixels, bitmapWidth * 4, bitmapWidth, bitmapHeight);
-                } else if (info->frame->format == AV_PIX_FMT_YUV420P || info->frame->format == AV_PIX_FMT_YUVJ420P) {
-                    if (info->frame->colorspace == AVColorSpace::AVCOL_SPC_BT709) {
-                        libyuv::H420ToARGB(info->frame->data[0], info->frame->linesize[0], info->frame->data[2], info->frame->linesize[2], info->frame->data[1], info->frame->linesize[1], (uint8_t *) pixels, bitmapWidth * 4, bitmapWidth, bitmapHeight);
-                    } else {
-                        libyuv::I420ToARGB(info->frame->data[0], info->frame->linesize[0], info->frame->data[2], info->frame->linesize[2], info->frame->data[1], info->frame->linesize[1], (uint8_t *) pixels, bitmapWidth * 4, bitmapWidth, bitmapHeight);
-                    }
-                } else if (info->frame->format == AV_PIX_FMT_BGRA) {
-                    libyuv::ABGRToARGB(info->frame->data[0], info->frame->linesize[0], (uint8_t *) pixels, info->frame->width * 4, info->frame->width, info->frame->height);
-                }
-            } else {
-                uint8_t __attribute__ ((aligned (16))) *dst_data[1];
-                dst_data[0] = (uint8_t *) pixels;
-                info->dst_linesize[0] = stride;
-                sws_scale(info->sws_ctx, info->frame->data, info->frame->linesize, 0, info->frame->height, dst_data, info->dst_linesize);
-            }
-        }
-        AndroidBitmap_unlockPixels(env, bitmap);
+    if (!(wantedWidth == info->frame->width && wantedHeight == info->frame->height || wantedWidth == info->frame->height && wantedHeight == info->frame->width)) {
+        return;
     }
+
+    void *pixels;
+    if (__builtin_expect(AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS, 0)) {
+        return;
+    }
+
+    SwsContext* sws_ctx = nullptr;
+    if (info->frame->format > AV_PIX_FMT_NONE && info->frame->format < AV_PIX_FMT_NB && info->frame->format != AV_PIX_FMT_YUVA420P) {
+        sws_ctx = info->sws_ctx_holder.get(
+            info->frame->width,
+            info->frame->height,
+            (AVPixelFormat) info->frame->format,
+            bitmapWidth,
+            bitmapHeight,
+            AV_PIX_FMT_RGBA);
+    } else if (info->video_dec_ctx->pix_fmt > AV_PIX_FMT_NONE && info->video_dec_ctx->pix_fmt < AV_PIX_FMT_NB && info->frame->format != AV_PIX_FMT_YUVA420P) {
+        sws_ctx = info->sws_ctx_holder.get(
+            info->video_dec_ctx->width,
+            info->video_dec_ctx->height,
+            info->video_dec_ctx->pix_fmt,
+            bitmapWidth,
+            bitmapHeight,
+            AV_PIX_FMT_RGBA);
+    }
+
+    if (sws_ctx != nullptr && ((intptr_t) pixels) % 16 == 0) {
+        uint8_t __attribute__ ((aligned (16))) *dst_data[1];
+        dst_data[0] = (uint8_t *) pixels;
+
+        int32_t dst_stride[1];
+        dst_stride[0] = bitmapStride;
+        sws_scale(sws_ctx,
+            info->frame->data,
+            info->frame->linesize,
+            0,
+            info->frame->height,
+            dst_data,
+            dst_stride
+        );
+    } else if (info->frame->width == bitmapWidth && info->frame->height == bitmapHeight) {
+        if (info->frame->format == AV_PIX_FMT_YUVA420P) {
+            libyuv::I420AlphaToARGBMatrix(
+                info->frame->data[0], info->frame->linesize[0],
+                info->frame->data[2], info->frame->linesize[2],
+                info->frame->data[1], info->frame->linesize[1],
+                info->frame->data[3], info->frame->linesize[3],
+                (uint8_t *) pixels,
+                bitmapStride,
+                &libyuv::kYvuI601Constants,
+                bitmapWidth,
+                bitmapHeight,
+                1
+            );
+        } else if (info->frame->format == AV_PIX_FMT_YUV444P) {
+            libyuv::H444ToARGB(
+                info->frame->data[0], info->frame->linesize[0],
+                info->frame->data[2], info->frame->linesize[2],
+                info->frame->data[1], info->frame->linesize[1],
+                (uint8_t *) pixels,
+                bitmapStride,
+                bitmapWidth,
+                bitmapHeight
+            );
+        } else if (info->frame->format == AV_PIX_FMT_YUV420P || info->frame->format == AV_PIX_FMT_YUVJ420P) {
+            if (info->frame->colorspace == AVColorSpace::AVCOL_SPC_BT709) {
+                libyuv::H420ToARGB(
+                    info->frame->data[0], info->frame->linesize[0],
+                    info->frame->data[2], info->frame->linesize[2],
+                    info->frame->data[1], info->frame->linesize[1],
+                    (uint8_t *) pixels,
+                    bitmapStride,
+                    bitmapWidth,
+                    bitmapHeight
+                );
+            } else {
+                libyuv::I420ToARGB(
+                    info->frame->data[0], info->frame->linesize[0],
+                    info->frame->data[2], info->frame->linesize[2],
+                    info->frame->data[1], info->frame->linesize[1],
+                    (uint8_t *) pixels,
+                    bitmapStride,
+                    bitmapWidth,
+                    bitmapHeight
+                );
+            }
+        } else if (info->frame->format == AV_PIX_FMT_BGRA) {
+            libyuv::ABGRToARGB(
+                info->frame->data[0], info->frame->linesize[0],
+                (uint8_t *) pixels,
+                bitmapStride,
+                bitmapWidth,
+                bitmapHeight
+            );
+        }
+    }
+
+    AndroidBitmap_unlockPixels(env, bitmap);
 }
 
-extern "C" JNIEXPORT int JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_getFrameAtTime(JNIEnv *env, jclass clazz, jlong ptr, jlong ms, jobject bitmap, jintArray data, jint stride) {
-    if (ptr == 0 || bitmap == nullptr || data == nullptr) {
+extern "C" JNIEXPORT int JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nGetFrameAtTime(JNIEnv *env, jclass clazz, jlong ptr, jlong ms, jobject bitmap, jintArray data) {
+    if (ptr == NULL || bitmap == nullptr || data == nullptr) {
         return 0;
     }
     VideoInfo *info = (VideoInfo *) (intptr_t) ptr;
@@ -826,7 +954,7 @@ extern "C" JNIEXPORT int JNICALL Java_org_telegram_ui_Components_AnimatedFileDra
                         isLastPacket = av_read_frame(info->fmt_ctx, &info->pkt) < 0;
                     }
                     if (pkt_pts >= pts || isLastPacket) {
-                        writeFrameToBitmap(env, info, data, bitmap, stride);
+                        writeFrameToBitmap(env, info, data, bitmap);
                         finished = true;
                     }
                 }
@@ -843,8 +971,8 @@ extern "C" JNIEXPORT int JNICALL Java_org_telegram_ui_Components_AnimatedFileDra
     }
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_org_telegram_ui_Components_AnimatedFileDrawable_getVideoFrame(JNIEnv *env, jclass clazz, jlong ptr, jobject bitmap, jintArray data, jint stride, jboolean preview, jfloat start_time, jfloat end_time, jboolean loop) {
-    if (ptr == 0) {
+extern "C" JNIEXPORT jint JNICALL Java_org_telegram_ui_Components_AnimatedFileNative_nGetVideoFrame(JNIEnv *env, jclass clazz, jlong ptr, jobject bitmap, jintArray data, jboolean preview, jfloat start_time, jfloat end_time, jboolean loop) {
+    if (ptr == NULL) {
         return 0;
     }
     //int64_t time = ConnectionsManager::getInstance(0).getCurrentTimeMonotonicMillis();
@@ -934,7 +1062,7 @@ extern "C" JNIEXPORT jint JNICALL Java_org_telegram_ui_Components_AnimatedFileDr
         if (got_frame) {
             //LOGD("decoded frame with w = %d, h = %d, format = %d", info->frame->width, info->frame->height, info->frame->format);
             if (bitmap != nullptr && (info->frame->format == AV_PIX_FMT_YUV420P || info->frame->format == AV_PIX_FMT_BGRA || info->frame->format == AV_PIX_FMT_YUVJ420P || info->frame->format == AV_PIX_FMT_YUV444P || info->frame->format == AV_PIX_FMT_YUVA420P)) {
-                writeFrameToBitmap(env, info, data, bitmap, stride);
+                writeFrameToBitmap(env, info, data, bitmap);
             }
             info->has_decoded_frames = true;
             push_time(env, info, data);

@@ -114,7 +114,7 @@ public class FormattedDateSpan extends URLSpan {
 
             final int start = ssb.getSpanStart(span);
             final int end = ssb.getSpanEnd(span);
-            final String toReplace = span.originalText;
+            final String toReplace = apply ? LocaleController.formatEntityFormattedDate(span.entity) : span.originalText;
 
             ssb.replace(start, end, toReplace);
 

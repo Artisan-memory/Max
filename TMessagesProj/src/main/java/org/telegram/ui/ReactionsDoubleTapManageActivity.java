@@ -1,5 +1,7 @@
 package org.telegram.ui;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -23,6 +25,7 @@ import org.telegram.messenger.MediaDataController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.browser.Browser;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_stars;
 import org.telegram.ui.ActionBar.ActionBar;
@@ -67,7 +70,7 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
 
     @Override
     public View createView(Context context) {
-        actionBar.setTitle(LocaleController.getString(R.string.Reactions));
+        actionBar.setTitle(getString(R.string.Reactions));
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
 
@@ -84,6 +87,8 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
         linaerLayout.setOrientation(LinearLayout.VERTICAL);
 
         listView = new RecyclerListView(context);
+        listView.setSections();
+        actionBar.setAdaptiveBackground(listView);
         ((DefaultItemAnimator)listView.getItemAnimator()).setSupportsChangeAnimations(false);
         listView.setLayoutManager(new LinearLayoutManager(context));
         listView.setAdapter(listAdapter = new RecyclerListView.SelectionAdapter() {
@@ -107,8 +112,12 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
                         break;
                     case 2:
                         TextInfoPrivacyCell cell = new TextInfoPrivacyCell(context);
-                        cell.setText(LocaleController.getString(R.string.DoubleTapPreviewRational));
-                        cell.setBackground(Theme.getThemedDrawableByKey(context, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
+                        cell.setText(AndroidUtilities.replaceArrows(
+                            AndroidUtilities.replaceSingleTag(
+                                getString(R.string.DoubleTapPreviewRational) + "\n\n" + "**" + getString(R.string.DoubleTapAction) + " >**",
+                                () -> Browser.openUrl(getContext(), "https://t.me/nasettings/chat?r=DoubleTapIncoming")
+                            ), true
+                        ));
                         view = cell;
                         break;
                     case 3:
@@ -126,7 +135,7 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
                                 );
                             }
                         };
-                        view.setBackground(Theme.getThemedDrawableByKey(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
+                        view.setTag(RecyclerListView.TAG_NOT_SECTION);
                         break;
                     default:
                     case 1: {
@@ -200,12 +209,10 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
         public SetDefaultReactionCell(Context context) {
             super(context);
 
-            setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-
             textView = new TextView(context);
             textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
             textView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-            textView.setText(LocaleController.getString(R.string.DoubleTapSetting));
+            textView.setText(getString(R.string.DoubleTapSetting));
             addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 20, 0, 48, 0));
 
             imageDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, AndroidUtilities.dp(24));
@@ -281,7 +288,7 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
                 AndroidUtilities.rectTmp2.set(cell.imageDrawable.getBounds());
                 yoff = -(cell.getHeight() - AndroidUtilities.rectTmp2.centerY()) - AndroidUtilities.dp(16);
                 int popupWidth = (int) Math.min(AndroidUtilities.dp(340 - 16), AndroidUtilities.displaySize.x * .95f);
-                xoff = AndroidUtilities.rectTmp2.centerX() - (AndroidUtilities.displaySize.x - popupWidth);
+                xoff = AndroidUtilities.rectTmp2.centerX() - (AndroidUtilities.displaySize.x - AndroidUtilities.dp(12) - popupWidth);
             }
         }
         SelectAnimatedEmojiDialog popupLayout = new SelectAnimatedEmojiDialog(this, getContext(), false, xoff, SelectAnimatedEmojiDialog.TYPE_SET_DEFAULT_REACTION, null) {
@@ -399,5 +406,16 @@ public class ReactionsDoubleTapManageActivity extends BaseFragment implements No
             updateRows();
             listAdapter.notifyDataSetChanged();
         }
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        listView.setPadding(0, 0, 0, bottom);
+        listView.setClipToPadding(false);
     }
 }

@@ -37,6 +37,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
+import tw.nekomimi.nekogram.filters.ReactionFilter;
+
 public class ReactedUsersListView extends FrameLayout {
 
     public final static int VISIBLE_ITEMS = 6;
@@ -63,6 +65,7 @@ public class ReactedUsersListView extends FrameLayout {
 
     private OnHeightChangedListener onHeightChangedListener;
     private OnProfileSelectedListener onProfileSelectedListener;
+    private OnProfileSelectedListener onProfileSelectedLongListener;
     private OnCustomEmojiSelectedListener onCustomEmojiSelectedListener;
     ArrayList<ReactionsLayoutInBubble.VisibleReaction> customReactionsEmoji = new ArrayList<>();
     ArrayList<TLRPC.InputStickerSet> customEmojiStickerSets = new ArrayList<>();
@@ -120,7 +123,7 @@ public class ReactedUsersListView extends FrameLayout {
 
                         FrameLayout frameLayout = new FrameLayout(context);
                         View gap = new View(context);
-                        gap.setBackgroundColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuSeparator, resourcesProvider));
+                        gap.setBackgroundColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), 0.06f));
                         frameLayout.addView(gap, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 8));
                         frameLayout.addView(messageContainsEmojiButton, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, 0, 0, 8, 0, 0));
 
@@ -163,6 +166,15 @@ public class ReactedUsersListView extends FrameLayout {
                 }
             }
         });
+        listView.setOnItemLongClickListener((view, position) -> {
+            int itemViewType = adapter.getItemViewType(position);
+            if (itemViewType == USER_VIEW_TYPE) {
+                if (onProfileSelectedLongListener != null) {
+                    onProfileSelectedLongListener.onProfileSelected(this, MessageObject.getPeerId(userReactions.get(position).peer_id), userReactions.get(position));
+                }
+            }
+            return true;
+        });
         listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -198,6 +210,9 @@ public class ReactedUsersListView extends FrameLayout {
     public ReactedUsersListView setSeenUsers(List<ReactedHeaderView.UserSeen> users) {
         if (userReactions != null && !userReactions.isEmpty()) {
             for (ReactedHeaderView.UserSeen p : users) {
+                if (p == null || ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), p.dialogId)) {
+                    continue;
+                }
                 TLObject user = p.user;
                 if (user != null && p.date > 0) {
                     for (int i = 0; i < userReactions.size(); ++i) {
@@ -213,6 +228,9 @@ public class ReactedUsersListView extends FrameLayout {
         }
         List<TLRPC.TL_messagePeerReaction> nr = new ArrayList<>(users.size());
         for (ReactedHeaderView.UserSeen p : users) {
+            if (p == null || ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), p.dialogId)) {
+                continue;
+            }
             ArrayList<TLRPC.MessagePeerReaction> userReactions = peerReactionMap.get(p.dialogId);
             if (userReactions != null) {
                continue;
@@ -277,8 +295,12 @@ public class ReactedUsersListView extends FrameLayout {
 
                     HashSet<ReactionsLayoutInBubble.VisibleReaction> visibleCustomEmojiReactions = new HashSet<>();
                     for (int i = 0; i < res.reactions.size(); i++) {
-                        userReactions.add(res.reactions.get(i));
-                        long peerId = MessageObject.getPeerId(res.reactions.get(i).peer_id);
+                        var reaction = res.reactions.get(i);
+                        if (reaction != null && ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), MessageObject.getPeerId(reaction.peer_id))) {
+                            continue;
+                        }
+                        userReactions.add(reaction);
+                        long peerId = MessageObject.getPeerId(reaction.peer_id);
                         ArrayList<TLRPC.MessagePeerReaction> currentUserReactions = peerReactionMap.get(peerId);
                         if (currentUserReactions == null) {
                             currentUserReactions = new ArrayList<>();
@@ -291,12 +313,21 @@ public class ReactedUsersListView extends FrameLayout {
                         }
 
 
-                        ReactionsLayoutInBubble.VisibleReaction visibleReaction = ReactionsLayoutInBubble.VisibleReaction.fromTL(res.reactions.get(i).reaction);
+                        ReactionsLayoutInBubble.VisibleReaction visibleReaction = ReactionsLayoutInBubble.VisibleReaction.fromTL(reaction.reaction);
                         if (visibleReaction.documentId != 0) {
                             visibleCustomEmojiReactions.add(visibleReaction);
                         }
-                        currentUserReactions.add(res.reactions.get(i));
+                        currentUserReactions.add(reaction);
                         peerReactionMap.put(peerId, currentUserReactions);
+                    }
+
+                    offset = res.next_offset;
+                    if (offset == null)
+                        canLoadMore = false;
+                    if (userReactions.size() < VISIBLE_ITEMS && canLoadMore && !res.reactions.isEmpty() && ReactionFilter.shouldFilter(currentAccount, message.getDialogId())) {
+                        isLoading = false;
+                        load();
+                        return;
                     }
 
                     if (filter == null) {
@@ -329,9 +360,6 @@ public class ReactedUsersListView extends FrameLayout {
 
                         isLoaded = true;
                     }
-                    offset = res.next_offset;
-                    if (offset == null)
-                        canLoadMore = false;
                     isLoading = false;
                 } else {
                     isLoading = false;
@@ -385,6 +413,11 @@ public class ReactedUsersListView extends FrameLayout {
 
     public ReactedUsersListView setOnProfileSelectedListener(OnProfileSelectedListener onProfileSelectedListener) {
         this.onProfileSelectedListener = onProfileSelectedListener;
+        return this;
+    }
+
+    public ReactedUsersListView setOnProfileLongSelectedListener(OnProfileSelectedListener onProfileSelectedListener) {
+        this.onProfileSelectedLongListener = onProfileSelectedListener;
         return this;
     }
 

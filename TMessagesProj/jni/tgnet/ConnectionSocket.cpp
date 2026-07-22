@@ -477,9 +477,6 @@ void ConnectionSocket::openConnection(std::string address, uint16_t port, std::s
     isIpv6 = ipv6;
     currentAddress = address;
     currentPort = port;
-    currentProxyActive = false;
-    currentProxyAddress = "";
-    currentProxyPort = 0;
     waitingForHostResolve = "";
     adjustWriteOpAfterResolve = false;
     tlsState = 0;
@@ -503,9 +500,6 @@ void ConnectionSocket::openConnection(std::string address, uint16_t port, std::s
     }
 
     if (!proxyAddress->empty()) {
-        currentProxyActive = true;
-        currentProxyAddress = *proxyAddress;
-        currentProxyPort = proxyPort;
         if (LOGS_ENABLED) DEBUG_D("connection(%p) connecting via proxy %s:%d secret[%d] ipv6:%d", this, proxyAddress->c_str(), proxyPort, (int) proxySecret->size(), isProxyIpv6);
         if ((socketFd = socket(isProxyIpv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0)) < 0) {
             if (LOGS_ENABLED) DEBUG_E("connection(%p) can't create proxy socket", this);
@@ -783,19 +777,7 @@ void ConnectionSocket::onEvent(uint32_t events) {
                             if (std::memcmp(tempBuffer->bytes + 64 * 1024, tempBuffer->bytes + 64 * 1024 + 32, 32) != 0) {
                                 tlsHashMismatch = true;
                                 closeSocket(1, -1);
-                                if (LOGS_ENABLED) DEBUG_E("connection(%p) TLS hash mismatch target=%s:%d proxy=%d proxyTarget=%s:%d ipv6=%d network=%d domain=%s read=%zu len1=%zu len2=%zu",
-                                                           this,
-                                                           currentAddress.c_str(),
-                                                           currentPort,
-                                                           currentProxyActive ? 1 : 0,
-                                                           currentProxyAddress.c_str(),
-                                                           currentProxyPort,
-                                                           isIpv6 ? 1 : 0,
-                                                           currentNetworkType,
-                                                           currentSecretDomain.c_str(),
-                                                           newBytesRead,
-                                                           len1,
-                                                           len2);
+                                if (LOGS_ENABLED) DEBUG_E("connection(%p) TLS hash mismatch", this);
                                 return;
                             }
                             if (LOGS_ENABLED) DEBUG_D("connection(%p) TLS hello complete", this);

@@ -654,69 +654,8 @@ inline void Connection::encryptKeyWithSecret(uint8_t *bytes, uint8_t secretType)
     SHA256_Final(bytes, &sha256Ctx);
 }
 
-void Connection::trackReconnectRate() {
-    if (!LOGS_ENABLED) {
-        return;
-    }
-    int64_t now = ConnectionsManager::getInstance(currentDatacenter->instanceNum).getCurrentTimeMonotonicMillis();
-    if (reconnectWindowStartedAt == 0) {
-        reconnectWindowStartedAt = now;
-    }
-    reconnectWindowCount++;
-    if (hasTlsHashMismatch()) {
-        reconnectWindowTlsMismatchCount++;
-    }
-    int64_t elapsed = now - reconnectWindowStartedAt;
-    if (elapsed >= 10000) {
-        if (reconnectWindowCount > 5) {
-            DEBUG_E("DEBUG_HUNT net component=reconnect_storm account%u dc%u type=%d count=%u tls_mismatch=%u window_ms=%lld address=%s:%hu next_backoff_ms=%u",
-                    currentDatacenter->instanceNum,
-                    currentDatacenter->getDatacenterId(),
-                    connectionType,
-                    reconnectWindowCount,
-                    reconnectWindowTlsMismatchCount,
-                    (long long) elapsed,
-                    hostAddress.c_str(),
-                    hostPort,
-                    lastReconnectTimeout);
-        }
-        reconnectWindowStartedAt = now;
-        reconnectWindowCount = 0;
-        reconnectWindowTlsMismatchCount = 0;
-    }
-}
-
-bool Connection::armProtocolFailureBackoff(int32_t reason) {
-    if (connectionType == ConnectionTypeProxy) {
-        return false;
-    }
-    // reason 1 means the peer spoke something we could not parse (TLS/proxy
-    // handshake, bad protocol response). The endpoint is broken for us right
-    // now, so retrying it without a delay only burns CPU and battery.
-    bool protocolFailure = reason == 1;
-    // These types own no reconnect timer of their own: as soon as the socket
-    // dies, processRequestQueue() calls getConnectionByType(..., create=true)
-    // which calls connect() again. Without a timer that is a busy loop.
-    bool drivenByRequestQueue = connectionType == ConnectionTypeTemp ||
-                                connectionType == ConnectionTypeDownload ||
-                                connectionType == ConnectionTypeUpload;
-    if (!protocolFailure && !drivenByRequestQueue) {
-        return false;
-    }
-    waitForReconnectTimer = true;
-    reconnectTimer->setTimeout(lastReconnectTimeout, false);
-    if (LOGS_ENABLED) DEBUG_D("connection(%p, account%u, dc%u, type %d) protocol failure reason %d, reconnect in %u ms", this, currentDatacenter->instanceNum, currentDatacenter->getDatacenterId(), connectionType, reason, lastReconnectTimeout);
-    lastReconnectTimeout *= 2;
-    if (lastReconnectTimeout > 16000) {
-        lastReconnectTimeout = 16000;
-    }
-    reconnectTimer->start();
-    return true;
-}
-
 void Connection::onDisconnectedInternal(int32_t reason, int32_t error) {
     reconnectTimer->stop();
-    trackReconnectRate();
     if (LOGS_ENABLED) DEBUG_D("connection(%p, account%u, dc%u, type %d) disconnected with reason %d", this, currentDatacenter->instanceNum, currentDatacenter->getDatacenterId(), connectionType, reason);
     bool switchToNextPort = reason == 2 && wasConnected && (!hasSomeDataSinceLastConnect || currentDatacenter->isCustomPort(currentAddressFlags)) || forceNextPort;
     if (connectionType == ConnectionTypeGeneric || connectionType == ConnectionTypeTemp || connectionType == ConnectionTypeGenericMedia) {
@@ -771,8 +710,6 @@ void Connection::onDisconnectedInternal(int32_t reason, int32_t error) {
                 }
                 reconnectTimer->start();
             }
-        } else if (armProtocolFailureBackoff(reason)) {
-            // handled by the backoff timer
         } else {
             waitForReconnectTimer = false;
             if (connectionType == ConnectionTypeGenericMedia && currentDatacenter->isHandshaking(true) || connectionType == ConnectionTypeGeneric && (currentDatacenter->isHandshaking(false) || datacenterId == ConnectionsManager::getInstance(currentDatacenter->instanceNum).currentDatacenterId || datacenterId == ConnectionsManager::getInstance(currentDatacenter->instanceNum).movingToDatacenterId)) {

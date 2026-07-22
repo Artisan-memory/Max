@@ -2,7 +2,6 @@ package org.telegram.messenger;
 
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
-import android.os.SystemClock;
 import android.text.TextPaint;
 import android.text.TextUtils;
 
@@ -28,8 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-import xyz.nextalone.nagram.NaConfig;
-
 public class TopicsController extends BaseController {
 
     public static final int TOPIC_FLAG_TITLE = 1;
@@ -51,7 +48,6 @@ public class TopicsController extends BaseController {
     LongSparseIntArray topicsIsLoading = new LongSparseIntArray();
     LongSparseIntArray endIsReached = new LongSparseIntArray();
     LongSparseArray<TLRPC.TL_forumTopic> topicsByTopMsgId = new LongSparseArray<>();
-    LongSparseArray<Long> emptyTitleReloadRequests = new LongSparseArray<>();
 
     LongSparseIntArray currentOpenTopicsCounter = new LongSparseIntArray();
     LongSparseIntArray openedTopicsByChatId = new LongSparseIntArray();
@@ -79,7 +75,6 @@ public class TopicsController extends BaseController {
         topicsIsLoading.put(chatId, 1);
 
         if (fromCache) {
-            boolean forceFreshTopicTitles = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool();
             getMessagesStorage().loadTopics(-chatId, topics -> {
                 AndroidUtilities.runOnUIThread(() -> {
                     if (BuildVars.LOGS_ENABLED) {
@@ -89,9 +84,6 @@ public class TopicsController extends BaseController {
                     topicsIsLoading.put(chatId, 0);
                     processTopics(chatId, topics, null, fromCache, loadType, -1);
                     sortTopics(chatId);
-                    if (forceFreshTopicTitles) {
-                        loadTopics(chatId, false, LOAD_TYPE_PRELOAD);
-                    }
                 });
             });
             return;
@@ -107,16 +99,12 @@ public class TopicsController extends BaseController {
             TopicsLoadOffset loadOffsets = getLoadOffset(chatId);
             if (loadType == LOAD_TYPE_PRELOAD || loadType == LOAD_TYPE_HASH_CHECK || loadType != LOAD_TYPE_LOAD_NEXT && loadOffsets.lastTopicId == 0) {
                 final ArrayList<TLRPC.TL_forumTopic> expected = getTopics(chatId);
-                boolean forceFreshTopicTitles = NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && hasMissingTopicTitles(expected);
                 getForumTopics.limit = MAX_PRELOAD_COUNT;
                 getForumTopics.offset_id = Integer.MAX_VALUE;
                 getForumTopics.offset_date = 0;
                 getForumTopics.offset_peer = new TLRPC.TL_inputPeerEmpty();
-                getForumTopics.hash = !forceFreshTopicTitles && expected != null ?
+                getForumTopics.hash = expected != null ?
                     calculateHashSavedDialogs(expected, 0, Math.min(expected.size(), MAX_PRELOAD_COUNT)): 0;
-                if (BuildVars.LOGS_ENABLED && forceFreshTopicTitles) {
-                    FileLog.d("NagramDiag topic.force_fresh_titles chat=" + chatId + " expected=" + (expected == null ? 0 : expected.size()));
-                }
             } else if (loadType == LOAD_TYPE_LOAD_NEXT) {
                 getForumTopics.limit = 100;
                 getForumTopics.offset_date = loadOffsets.lastMessageDate;
@@ -261,9 +249,6 @@ public class TopicsController extends BaseController {
 
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("processTopics=" + "new_topics_size=" + (newTopics == null ? 0 : newTopics.size()) + " fromCache=" + fromCache + " load_type=" + loadType + " totalCount=" + totalCount);
-            if (NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && hasMissingTopicTitles(newTopics)) {
-                FileLog.d("NagramDiag topic.missing_titles chat=" + chatId + " fromCache=" + fromCache + " loadType=" + loadType + " count=" + (newTopics == null ? 0 : newTopics.size()));
-            }
         }
         ArrayList<TLRPC.TL_forumTopic> topics = topicsByChatId.get(chatId);
         ArrayList<TLRPC.TL_forumTopic> topicsToReload = null;
@@ -280,7 +265,6 @@ public class TopicsController extends BaseController {
         }
 
         boolean changed = false;
-        int skippedEmptyCachedTitles = 0;
         if (newTopics != null) {
             for (int i = 0; i < newTopics.size(); i++) {
                 TLRPC.TL_forumTopic newTopic = newTopics.get(i);
@@ -289,10 +273,6 @@ public class TopicsController extends BaseController {
                         deletedTopics = new ArrayList<>();
                     }
                     deletedTopics.add((long) newTopic.id);
-                    continue;
-                }
-                if (fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && TextUtils.isEmpty(newTopic.title)) {
-                    skippedEmptyCachedTitles++;
                     continue;
                 }
                 if (!topicsMap.containsKey(newTopic.id)) {
@@ -321,11 +301,6 @@ public class TopicsController extends BaseController {
                 } else if (!newTopic.isShort) {
                     TLRPC.TL_forumTopic oldTopic = topicsMap.get(newTopic.id);
                     if (oldTopic != null) {
-                        if (!fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && !TextUtils.equals(oldTopic.title, newTopic.title)) {
-                            oldTopic.title = newTopic.title;
-                            getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_TITLE);
-                            changed = true;
-                        }
                         if (oldTopic.closed != newTopic.closed) {
                             oldTopic.closed = newTopic.closed;
                             getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_CLOSE);
@@ -334,9 +309,6 @@ public class TopicsController extends BaseController {
                     }
                 }
             }
-        }
-        if (BuildVars.LOGS_ENABLED && skippedEmptyCachedTitles > 0) {
-            FileLog.d("NagramDiag topic.skip_empty_cached_titles chat=" + chatId + " fromCache=" + fromCache + " loadType=" + loadType + " skipped=" + skippedEmptyCachedTitles + " count=" + (newTopics == null ? 0 : newTopics.size()));
         }
 
         int pinnedTopics = 0;
@@ -637,7 +609,7 @@ public class TopicsController extends BaseController {
     }
 
     public String getTopicName(TLRPC.Chat chat, MessageObject message) {
-        if (chat == null || message == null || message.messageOwner == null || message.messageOwner.reply_to == null) {
+        if (message.messageOwner.reply_to == null) {
             return null;
         }
         int topicId = message.messageOwner.reply_to.reply_to_top_id;
@@ -647,10 +619,6 @@ public class TopicsController extends BaseController {
         if (topicId != 0) {
             TLRPC.TL_forumTopic topic = findTopic(chat.id, topicId);
             if (topic != null) {
-                if (TextUtils.isEmpty(topic.title) && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
-                    requestFreshTitleForPreview(chat.id, topicId, topic, "name");
-                    return null;
-                }
                 return topic.title;
             }
         }
@@ -662,7 +630,7 @@ public class TopicsController extends BaseController {
     }
 
     public CharSequence getTopicIconName(TLRPC.Chat chat, MessageObject message, TextPaint paint, Drawable[] drawableToSet) {
-        if (chat == null || message == null || message.messageOwner == null || message.messageOwner.reply_to == null) {
+        if (message.messageOwner.reply_to == null) {
             return null;
         }
         int topicId = message.messageOwner.reply_to.reply_to_top_id;
@@ -672,44 +640,13 @@ public class TopicsController extends BaseController {
         if (topicId != 0) {
             TLRPC.TL_forumTopic topic = findTopic(chat.id, topicId);
             if (topic != null) {
-                if (TextUtils.isEmpty(topic.title) && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool()) {
-                    requestFreshTitleForPreview(chat.id, topicId, topic, "iconName");
-                    return null;
-                }
                 return ForumUtilities.getTopicSpannedName(topic, paint, drawableToSet, false);
             }
         }
         return null;
     }
 
-    private boolean hasMissingTopicTitles(ArrayList<TLRPC.TL_forumTopic> topics) {
-        if (topics == null) {
-            return false;
-        }
-        for (int i = 0; i < topics.size(); i++) {
-            TLRPC.TL_forumTopic topic = topics.get(i);
-            if (topic != null && !(topic instanceof TLRPC.TL_forumTopicDeleted) && TextUtils.isEmpty(topic.title)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void requestFreshTitleForPreview(long chatId, int topicId, TLRPC.TL_forumTopic topic, String source) {
-        long key = messageHash(topicId, chatId);
-        long now = SystemClock.elapsedRealtime();
-        Long lastRequest = emptyTitleReloadRequests.get(key);
-        if (lastRequest != null && now - lastRequest < 30_000L) {
-            return;
-        }
-        emptyTitleReloadRequests.put(key, now);
-        if (BuildVars.LOGS_ENABLED) {
-            FileLog.d("NagramDiag topic.empty_preview_title chat=" + chatId + " topic=" + topicId + " source=" + source + " icon=" + (topic != null ? topic.icon_emoji_id : 0));
-        }
-        loadTopics(chatId, false, LOAD_TYPE_PRELOAD);
-    }
-
-    private final static int[] countsTmp = new int[4];
+    private final static int[] countsTmp = new int[5];
 
     public int[] getForumUnreadCount(long chatId) {
         ArrayList<TLRPC.TL_forumTopic> topics = topicsByChatId.get(chatId);
@@ -723,6 +660,7 @@ public class TopicsController extends BaseController {
                 if (!getMessagesController().isDialogMuted(-chatId, topic.id)) {
                     countsTmp[3] += topic.unread_count;
                 }
+                countsTmp[4] += topic.unread_poll_votes_count;
 
             }
         }
@@ -806,8 +744,6 @@ public class TopicsController extends BaseController {
     }
 
     public void toggleCloseTopic(long chatId, int topicId, boolean close) {
-        SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
-        preferences.edit().putBoolean("hideRestartTopicButton_" + chatId + topicId, !close).apply();
         TL_forum.TL_messages_editForumTopic req = new TL_forum.TL_messages_editForumTopic();
         req.peer = getMessagesController().getInputPeer(-chatId);
         req.topic_id = topicId;
@@ -950,7 +886,7 @@ public class TopicsController extends BaseController {
                         fragment.showDialog(
                             new AlertDialog.Builder(fragment.getContext())
                                 .setTitle(LocaleController.getString(R.string.LimitReached))
-                                .setMessage(LocaleController.formatString("LimitReachedPinnedTopics", R.string.LimitReachedPinnedTopics, MessagesController.getInstance(currentAccount).topicsPinnedLimit))
+                                .setMessage(LocaleController.formatString(R.string.LimitReachedPinnedTopics, MessagesController.getInstance(currentAccount).topicsPinnedLimit))
                                 .setPositiveButton(LocaleController.getString(R.string.OK), null)
                                 .create()
                         );
@@ -1001,10 +937,36 @@ public class TopicsController extends BaseController {
         return totalCount;
     }
 
+    public int updatePollVotesUnread(long dialogId, long topicId, int count, boolean increment) {
+        TLRPC.TL_forumTopic topic = findTopic(-dialogId, topicId);
+        int totalCount = -1;
+        if (topic != null) {
+            if (increment) {
+                topic.unread_poll_votes_count += count;
+                if (topic.unread_poll_votes_count < 0) {
+                    topic.unread_poll_votes_count = 0;
+                }
+            } else {
+                topic.unread_poll_votes_count = count;
+            }
+            totalCount = topic.unread_poll_votes_count;
+            sortTopics(-dialogId, true);
+        }
+        return totalCount;
+    }
+
     public void markAllReactionsAsRead(long chatId, long topicId) {
         TLRPC.TL_forumTopic topic = findTopic(chatId, topicId);
         if (topic != null && topic.unread_reactions_count > 0) {
             topic.unread_reactions_count = 0;
+            sortTopics(chatId);
+        }
+    }
+
+    public void markAllPollVotesAsRead(long chatId, long topicId) {
+        TLRPC.TL_forumTopic topic = findTopic(chatId, topicId);
+        if (topic != null && topic.unread_poll_votes_count > 0) {
+            topic.unread_poll_votes_count = 0;
             sortTopics(chatId);
         }
     }
@@ -1018,6 +980,20 @@ public class TopicsController extends BaseController {
                     continue;
                 }
                 topic.unread_reactions_count = 0;
+            }
+            sortTopics(chatId);
+        }
+    }
+
+    public void markAllPollVotesAsRead(long chatId) {
+        ArrayList<TLRPC.TL_forumTopic> topics = getTopics(chatId);
+        if (topics != null) {
+            for (int i = 0; i < topics.size(); ++i) {
+                TLRPC.TL_forumTopic topic = topics.get(i);
+                if (topic == null) {
+                    continue;
+                }
+                topic.unread_poll_votes_count = 0;
             }
             sortTopics(chatId);
         }

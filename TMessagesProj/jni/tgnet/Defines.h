@@ -140,7 +140,6 @@ typedef std::function<void(FileLoadFailReason reason)> onFailedFunc;
 typedef std::function<void(float progress)> onProgressChangedFunc;
 
 typedef struct ConnectiosManagerDelegate {
-    virtual ~ConnectiosManagerDelegate() = default;
     virtual void onUpdate(int32_t instanceNum) = 0;
     virtual void onSessionCreated(int32_t instanceNum) = 0;
     virtual void onConnectionStateChanged(ConnectionState state, int32_t instanceNum) = 0;
@@ -160,7 +159,6 @@ typedef struct ConnectiosManagerDelegate {
 } ConnectiosManagerDelegate;
 
 typedef struct HandshakeDelegate {
-    virtual ~HandshakeDelegate() = default;
     virtual void onHandshakeComplete(Handshake *handshake, int64_t keyId, ByteArray *authKey, int32_t timeDifference) = 0;
 } HandshakeDelegate;
 

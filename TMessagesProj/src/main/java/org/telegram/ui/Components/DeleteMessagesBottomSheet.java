@@ -13,12 +13,11 @@ import static org.telegram.ui.Components.UniversalAdapter.VIEW_TYPE_USER_GROUP_C
 import static org.telegram.ui.Components.UniversalAdapter.VIEW_TYPE_USER_CHECKBOX;
 
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
 import android.text.TextUtils;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,6 +28,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BotWebViewVibrationEffect;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
+import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
@@ -41,21 +41,23 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
+import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.CollapseTextCell;
 import org.telegram.ui.Cells.HeaderCell;
-import org.telegram.ui.Components.Premium.boosts.cells.selector.SelectorBtnCell;
+import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+import xyz.nextalone.nagram.NaConfig;
+
 public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
     private UniversalAdapter adapter;
 
-    private SelectorBtnCell buttonContainer;
-    private TextView actionButton;
+    private ButtonWithCounterView actionButton;
 
     private TLRPC.Chat inChat;
     private boolean isForum;
@@ -69,12 +71,14 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
 
     private static final int ACTION_REPORT = 0;
     private static final int ACTION_DELETE_ALL = 1;
+    private static final int ACTION_DELETE_ALL_REACTIONS = 3;
     private static final int ACTION_BAN = 2;
     private static final int ACTION_APPLY_IN_COMMON_GROUP = 100;
 
     private boolean monoforum;
     private Action report;
     private Action deleteAll;
+    private Action deleteAllReactions;
     private Action banOrRestrict;
     private Action applyInCommonGroup;
 
@@ -90,6 +94,12 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
     private TLRPC.TL_chatBannedRights bannedRights;
     private ArrayList<TLRPC.TL_chatBannedRights> participantsBannedRights;
     private boolean sendMediaCollapsed = true;
+    private final boolean isSingleUsersMode;
+    private final boolean isReactionOnlyMode;
+
+    private boolean restrictUserCollapsed = true;
+    private boolean restrictUserDeleteAllMessages = false;
+    private boolean restrictUserDeleteAllReactions = false;
 
     private static final int RIGHT_SEND_MESSAGES = 0;
     private static final int RIGHT_SEND_MEDIA = 1;
@@ -106,8 +116,13 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
     private static final int RIGHT_SEND_STICKERS = 12;
     private static final int RIGHT_SEND_POLLS = 13;
     private static final int RIGHT_SEND_LINKS = 14;
+    private static final int RIGHT_SEND_REACTIONS = 15;
 
-    private static final int RIGHT_DURATION = 100;
+    private static final int OPTION_DELETE = 100;
+    private static final int OPTION_DELETE_MESSAGES = 101;
+    private static final int OPTION_DELETE_REACTIONS = 102;
+
+    private static final int RIGHT_DURATION = 103;
 
     private class Action {
         int type;
@@ -202,7 +217,13 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             if (type == ACTION_REPORT) {
                 title = getString(R.string.DeleteReportSpam);
             } else if (type == ACTION_DELETE_ALL) {
-                title = isExpandable() ? getString(R.string.DeleteAllFromUsers) : formatString(R.string.DeleteAllFrom, name);
+                title = isExpandable() ?
+                    getString(R.string.DeleteAllMessagesFromUsers) :
+                    formatString(R.string.DeleteAllFrom, name);
+            } else if (type == ACTION_DELETE_ALL_REACTIONS) {
+                title = isExpandable() ?
+                    getString(R.string.DeleteAllReactionsFromUsers) :
+                    formatString(R.string.DeleteAllReactionsFrom, name);
             } else if (type == ACTION_BAN) {
                 if (restrict) {
                     title = isExpandable() ? getString(R.string.DeleteRestrictUsers) : formatString(R.string.DeleteRestrict, name);
@@ -291,12 +312,21 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         }
     }
 
-    public DeleteMessagesBottomSheet(BaseFragment fragment, TLRPC.Chat inChat, ArrayList<MessageObject> messages, ArrayList<TLObject> actionParticipants, TLRPC.ChannelParticipant[] channelParticipants, long mergeDialogId, int topicId, int mode, Runnable onDelete) {
+    public DeleteMessagesBottomSheet(BaseFragment fragment, TLRPC.Chat inChat,
+                                     ArrayList<MessageObject> messages,
+                                     ArrayList<TLObject> actionParticipants,
+                                     TLRPC.ChannelParticipant[] channelParticipants,
+                                     long mergeDialogId, int topicId, int mode,
+                                     boolean reactionsOnly, Runnable onDelete
+    ) {
         super(fragment.getContext(), fragment, false, false, false, true, ActionBarType.SLIDING, fragment.getResourceProvider());
+        setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         setShowHandle(true);
         fixNavigationBar();
         this.takeTranslationIntoAccount = true;
-        recyclerListView.setPadding(backgroundPaddingLeft, headerTotalHeight, backgroundPaddingLeft, dp(68));
+        this.isReactionOnlyMode = reactionsOnly;
+        recyclerListView.setPadding(backgroundPaddingLeft, headerTotalHeight, backgroundPaddingLeft, dp(63));
+        recyclerListView.setClipToPadding(false);
         recyclerListView.setOnItemClickListener((view, position, x, y) -> {
             UItem item = adapter.getItem(position - 1);
             if (item == null) return;
@@ -315,27 +345,13 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         itemAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
         itemAnimator.setDurations(350);
         recyclerListView.setItemAnimator(itemAnimator);
+        recyclerListView.setSections();
 
-        buttonContainer = new SelectorBtnCell(getContext(), resourcesProvider, null);
-        buttonContainer.setClickable(true);
-        buttonContainer.setOrientation(LinearLayout.VERTICAL);
-        buttonContainer.setPadding(dp(10), dp(10), dp(10), dp(10));
-        buttonContainer.setBackgroundColor(Theme.getColor(Theme.key_dialogBackground, resourcesProvider));
-
-        actionButton = new TextView(getContext());
-        actionButton.setLines(1);
-        actionButton.setSingleLine(true);
-        actionButton.setGravity(Gravity.CENTER_HORIZONTAL);
-        actionButton.setEllipsize(TextUtils.TruncateAt.END);
-        actionButton.setGravity(Gravity.CENTER);
-        actionButton.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
-        actionButton.setTypeface(AndroidUtilities.bold());
-        actionButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        actionButton = new ButtonWithCounterView(getContext(), true, resourcesProvider);
+        actionButton.setRound();
         actionButton.setText(getString(R.string.DeleteProceedBtn));
-        actionButton.setBackground(Theme.AdaptiveRipple.filledRect(Theme.getColor(Theme.key_featuredStickers_addButton), 6));
         actionButton.setOnClickListener(e -> proceed());
-        buttonContainer.addView(actionButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL));
-        containerView.addView(buttonContainer, LayoutHelper.createFrameMarginPx(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL, backgroundPaddingLeft, 0, backgroundPaddingLeft, 0));
+        containerView.addView(actionButton, LayoutHelper.createFrameMarginPx(LayoutHelper.MATCH_PARENT, 48, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL, backgroundPaddingLeft + dp(10), 0, backgroundPaddingLeft + dp(10), dp(10)));
 
         this.inChat = inChat;
         this.isForum = ChatObject.isForum(inChat);
@@ -407,6 +423,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         if (defaultBannedRights.send_plain) {
             bannedRights.send_plain = true;
         }
+        if (defaultBannedRights.send_reactions) {
+            bannedRights.send_reactions = true;
+        }
 
         final SharedPreferences prefs = MessagesController.getInstance(currentAccount).getMainSettings();
 
@@ -414,7 +433,10 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
 //        if (prefs.getBoolean("delete_report", false)) {
 //            report.setAllChecks(true, false);
 //        }
-        deleteAll = new Action(ACTION_DELETE_ALL, actionParticipants);
+        final boolean canDeleteMessages = ChatObject.canUserDoAdminAction(inChat, ChatObject.ACTION_DELETE_MESSAGES);
+        deleteAll = new Action(ACTION_DELETE_ALL, canDeleteMessages ? actionParticipants : new ArrayList<>(0));
+        deleteAllReactions = new Action(ACTION_DELETE_ALL_REACTIONS, actionParticipants);
+        isSingleUsersMode = actionParticipants.size() == 1;
 //        if (prefs.getBoolean("delete_deleteAll", false)) {
 //            deleteAll.setAllChecks(true, false);
 //            onDeleteAllChanged();
@@ -472,6 +494,13 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         actionBar.setTitle(getTitle());
     }
 
+    @Override
+    protected void onContainerLayout(int l, int t, int r, int b) {
+        super.onContainerLayout(l, t, r, b);
+        AndroidUtilities.rectTmp2.set(0, 0, recyclerListView.getMeasuredWidth(), recyclerListView.getMeasuredHeight() - dp(34));
+        recyclerListView.setClipBounds(AndroidUtilities.rectTmp2);
+    }
+
     public void toggleDefaultChecks(boolean[] checks) {
         for (int a = 0; a < 4; a++) {
             if (a == 0 && checks[a] && banOrRestrict != null) {
@@ -481,7 +510,14 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 report.toggleAllChecks();
             }
             if (a == 2 && checks[a] && deleteAll != null) {
-                deleteAll.toggleAllChecks();
+                deleteAll.setAllChecks(true, false);
+                deleteAllReactions.setAllChecks(true, false);
+                if (isSingleUsersMode) {
+                    restrictUserDeleteAllMessages = true;
+                    restrictUserDeleteAllReactions = true;
+                }
+                onDeleteAllChanged();
+                adapter.update(true);
             }
             if (a == 3 && checks[a] && applyInCommonGroup != null) {
                 applyInCommonGroup.toggleAllChecks();
@@ -502,6 +538,7 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 !defaultBannedRights.send_inline ||
                 !defaultBannedRights.embed_links ||
                 !defaultBannedRights.send_polls ||
+                !defaultBannedRights.send_reactions ||
                 !defaultBannedRights.change_info ||
                 !defaultBannedRights.invite_users ||
                 !defaultBannedRights.pin_messages ||
@@ -533,6 +570,7 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         bannedRights.send_inline = left.send_inline || right.send_inline;
         bannedRights.embed_links = left.embed_links || right.embed_links;
         bannedRights.send_polls = left.send_polls || right.send_polls;
+        bannedRights.send_reactions = left.send_reactions || right.send_reactions;
         bannedRights.change_info = left.change_info || right.change_info;
         bannedRights.invite_users = left.invite_users || right.invite_users;
         bannedRights.pin_messages = left.pin_messages || right.pin_messages;
@@ -554,6 +592,7 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 !bannedRights.send_inline && !defaultBannedRights.send_inline ||
                 !bannedRights.embed_links && !bannedRights.send_plain && !defaultBannedRights.embed_links && !defaultBannedRights.send_plain ||
                 !bannedRights.send_polls && !defaultBannedRights.send_polls ||
+                !bannedRights.send_reactions && !defaultBannedRights.send_reactions ||
                 !bannedRights.change_info && !defaultBannedRights.change_info ||
                 !bannedRights.invite_users && !defaultBannedRights.invite_users ||
                 !bannedRights.pin_messages && !defaultBannedRights.pin_messages ||
@@ -569,6 +608,16 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
 
     @Override
     protected CharSequence getTitle() {
+        if (isReactionOnlyMode) {
+            if (restrictUserDeleteAllMessages) {
+                return getString(R.string.DeleteMessagesOptionsTitleAll);
+            }
+
+            return restrictUserDeleteAllReactions ?
+                LocaleController.getString(R.string.DeleteReactionOptionsTitleAll) :
+                LocaleController.formatPluralString("DeleteReactionOptionsTitle", 1);
+        }
+
         final int[] messageCount = {messages != null ? messages.size() : 0};
 
         if (participantMessageCounts != null && participantMessageCountsLoaded) {
@@ -582,7 +631,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
 
     @Override
     protected RecyclerListView.SelectionAdapter createAdapter(RecyclerListView listView) {
-        return adapter = new UniversalAdapter(listView, getContext(), currentAccount, getBaseFragment().getClassGuid(), true, this::fillItems, resourcesProvider);
+        adapter = new UniversalAdapter(listView, getContext(), currentAccount, getBaseFragment().getClassGuid(), true, this::fillItems, resourcesProvider);
+        adapter.setApplyBackground(false);
+        return adapter;
     }
 
     @Override
@@ -623,6 +674,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             i++;
         }
         if (!bannedRights.send_polls && !defaultBannedRights.send_polls) {
+            i++;
+        }
+        if (!bannedRights.send_reactions && !defaultBannedRights.send_reactions) {
             i++;
         }
         return i;
@@ -669,8 +723,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
 
     private boolean allDefaultMediaBanned() {
         return defaultBannedRights.send_photos && defaultBannedRights.send_videos && defaultBannedRights.send_stickers
-                && defaultBannedRights.send_audios && defaultBannedRights.send_docs && defaultBannedRights.send_voices &&
-                defaultBannedRights.send_roundvideos && defaultBannedRights.embed_links && defaultBannedRights.send_polls;
+                && defaultBannedRights.send_audios && defaultBannedRights.send_docs && defaultBannedRights.send_voices
+                && defaultBannedRights.send_roundvideos && defaultBannedRights.embed_links && defaultBannedRights.send_polls
+                && defaultBannedRights.send_reactions;
     }
 
     private void fillAction(ArrayList<UItem> items, Action action) {
@@ -705,10 +760,37 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             return;
         }
 
+        items.add(UItem.asSpace(dp(12)));
         items.add(UItem.asHeader(getString(R.string.DeleteAdditionalActions)));
         fillAction(items, report);
-        fillAction(items, deleteAll);
         fillAction(items, applyInCommonGroup);
+
+        if (isSingleUsersMode) {
+            deleteAll.updateTitle();
+
+            final int restrictionsCount = (restrictUserDeleteAllMessages ? 1 : 0)
+                + (restrictUserDeleteAllReactions ? 1 : 0);
+
+            items.add(UItem.asRoundGroupCheckbox(OPTION_DELETE, deleteAll.title, String.format(Locale.US, "%d/2", restrictionsCount))
+                .setChecked(restrictionsCount == 2)
+                .setCollapsed(restrictUserCollapsed)
+                .setClickCallback((v) -> {
+                    restrictUserCollapsed = !restrictUserCollapsed;
+                    adapter.update(true);
+                }));
+
+            if (!restrictUserCollapsed) {
+                items.add(UItem.asRoundCheckbox(OPTION_DELETE_MESSAGES, getString(R.string.RestrictUserDeleteAllMessages))
+                    .setChecked(restrictUserDeleteAllMessages)
+                    .setPad(1));
+                items.add(UItem.asRoundCheckbox(OPTION_DELETE_REACTIONS, getString(R.string.RestrictUserDeleteAllReactions))
+                    .setChecked(restrictUserDeleteAllReactions)
+                    .setPad(1));
+            }
+        } else {
+            fillAction(items, deleteAll);
+            fillAction(items, deleteAllReactions);
+        }
         fillAction(items, banOrRestrict);
 
         if (!monoforum && banOrRestrict.isPresent()) {
@@ -725,7 +807,7 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                         .setLocked(defaultBannedRights.send_plain));
 
                 int sendMediaCount = getSendMediaSelectedCount();
-                items.add(UItem.asExpandableSwitch(RIGHT_SEND_MEDIA, getString(R.string.UserRestrictionsSendMedia), String.format(Locale.US, "%d/9", sendMediaCount))
+                items.add(UItem.asExpandableSwitch(RIGHT_SEND_MEDIA, getString(R.string.UserRestrictionsSendMedia), String.format(Locale.US, "%d/10", sendMediaCount))
                         .setChecked(sendMediaCount > 0)
                         .setLocked(allDefaultMediaBanned())
                         .setCollapsed(sendMediaCollapsed)
@@ -753,6 +835,7 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                             bannedRights.send_roundvideos = !enabled;
                             bannedRights.embed_links = !enabled;
                             bannedRights.send_polls = !enabled;
+                            bannedRights.send_reactions = !enabled;
                             onRestrictionsChanged();
 
                             adapter.update(true);
@@ -793,6 +876,10 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                     items.add(UItem.asRoundCheckbox(RIGHT_SEND_LINKS, getString(R.string.UserRestrictionsEmbedLinks))
                             .setChecked(!bannedRights.embed_links && !defaultBannedRights.embed_links && !bannedRights.send_plain && !defaultBannedRights.send_plain)
                             .setLocked(defaultBannedRights.embed_links)
+                            .setPad(1));
+                    items.add(UItem.asRoundCheckbox(RIGHT_SEND_REACTIONS, getString(R.string.UserRestrictionsSendReactions))
+                            .setChecked(!bannedRights.send_reactions && !defaultBannedRights.send_reactions)
+                            .setLocked(defaultBannedRights.send_reactions)
                             .setPad(1));
                 }
 
@@ -881,6 +968,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             } else if (action == ACTION_DELETE_ALL) {
                 deleteAll.toggleCheck(index);
                 onDeleteAllChanged();
+            } else if (action == ACTION_DELETE_ALL_REACTIONS) {
+                deleteAllReactions.toggleCheck(index);
+                onDeleteAllChanged();
             } else if (action == ACTION_BAN) {
                 banOrRestrict.toggleCheck(index);
             } else if (action == ACTION_APPLY_IN_COMMON_GROUP) {
@@ -891,6 +981,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 report.toggleAllChecks();
             } else if (item.id == ACTION_DELETE_ALL) {
                 deleteAll.toggleAllChecks();
+                onDeleteAllChanged();
+            } else if (item.id == ACTION_DELETE_ALL_REACTIONS) {
+                deleteAllReactions.toggleAllChecks();
                 onDeleteAllChanged();
             } else if (item.id == ACTION_BAN) {
                 banOrRestrict.toggleAllChecks();
@@ -925,6 +1018,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 } else if (item.id == RIGHT_SEND_VOICE) {
                     bannedRights.send_voices = !bannedRights.send_voices;
                     onRestrictionsChanged();
+                } else if (item.id == RIGHT_SEND_REACTIONS) {
+                    bannedRights.send_reactions = !bannedRights.send_reactions;
+                    onRestrictionsChanged();
                 } else if (item.id == RIGHT_SEND_STICKERS) {
                     bannedRights.send_stickers = bannedRights.send_games = bannedRights.send_gifs = bannedRights.send_inline = !bannedRights.send_stickers;
                     onRestrictionsChanged();
@@ -948,6 +1044,12 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 } else if (item.id == RIGHT_SEND_POLLS) {
                     bannedRights.send_polls = !bannedRights.send_polls;
                     onRestrictionsChanged();
+                } else if (item.id == OPTION_DELETE_MESSAGES) {
+                    restrictUserDeleteAllMessages = !restrictUserDeleteAllMessages;
+                    updateTitleAnimated();
+                } else if (item.id == OPTION_DELETE_REACTIONS) {
+                    restrictUserDeleteAllReactions = !restrictUserDeleteAllReactions;
+                    updateTitleAnimated();
                 }
                 adapter.update(true);
             }
@@ -985,6 +1087,17 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             saveScrollPosition();
             adapter.update(true);
             applyScrolledPosition(true);
+        } else if (item.id == OPTION_DELETE) {
+            restrictUserCollapsed = false;
+
+            final boolean newValue = !restrictUserDeleteAllMessages;
+            restrictUserDeleteAllMessages = newValue;
+            restrictUserDeleteAllReactions = newValue;
+
+            saveScrollPosition();
+            adapter.update(true);
+            applyScrolledPosition(true);
+            updateTitleAnimated();
         } else if (item.viewType == VIEW_TYPE_SHADOW_COLLAPSE_BUTTON) {
             restrict = !restrict;
             banOrRestrict.setFilter(restrict ? restrictFilter : banFilter);
@@ -1084,8 +1197,21 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                 .map(MessageObject::getId)
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        if (!supergroupMessageIds.isEmpty()) {
-            for (int i = 0; i < supergroupMessageIds.size(); i++) {
+        if (isReactionOnlyMode) {
+            if (!restrictUserDeleteAllReactions) {
+                deleteAll.forEach((participant, i) -> {
+                    final long userId = DialogObject.getDialogId(participant);
+                    for (int messageId : supergroupMessageIds) {
+                        MessagesController.getInstance(currentAccount).deleteReactionsFromMessage(-inChat.id, userId, messageId);
+                    }
+                    for (int messageId : groupMessageIds) {
+                        MessagesController.getInstance(currentAccount).deleteReactionsFromMessage(mergeDialogId, userId, messageId);
+                    }
+                });
+            }
+        } else {
+            if (!supergroupMessageIds.isEmpty()) {
+                for (int i = 0; i < supergroupMessageIds.size(); i++) {
                 AyuState.permitDeleteMessage(-inChat.id, supergroupMessageIds.get(i));
             }
             MessagesController.getInstance(currentAccount).deleteMessages(supergroupMessageIds, null, null, -inChat.id, topicId, false, mode);
@@ -1094,7 +1220,8 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             for (int i = 0; i < groupMessageIds.size(); i++) {
                 AyuState.permitDeleteMessage(mergeDialogId, groupMessageIds.get(i));
             }
-            MessagesController.getInstance(currentAccount).deleteMessages(groupMessageIds, null, null, mergeDialogId, topicId, true, mode);
+                MessagesController.getInstance(currentAccount).deleteMessages(groupMessageIds, null, null, mergeDialogId, topicId, true, mode);
+            }
         }
 
         banOrRestrict.forEachSelected((participant, i) -> {
@@ -1119,15 +1246,9 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         });
 
         report.forEachSelected((participant, i) -> {
-            TLRPC.TL_channels_reportSpam req = new TLRPC.TL_channels_reportSpam();
-            req.channel = MessagesController.getInputChannel(inChat);
-            if (participant instanceof TLRPC.User) {
-                req.participant = MessagesController.getInputPeer((TLRPC.User) participant);
-            } else if (participant instanceof TLRPC.Chat) {
-                req.participant = MessagesController.getInputPeer((TLRPC.Chat) participant);
-            }
-            req.id = messages.stream()
+            final ArrayList<Integer> ids = messages.stream()
                     .filter(msg -> msg.messageOwner.peer_id != null && msg.messageOwner.peer_id.chat_id != -mergeDialogId)
+                    .filter(msg -> !msg.isAyuDeleted())
                     .filter(msg -> {
                         if (participant instanceof TLRPC.User) {
                             return msg.messageOwner.from_id.user_id == ((TLRPC.User) participant).id;
@@ -1139,16 +1260,68 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
                     .map(MessageObject::getId)
                     .collect(Collectors.toCollection(ArrayList::new));
 
-            ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
-        });
-
-        deleteAll.forEachSelected((participant, i) -> {
-            if (participant instanceof TLRPC.User) {
-                MessagesController.getInstance(currentAccount).deleteUserChannelHistory(inChat, (TLRPC.User) participant, null, 0);
-            } else if (participant instanceof TLRPC.Chat) {
-                MessagesController.getInstance(currentAccount).deleteUserChannelHistory(inChat, null, (TLRPC.Chat) participant, 0);
+            if (isReactionOnlyMode && participant instanceof TLRPC.User && ids.size() == 1) {
+                TLRPC.TL_messages_reportReaction req = new TLRPC.TL_messages_reportReaction();
+                req.peer = MessagesController.getInputPeer(inChat);
+                req.user_id = MessagesController.getInstance(currentAccount).getInputUser((TLRPC.User) participant);
+                req.id = ids.get(0);
+                ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
+            } else {
+                TLRPC.TL_channels_reportSpam req = new TLRPC.TL_channels_reportSpam();
+                req.channel = MessagesController.getInputChannel(inChat);
+                if (participant instanceof TLRPC.User) {
+                    req.participant = MessagesController.getInputPeer((TLRPC.User) participant);
+                } else if (participant instanceof TLRPC.Chat) {
+                    req.participant = MessagesController.getInputPeer((TLRPC.Chat) participant);
+                }
+                if (ids.isEmpty()) {
+                    return;
+                }
+                req.id = ids;
+                ConnectionsManager.getInstance(currentAccount).sendRequest(req, null);
             }
         });
+
+
+        if (isSingleUsersMode) {
+            deleteAll.forEach((participant, i) -> {
+                if (restrictUserDeleteAllMessages) {
+                    if (participant instanceof TLRPC.User) {
+                        MessagesController.getInstance(currentAccount)
+                            .deleteUserChannelHistory(inChat, (TLRPC.User) participant, null, 0);
+                    } else if (participant instanceof TLRPC.Chat) {
+                        MessagesController.getInstance(currentAccount)
+                            .deleteUserChannelHistory(inChat, null, (TLRPC.Chat) participant, 0);
+                    }
+                }
+                if (restrictUserDeleteAllReactions) {
+                    if (participant instanceof TLRPC.User) {
+                        MessagesController.getInstance(currentAccount)
+                            .deleteUserChannelAllReactions(inChat, (TLRPC.User) participant, null);
+                    } else if (participant instanceof TLRPC.Chat) {
+                        MessagesController.getInstance(currentAccount)
+                            .deleteUserChannelAllReactions(inChat, null, (TLRPC.Chat) participant);
+                    }
+                }
+            });
+        } else {
+            deleteAll.forEachSelected((participant, i) -> {
+                if (participant instanceof TLRPC.User) {
+                    MessagesController.getInstance(currentAccount).deleteUserChannelHistory(inChat, (TLRPC.User) participant, null, 0);
+                } else if (participant instanceof TLRPC.Chat) {
+                    MessagesController.getInstance(currentAccount).deleteUserChannelHistory(inChat, null, (TLRPC.Chat) participant, 0);
+                }
+            });
+            deleteAllReactions.forEachSelected((participant, i) -> {
+                if (participant instanceof TLRPC.User) {
+                    MessagesController.getInstance(currentAccount)
+                        .deleteUserChannelAllReactions(inChat, (TLRPC.User) participant, null);
+                } else if (participant instanceof TLRPC.Chat) {
+                    MessagesController.getInstance(currentAccount)
+                        .deleteUserChannelAllReactions(inChat, null, (TLRPC.Chat) participant);
+                }
+            });
+        }
 
         applyInCommonGroup.forEachSelected((participant, i) -> {
             if (participant instanceof TLRPC.User) {
@@ -1205,6 +1378,19 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
         super.dismiss();
     }
 
+    @Override
+    protected void onPreDraw(Canvas canvas, int top, float progressToFullView) {
+        super.onPreDraw(canvas, top, progressToFullView);
+        if (!NaConfig.INSTANCE.getCenterActionBarTitle().Bool() || NaConfig.INSTANCE.getCenterActionBarTitleType().Int() == 3) {
+            return;
+        }
+        final SimpleTextView titleTextView = actionBar.getTitleTextView();
+        if (titleTextView == null) {
+            return;
+        }
+        titleTextView.setTranslationX((actionBar.getMeasuredWidth() - titleTextView.getMeasuredWidth()) / 2f - titleTextView.getLeft());
+    }
+
     private void proceed() {
         dismiss();
         if (onDelete != null) {
@@ -1226,11 +1412,12 @@ public class DeleteMessagesBottomSheet extends BottomSheetWithRecyclerListView {
             }
         }
 
+        final boolean isReactions = isReactionOnlyMode && !restrictUserDeleteAllMessages;
         int icon = banOrRestrict.selectedCount > 0 ? R.raw.ic_admin : R.raw.contact_check;
         if (TextUtils.isEmpty(subtitle)) {
-            BulletinFactory.of(getBaseFragment()).createSimpleBulletin(icon, getString(R.string.MessagesDeleted)).show();
+            BulletinFactory.of(getBaseFragment()).createSimpleBulletin(icon, getString(isReactions ? R.string.ReactionsDeleted : R.string.MessagesDeleted)).show();
         } else {
-            BulletinFactory.of(getBaseFragment()).createSimpleBulletin(icon, getString(R.string.MessagesDeleted), subtitle).show();
+            BulletinFactory.of(getBaseFragment()).createSimpleBulletin(icon, getString(isReactions ? R.string.ReactionsDeleted : R.string.MessagesDeleted), subtitle).show();
         }
 
         performDelete();

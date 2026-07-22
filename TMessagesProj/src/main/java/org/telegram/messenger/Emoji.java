@@ -712,11 +712,12 @@ public class Emoji {
         if (!createNew && cs instanceof Spannable) {
             s = (Spannable) cs;
         } else {
-            s = Spannable.Factory.getInstance().newSpannable(cs.toString());
+            s = Spannable.Factory.getInstance().newSpannable(cs);
         }
+        boolean replacedAppleLogo = EmojiHelper.replaceAppleLogo(s, fontMetrics);
         ArrayList<EmojiSpanRange> emojis = parseEmojis(s, emojiOnly);
         if (emojis.isEmpty()) {
-            return cs;
+            return replacedAppleLogo ? s : cs;
         }
 
         AnimatedEmojiSpan[] animatedEmojiSpans = s.getSpans(0, s.length(), AnimatedEmojiSpan.class);
@@ -775,14 +776,16 @@ public class Emoji {
     }
 
     public static CharSequence replaceWithRestrictedEmoji(CharSequence cs, Paint.FontMetricsInt fontMetrics, Runnable update) {
-        if (NekoConfig.useSystemEmoji.Bool() || cs == null || cs.length() == 0) {
+        return replaceWithRestrictedEmoji(cs, fontMetrics, AnimatedEmojiDrawable.CACHE_TYPE_STANDARD_EMOJI, update);
+    }
+
+    public static CharSequence replaceWithRestrictedEmoji(CharSequence cs, Paint.FontMetricsInt fontMetrics, int cacheType, Runnable update) {
+        if (cs == null || cs.length() == 0) {
             return cs;
         }
-
-        final int currentAccount = UserConfig.selectedAccount;
-        TLRPC.InputStickerSet inputStickerSet = new TLRPC.TL_inputStickerSetShortName();
-        inputStickerSet.short_name = "RestrictedEmoji";
-        TLRPC.TL_messages_stickerSet set = MediaDataController.getInstance(currentAccount).getStickerSet(inputStickerSet, 0, false, true, update == null ? null : s -> update.run());
+        if (NekoConfig.useSystemEmoji.Bool() && !EmojiHelper.containsAppleLogo(cs)) {
+            return cs;
+        }
 
         Spannable s;
         if (cs instanceof Spannable) {
@@ -790,9 +793,17 @@ public class Emoji {
         } else {
             s = Spannable.Factory.getInstance().newSpannable(cs.toString());
         }
+        boolean replacedAppleLogo = EmojiHelper.replaceAppleLogo(s, fontMetrics);
+        if (NekoConfig.useSystemEmoji.Bool()) {
+            return replacedAppleLogo ? s : cs;
+        }
+        final int currentAccount = UserConfig.selectedAccount;
+        TLRPC.InputStickerSet inputStickerSet = new TLRPC.TL_inputStickerSetShortName();
+        inputStickerSet.short_name = "RestrictedEmoji";
+        TLRPC.TL_messages_stickerSet set = MediaDataController.getInstance(currentAccount).getStickerSet(inputStickerSet, 0, false, true, update == null ? null : s1 -> update.run());
         ArrayList<EmojiSpanRange> emojis = parseEmojis(s, null);
         if (emojis.isEmpty()) {
-            return cs;
+            return replacedAppleLogo ? s : cs;
         }
 
         AnimatedEmojiSpan[] animatedEmojiSpans = s.getSpans(0, s.length(), AnimatedEmojiSpan.class);
@@ -831,7 +842,7 @@ public class Emoji {
                     animatedSpan = new AnimatedEmojiSpan(0, fontMetrics);
                 }
                 animatedSpan.emoji = (emojiRange.code).toString();
-                animatedSpan.cacheType = AnimatedEmojiDrawable.CACHE_TYPE_STANDARD_EMOJI;
+                animatedSpan.cacheType = cacheType;
                 s.setSpan(animatedSpan, emojiRange.start, emojiRange.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             } catch (Exception e) {
                 FileLog.e(e);

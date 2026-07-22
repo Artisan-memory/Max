@@ -1,17 +1,28 @@
 package tw.nekomimi.nekogram.helpers;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
+
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.LeadingMarginSpan;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.UserConfig;
+import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.TypefaceSpan;
 
 import java.util.List;
+
+import xyz.nextalone.nagram.NaConfig;
 
 public class TypefaceHelper {
 
@@ -25,6 +36,7 @@ public class TypefaceHelper {
     }};
 
     private static Boolean mediumWeightSupported = null;
+    private static Boolean italicSupported = null;
 
     static {
         var lang = LocaleController.getInstance().getCurrentLocale().getLanguage();
@@ -53,8 +65,10 @@ public class TypefaceHelper {
                     isMediumWeightSupported() ? Typeface.create("sans-serif-medium", Typeface.ITALIC) : Typeface.create("sans-serif", Typeface.BOLD_ITALIC);
             case AndroidUtilities.TYPEFACE_RCONDENSED_BOLD ->
                     Typeface.create("sans-serif-condensed", Typeface.BOLD);
+            case AndroidUtilities.TYPEFACE_ROBOTO_EXTRA_BOLD ->
+                    createTypeface(800, false);
             case AndroidUtilities.TYPEFACE_RITALIC ->
-                    Typeface.create("sans-serif", Typeface.ITALIC);
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? Typeface.create(Typeface.SANS_SERIF, 400, true) : Typeface.create("sans-serif", Typeface.ITALIC);
             case AndroidUtilities.TYPEFACE_ROBOTO_MONO ->
                     Typeface.MONOSPACE;
             default -> createTypefaceFromAsset(assetPath);
@@ -62,18 +76,17 @@ public class TypefaceHelper {
     }
 
     public static Typeface createTypefaceFromAsset(String assetPath) {
-        if (Build.VERSION.SDK_INT >= 26) {
-            Typeface.Builder builder = new Typeface.Builder(ApplicationLoader.applicationContext.getAssets(), assetPath);
-            if (assetPath.contains("medium")) {
-                builder.setWeight(700);
-            }
-            if (assetPath.contains("italic")) {
-                builder.setItalic(true);
-            }
-            return builder.build();
-        } else {
-            return Typeface.createFromAsset(ApplicationLoader.applicationContext.getAssets(), assetPath);
+        Typeface.Builder builder = new Typeface.Builder(ApplicationLoader.applicationContext.getAssets(), assetPath);
+        if (assetPath.contains("rextrabold")) {
+            builder.setWeight(800);
         }
+        if (assetPath.contains("medium") || assetPath.contains("rbold")) {
+            builder.setWeight(700);
+        }
+        if (assetPath.contains("italic")) {
+            builder.setItalic(true);
+        }
+        return builder.build();
     }
 
     public static boolean isMediumWeightSupported() {
@@ -82,6 +95,14 @@ public class TypefaceHelper {
             FileLog.d("mediumWeightSupported = " + mediumWeightSupported);
         }
         return mediumWeightSupported;
+    }
+
+    public static boolean isItalicSupported() {
+        if (italicSupported == null) {
+            italicSupported = testTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
+            FileLog.d("italicSupported = " + italicSupported);
+        }
+        return italicSupported;
     }
 
     private static boolean testTypeface(Typeface typeface) {
@@ -101,4 +122,31 @@ public class TypefaceHelper {
         AndroidUtilities.recycleBitmaps(List.of(bitmap1, bitmap2));
         return supported;
     }
+
+    public static Typeface createTypeface(int weight, boolean italic) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return Typeface.create(null, weight, italic);
+        }
+        var family = switch (weight) {
+            case 800 -> "sans-serif-black";
+            case 500 -> "sans-serif-medium";
+            default -> "sans-serif";
+        };
+        return Typeface.create(family, italic ? Typeface.ITALIC : Typeface.NORMAL);
+    }
+
+    public static SpannableStringBuilder getTitleText(int currentAccount) {
+        String title = NaConfig.INSTANCE.getCustomTitle().String();
+        if (NaConfig.INSTANCE.getCustomTitleUserName().Bool()) {
+            TLRPC.User self = UserConfig.getInstance(currentAccount).getCurrentUser();
+            if (self != null && self.first_name != null) {
+                title = self.first_name;
+            }
+        }
+        var builder = new SpannableStringBuilder(title);
+        builder.setSpan(new LeadingMarginSpan.Standard(dp(2), 0), 0, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.setSpan(new TypefaceSpan(TypefaceHelper.createTypeface(600, false), 0, Theme.key_telegram_color_dialogsLogo, null), 0, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return builder;
+    }
+
 }

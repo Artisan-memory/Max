@@ -1,13 +1,15 @@
 package tw.nekomimi.nekogram.config.cell;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.util.TypedValue;
 import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
@@ -15,12 +17,15 @@ import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 
+import java.util.Objects;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 import tw.nekomimi.nekogram.config.CellGroup;
 import tw.nekomimi.nekogram.config.ConfigItem;
+import tw.nekomimi.nekogram.utils.AndroidUtil;
 
-public class ConfigCellTextInput extends AbstractConfigCell {
+public class ConfigCellTextInput extends AbstractConfigCell implements WithBindConfig, WithKey {
     private final ConfigItem bindConfig;
     private final String hint;
     private final String title;
@@ -28,6 +33,7 @@ public class ConfigCellTextInput extends AbstractConfigCell {
     public TextSettingsCell cell;
     private final Runnable onClickCustom;
     private final Function<String, String> inputChecker;
+    private final BiPredicate<String, String> invalidInputChecker;
 
     public ConfigCellTextInput(String customTitle, ConfigItem bind, String hint, Runnable customOnClick) {
         this(customTitle, bind, hint, customOnClick, null);
@@ -35,12 +41,13 @@ public class ConfigCellTextInput extends AbstractConfigCell {
 
     // default: customTitle=null customOnClick=null
     public ConfigCellTextInput(String customTitle, ConfigItem bind, String hint, Runnable customOnClick, Function<String, String> inputChecker) {
+        this(customTitle, bind, hint, customOnClick, inputChecker, null);
+    }
+
+    // default: customTitle=null customOnClick=null
+    public ConfigCellTextInput(String customTitle, ConfigItem bind, String hint, Runnable customOnClick, Function<String, String> inputChecker, BiPredicate<String, String> invalidInputChecker) {
         this.bindConfig = bind;
-        if (hint == null) {
-            this.hint = "";
-        } else {
-            this.hint = hint;
-        }
+        this.hint = Objects.requireNonNullElse(hint, "");
         if (customTitle == null) {
             title = getString(bindConfig.getKey());
         } else {
@@ -48,6 +55,7 @@ public class ConfigCellTextInput extends AbstractConfigCell {
         }
         this.onClickCustom = customOnClick;
         this.inputChecker = inputChecker;
+        this.invalidInputChecker = invalidInputChecker;
     }
 
     public int getType() {
@@ -86,6 +94,7 @@ public class ConfigCellTextInput extends AbstractConfigCell {
             try {
                 onClickCustom.run();
             } catch (Exception e) {
+                FileLog.e(e);
             }
             return;
         }
@@ -101,27 +110,41 @@ public class ConfigCellTextInput extends AbstractConfigCell {
         linearLayout.setOrientation(LinearLayout.VERTICAL);
 
         EditTextBoldCursor editText = new EditTextBoldCursor(context);
-        editText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
         editText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        editText.setHint(hint);
+        editText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
+        editText.setHandlesColor(Theme.getColor(Theme.key_chat_TextSelectionCursor));
+        editText.setFocusable(true);
+        editText.setBackground(null);
+        editText.setLineColors(Theme.getColor(Theme.key_windowBackgroundWhiteInputField), Theme.getColor(Theme.key_windowBackgroundWhiteInputFieldActivated), Theme.getColor(Theme.key_text_RedRegular));
+        editText.setPadding(0, 0, 0, dp(6));
         editText.setText(bindConfig.String());
-        linearLayout.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(10), 0));
+        editText.setHint(hint);
+        editText.requestFocus();
+        linearLayout.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, dp(8), 0, dp(10), 0));
 
-        builder.setPositiveButton(getString(R.string.OK), (d, v) -> {
-            String newV = editText.getText().toString();
-            if (this.inputChecker != null)
-                newV = this.inputChecker.apply(newV);
+        builder.setPositiveButton(getString(R.string.OK), null);
+        builder.setView(linearLayout);
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String rawInput = editText.getText().toString();
+            String newV = rawInput;
+            if (inputChecker != null) {
+                newV = inputChecker.apply(newV);
+            }
+            if (invalidInputChecker != null && invalidInputChecker.test(rawInput, newV)) {
+                AndroidUtil.showInputError(editText);
+                return;
+            }
             bindConfig.setConfigString(newV);
 
-            //refresh
+            // refresh
             cellGroup.listAdapter.notifyItemChanged(cellGroup.rows.indexOf(this));
-            builder.getDismissRunnable().run();
+            dialog.dismiss();
             cellGroup.thisFragment.getParentLayout().rebuildAllFragmentViews(false, false);
 
             cellGroup.runCallback(bindConfig.getKey(), newV);
-        });
-        builder.setView(linearLayout);
-        cellGroup.thisFragment.showDialog(builder.create());
+        }));
+        cellGroup.thisFragment.showDialog(dialog);
     }
 }
-

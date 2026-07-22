@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NagramX" translatable="false">Max</string>
-    <string name="XChannel">Max Channel</string>
+    <string name="NagramX" translatable="false">Nagram X</string>
+    <string name="XChannel">Nagram X Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
     <string name="EnableSaveEditsHistory">Save Edits History</string>
@@ -14,37 +14,43 @@
     <string name="HideHelpSection">Hide Help in Settings</string>
     <string name="ProviderLLMTranslator">AI Translator</string>
     <string name="LlmApiUrl">API URL</string>
-    <string name="LlmApiUrlHint">e.g. https://api.openai.com/v1</string>
+    <string name="LlmApiUrlHint" translatable="false">https://api.openai.com/v1</string>
     <string name="LlmApiKey">API Key</string>
     <string name="LlmModelName">Model</string>
-    <string name="LlmApiUrlNotice">API base URL for OpenAI-compatible endpoints such as Gemini, xAI (Grok), Groq, Mistral, DeepSeek, etc.\n\nLeaving this blank will default to the Gemini OpenAI-compatible endpoint.</string>
-    <string name="LlmApiKeyNotice">The API Key will be used to send requests to the API URL.\n\nEnter multiple keys separated by commas (e.g., key1, key2, key3).\nIf you provide multiple keys, they will be used in rotation.</string>
-    <string name="LlmModelNameNotice">Leaving this blank will default to `gemini-2.5-flash`.\n\nFor faster responses, consider smaller models like gpt-nano or gemini-flash.</string>
+    <string name="LlmApiUrlNotice">API base URL. Defaults to the Gemini OpenAI-compatible endpoint if left blank.</string>
+    <string name="LlmApiKeyNotice">Enter one or more API keys, separated by commas (e.g., key1,key2). Multiple keys will be used in rotation.</string>
     <string name="LlmApiUrlDefault" translatable="false">https://generativelanguage.googleapis.com/v1beta/openai</string>
     <string name="LlmModelNameDefault" translatable="false">gemini-flash-latest</string>
-    <string name="LlmProviderOpenAIModel" translatable="false">gpt-5-nano</string>
+    <string name="LlmProviderOpenAIModel" translatable="false">gpt-5.4-nano</string>
     <string name="LlmProviderGeminiModel" translatable="false">gemini-flash-lite-latest</string>
-    <string name="LlmProviderGroqModel" translatable="false">meta-llama/llama-4-maverick-17b-128e-instruct</string>
-    <string name="LlmProviderDeepSeekModel" translatable="false">deepseek-chat</string>
-    <string name="LlmProviderXAIModel" translatable="false">grok-4-1-fast-non-reasoning</string>
+    <string name="LlmProviderGroqModel" translatable="false">openai/gpt-oss-120b</string>
+    <string name="LlmProviderDeepSeekModel" translatable="false">deepseek-v4-flash</string>
+    <string name="LlmProviderXAIModel" translatable="false"></string>
+    <string name="LlmProviderCerebrasModel" translatable="false">gpt-oss-120b</string>
+    <string name="LlmProviderOllamaCloudModel" translatable="false">gemma4:31b</string>
+    <string name="LlmProviderOpenRouterModel" translatable="false">openrouter/free</string>
+    <string name="LlmProviderVercelAIGatewayModel" translatable="false">google/gemma-4-31b-it</string>
     <string name="LlmProviderPreset">Model Provider</string>
     <string name="LlmProviderCustom">Custom</string>
     <string name="LlmProviderOpenAIKey">OpenAI API Key</string>
     <string name="LlmProviderGeminiKey">Gemini API Key</string>
-    <string name="LlmProviderGroqKey">Groq API Key</string>
-    <string name="LlmProviderDeepSeekKey">DeepSeek API Key</string>
-    <string name="LlmProviderXAIKey">xAI API Key</string>
     <string name="LlmSystemPrompt">System Prompt</string>
-    <string name="LlmSystemPromptHint">You are a helpful assistant.</string>
-    <string name="LlmSystemPromptNotice">Define the AI\'s role and behavior.\n\nThis prompt sets the tone, personality, and limitations for the AI. Consider describing what type of assistant the AI should be.\n\nCan be left empty.</string>
+    <string name="LlmSystemPromptHint">You are a professional translator.</string>
+    <string name="LlmSystemPromptNotice">Define the AI\'s role and behavior.\n\nThis prompt sets the tone, personality, and limitations for the AI. Consider describing what type of assistant the AI should be.</string>
     <string name="LlmUserPrompt">User Prompt</string>
-    <string name="LlmUserPromptNotice">Use @text as a placeholder for the original message, and @toLang for the target language (optional).\n\nExample: \'Translate @text to @toLang without any explanation.\'\n\nLeaving this blank will use the default prompt.</string>
+    <string name="LlmUserPromptHint">Translate @text to @toLang.</string>
+    <string name="LlmUserPromptNotice">Use @text as a placeholder for the original message, and @toLang for the target language (optional).\n\nLeaving this blank will use the default prompt.</string>
     <string name="LlmUseContext">Use Context</string>
     <string name="LlmUseContextNotice">Improves translation quality at the cost of more tokens.</string>
     <string name="LlmContextSize">Context messages</string>
     <string name="LlmUseContextInAutoTranslate">Use Context in Auto Translate</string>
     <string name="LlmUseContextInAutoTranslateNotice">May increase token usage and latency.</string>
     <string name="LlmTemperature">Temperature</string>
+    <string name="LlmModelsLoadFailed">Failed to load model list.</string>
+    <string name="LlmTest">Test</string>
+    <string name="LlmTestResultHttpStatusCode">HTTP Code</string>
+    <string name="LlmTestResultDuration">Duration</string>
+    <string name="LlmTestResultResponse">Response</string>
     <string name="AITranslatorSettings">AI Translator</string>
     <string name="TranslucentDeletedMessages">Translucent Deleted Messages</string>
     <string name="ArticleTranslationProvider">Article Translation Provider</string>
@@ -57,7 +63,7 @@
     <string name="DeleteCloudBackupSuccess">Cloud data cleared</string>
     <string name="CloudConfigNoBackupToDelete">No data to clear</string>
     <string name="ClearRegexFilters">Clear</string>
-    <string name="ClearRegexFiltersAlertMessage">Are you sure you want to clear all saved regex filters? This will remove both shared and chat-specific filters.</string>
+    <string name="ClearRegexFiltersAlertMessage">Are you sure you want to clear all saved filters? This will remove shared filters, user filters, and chat-specific filters.</string>
     <string name="PreferredTranslateTargetLang">Custom preferred language list</string>
     <string name="PreferredTranslateTargetLangExample">e.g. ja, zh_cn, zh_tw</string>
     <string name="PreferredTranslateTargetLangName">Preferred Languages</string>
@@ -70,6 +76,16 @@
     <string name="RegexFiltersImportSuccess">Filters imported.</string>
     <string name="RegexFiltersImportError">Failed to import filters from clipboard.</string>
     <string name="RegexFiltersExportError">Failed to export filters.</string>
+    <string name="RegexFiltersUserHeader">User Filters</string>
+    <string name="RegexFiltersUserFilterHint">Enter User ID</string>
+    <string name="RegexFiltersGlobalHeader">Global Filters</string>
+    <string name="RegexFiltersTextSelectionAddtoShared">Add to shared filters</string>
+    <string name="ShadowBan">Shadow Ban</string>
+    <string name="UnshadowBan">Unshadow Ban</string>
+    <string name="ShadowBanAdded">Added to **user filters**.</string>
+    <string name="ShadowBanRemoved">Removed from **user filters**.</string>
+    <string name="ShadowBanChannelAdded">Added to **channel filters**.</string>
+    <string name="ShadowBanChannelRemoved">Removed from **channel filters**.</string>
     <string name="botCommandConfirmTitle">Send Command</string>
     <string name="botCommandConfirmText">Do you want to send this command?\n\n%s</string>
     <string name="MessageSavingSaveMedia">Save Media</string>
@@ -80,10 +96,6 @@
     <string name="MessageSavingSaveMediaInPublicGroups">… in Public Groups</string>
     <string name="MessageSavingSaveMediaInPrivateGroups">… in Private Groups</string>
     <string name="TelegramUIAutoTranslate">Translate Entire Chats</string>
-    <string name="TranslatorMode">Manual Translation Behavior</string>
-    <string name="TranslatorModeAppend">Append</string>
-    <string name="TranslatorModeInline">Replace</string>
-    <string name="TranslatorModePopup">Pop-up</string>
     <string name="Translated">translated</string>
     <string name="ProviderRealMicrosoftTranslator">Microsoft Translator</string>
     <string name="TranslatorSettings">Translator</string>
@@ -91,11 +103,9 @@
     <string name="ChatsOnly">Just in chats</string>
     <string name="InstantViewTranslation">Instant View</string>
     <string name="SaveDeletedMessageForBot">Save in Bot Chats</string>
-    <string name="DrawerElements">Drawer Elements</string>
     <string name="HideArchive">Remove \"Archived Chats\" from Chat List</string>
-    <string name="HideChannelSilentBroadcast">Hide Silent Broadcast Switch</string>
     <string name="ConfirmAllLinks">Ask Before Opening Inline Links</string>
-    <string name="ConfirmAllLinksDescription">Including Max internal links such as t.me links in bot inline buttons.</string>
+    <string name="ConfirmAllLinksDescription">Including Telegram internal links such as t.me links in bot inline buttons.</string>
     <string name="TranslatorMinimizedChannel">Translator bar has been minimized for this channel.</string>
     <string name="TranslatorMinimizedGroup">Translator bar has been minimized for this group.</string>
     <string name="TranslatorMinimized">Translator bar has been minimized for this chat.</string>
@@ -112,7 +122,7 @@
     <string name="Other">Other</string>
     <string name="RestartApp">Restart App</string>
     <string name="ResetSettings">Reset Settings</string>
-    <string name="ResetSettingsAlert">Are you sure you want to reset all Max-Settings?</string>
+    <string name="ResetSettingsAlert">Are you sure you want to reset all N-Settings?</string>
     <string name="DontAutoPlayNextVoice">Don\'t Auto Play Next Voice Message</string>
     <string name="SaveToChatSubfolder">Save Attachments by Chat Name</string>
     <string name="MessageColoredBackground">Colorful Message Backgrounds</string>
@@ -120,7 +130,6 @@
     <string name="ChatMenu">Chat Menu</string>
     <string name="MediaViewerMenu">Media Viewer Menu</string>
     <string name="MenuAndButtons">Menu and Buttons</string>
-    <string name="ColoredAdminTitle">Colored Admin Title</string>
     <string name="SettingsNax">Settings</string>
     <string name="AccountSettingsNax">Account Settings</string>
     <string name="HideReactions">Hide Reactions</string>
@@ -135,11 +144,8 @@
     <string name="DisableGhostMode">Disable Ghost</string>
     <string name="GhostModeEnabled">Ghost mode turned on</string>
     <string name="GhostModeDisabled">Ghost mode turned off</string>
-    <string name="GhostModeInDrawer">Show in Drawer</string>
+    <string name="GhostModeInDrawer">Shortcuts</string>
     <string name="GhostModeStatusIndicator">Ghost Mode Indicator</string>
-    <string name="ScheduleMessageInDrawer">Show Schedule Message in Drawer</string>
-    <string name="ColorfulInlineBotButtons">Colorful Bot Buttons</string>
-    <string name="ColorfulInlineBotButtonsHint">Use bot-defined colors for inline buttons</string>
     <string name="DontSendReadMessagePackets">Don\'t Read Messages</string>
     <string name="DontReadStoriesPackets">Don\'t Read Stories</string>
     <string name="DontSendOnlinePackets">Don\'t Send Online</string>
@@ -191,13 +197,12 @@
     <string name="DebugMenuDoNotForceForumTabs">Do Not Force Forum Tabs</string>
     <string name="DebugMenuCleanAppUpdate">Clean App Update</string>
     <string name="DebugMenuMakeMemoryDump">Make Memory Dump</string>
+    <string name="DebugMenuShowFrameMetrics">Show Frame Metrics</string>
+    <string name="DebugMenuHideFrameMetrics">Hide Frame Metrics</string>
     <string name="TranslateMessageLLM">Translate with AI</string>
     <string name="EditLocalNameOverride">Editing local name override.</string>
     <string name="ResetChatNameOverrides">Reset Chat Name Overrides</string>
     <string name="ResetChatNameNotification">Chat name overrides cleared.</string>
-    <string name="TabStyle">Tab Style</string>
-    <string name="TabStylePure">Pure</string>
-    <string name="TabStylePills">Pills</string>
     <string name="LeftBottomButtonAction">Left Button Action</string>
     <string name="TranscribeProviderOpenAI">OpenAI-Compatible API</string>
     <string name="OpenAiApiCredentialsDialog">Configure OpenAI-compatible API. You can refer to this **documentation**.\n</string>
@@ -212,9 +217,9 @@
     <string name="CreateCode">Create Code</string>
     <string name="CreateCodeLanguage">Language</string>
     <string name="NoCaptionForward">NoCaption forward</string>
+    <string name="NoCaptionForwardShort">NoCaption</string>
     <string name="PreferCommonGroupsTab">Prefer Groups Tab</string>
     <string name="PreferCommonGroupsTabNotice">Auto-select \"Groups\" tab instead of \"Gifts\" when possible.</string>
-    <string name="SendHighQualityPhoto">Send High Quality Photo</string>
     <string name="GroupedMessageMenu">Group Message Menu</string>
     <string name="GroupedMessageMenuNotice">Grouping moves the main actions to the bottom of the message menu.</string>
     <string name="CopySticker">Copy Sticker</string>
@@ -223,9 +228,6 @@
     <string name="AutoCheckUpdateSwitch">Update Channel</string>
     <string name="AutoCheckUpdateRelease">Release</string>
     <string name="AutoCheckUpdateBeta">Beta</string>
-    <string name="AutoInsertGIFCaption">Auto-Caption GIFs</string>
-    <string name="AutoInsertGIFCaptionNotice">Automatically uses the text in the current input field as the GIF\'s caption.</string>
-    <string name="UserAvatarsInMessagePreview">User Avatars in Message Preview</string>
     <string name="YourVersionIsLatestNax">Your version is up to date.</string>
     <string name="PremiumElements">Premium Elements</string>
     <string name="PremiumItemBoosts">Boost Counter</string>
@@ -237,7 +239,6 @@
     <string name="PremiumItemVideoAvatar">Animated Avatars</string>
     <string name="PremiumItemCustomWallpaper">Custom Wallpapers</string>
     <string name="TranslationTargetApp">Follow App</string>
-    <string name="DisableAvatarTapToSwitch">Disable Cycling Avatars by Tapping</string>
     <string name="SwitchStyle">Switch Style</string>
     <string name="SliderStyle">Slider Style</string>
     <string name="StyleModern">Modern</string>
@@ -252,7 +253,7 @@
     <string name="DisplayPersianCalendarByLatin">Display Persian calendar by Latin</string>
     <string name="TestBackendOn">This account will connect to the test backend.</string>
     <string name="TestBackendOff">This account will connect to the production backend.</string>
-    <string name="DidNotGetTheCodeBlameDurov">If you didn\'t get the code on another device or you don\'t have Max logged in on another device, please use the official Max app to receive the code.\n\nMax has **disabled the ability to log in with SMS** on third-party apps. Users logging into third-party apps are only able to receive login codes via Max.\n\nWe cannot help you with this, if you have any issues with logging in, please contact Max Support.</string>
+    <string name="DidNotGetTheCodeBlameDurov">If you didn\'t get the code on another device or you don\'t have Telegram logged in on another device, please use the official Telegram app to receive the code.\n\nTelegram has **disabled the ability to log in with SMS** on third-party apps. Users logging into third-party apps are only able to receive login codes via Telegram.\n\nWe cannot help you with this, if you have any issues with logging in, please contact Telegram Support.</string>
     <string name="QRLoginMessage">Scan QRCode with another device to login.</string>
     <string name="DnsType">DNS Resolver</string>
     <string name="DnsTypeSystem">System</string>
@@ -283,11 +284,7 @@
     <string name="BlockChannelsUnavailable">Some channels are temporarily unavailable.</string>
     <string name="FixLinkPreview">Fix Link Preview</string>
     <string name="NoQuoteForwardShort">NoQuote</string>
-    <string name="ForceEdgeToEdge">Force edge-to-edge</string>
     <string name="ViewDeleted">View Deleted</string>
-    <string name="DataCollectionNoticeTitle">Data Collection Notice</string>
-    <string name="DataCollectionNoticeConfirm">Ye, my life suck</string>
-    <string name="DataCollectionNoticeMessage">Max will collect your phone number, name, username and related technical telemetry. This information is not anonymous and will be linked to your account - you\'ll be added to our database right away. \nBy continuing to use this, you confirm your consent to such collection… just kidding, we already know more about you than we need to</string>
     <string name="PasskeyLogin">Passkey Login</string>
     <string name="PasskeyInfo2">This feature only works with password managers that allow the user to manage trust settings for privileged apps, such as **Bitwarden** and **KeePassDX**.</string>
     <string name="PasskeyUnsupportedTitle">Unsupported password manager</string>
@@ -310,9 +307,6 @@
     <string name="CameraInVideoMessagesRear">Rear Camera</string>
     <string name="CameraInVideoMessagesAsk">Ask</string>
     <string name="CameraSettings">Camera</string>
-    <string name="SmoothRoundedMenu">Smooth Rounded Context Menus</string>
-    <string name="SyncContactToPhone">Sync Contact to Phone</string>
-    <string name="AddViaQRCode">Add via QR Code</string>
     <string name="ContactNotes">Notes</string>
     <string name="PhoneNotOnTelegramInvite">This phone number is not on Telegram. **Invite >**</string>
     <string name="PhoneAlreadyInContacts">This phone number is already in your contacts. **View >**</string>
@@ -324,21 +318,36 @@
     <string name="CopyVideoFrame">Copy Frame</string>
     <string name="SetLocalName">Set Local Name</string>
     <string name="DeleteChatForBothSides">Use \"Also delete for\" by Default</string>
-    <string name="AutoPingProxy">Auto Ping Proxy</string>
     <string name="BackAnimationStyle">Navigation Animation</string>
     <string name="BackAnimationClassic">Classic</string>
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">Predictive</string>
-    <string name="BulkLeaveChannel">Leave the channel</string>
-    <string name="BulkLeaveChannels">Leave channels</string>
-    <string name="BulkStopBot">Stop the bot</string>
-    <string name="BulkStopBots">Stop bots</string>
-    <string name="BulkLeaveConfirm">Leave %1$d selected channel(s)?</string>
-    <string name="BulkStopConfirm">Stop %1$d selected bot(s)? You can keep or delete their chats.</string>
-    <string name="BulkStopAndDelete">Stop &amp; delete chats</string>
-    <string name="BulkLeaveProgress">Left %1$d of %2$d</string>
-    <string name="BulkStopProgress">Stopped %1$d of %2$d</string>
-    <string name="BulkFloodWaitProgress">Telegram rate limit reached. Continuing in %1$d seconds…</string>
-    <string name="BulkActionFinished">Completed %1$d of %2$d</string>
-    <string name="BulkActionFailed">Completed %1$d of %2$d. Last error: %3$s</string>
+    <string name="AddToFilter">Add to Filter</string>
+    <string name="UnifiedPushNeverReceivedNotifications">You never received notifications with UnifiedPush since Nagram X was started.</string>
+    <string name="UnifiedPushLastReceivedNotification">The last received notification with UnifiedPush was %1$d seconds ago.\n\nYou received %2$d notifications since Nagram X was started.</string>
+    <string name="UnifiedPushCurrentEndpoint">The current UnifiedPush endpoint is: %1$s</string>
+    <string name="PlayOnce">Play once</string>
+    <string name="StorageSettings">Storage</string>
+    <string name="MainTabsSettingsHeader">Main Tabs</string>
+    <string name="MainTabsHideTitles">Hide Titles</string>
+    <string name="MainTabsHideContacts">Hide Contacts Tab</string>
+    <string name="PasscodeShowMessagePreviewWhenLocked">Show Message Previews</string>
+    <string name="PasscodeShowMessagePreviewWhenLockedAbout">Shows notification content even when passcode lock is active.</string>
+    <string name="StickerSavedHint">Sticker saved to gallery.</string>
+    <string name="StickerCopied">Sticker copied to clipboard.</string>
+    <string name="StrokeOnViews">Glare effects</string>
+    <string name="HideBottomNavigationBar">Hide Bottom Navigation Bar</string>
+    <string name="TranslatorMode">With Original Text</string>
+    <string name="TranslatorWithOriginalTextOff">Off</string>
+    <string name="TranslatorWithOriginalTextManualOnly">Manual Only</string>
+    <string name="TranslatorWithOriginalTextOn">On</string>
+    <string name="CenterActionBarTitleOn">On</string>
+    <string name="CenterActionBarTitleOff">Off</string>
+    <string name="TabletModeOn">On</string>
+    <string name="TabletModeOff">Off</string>
+    <string name="HideDialogsSearchField">Hide Search Box</string>
+    <string name="DeepLTranslateKey">DeepL API Key</string>
+    <string name="DeepLTranslateKeyNotice">Configure DeepL API Key, leave blank to use built-in credentials.</string>
+    <string name="DefaultScheduleDelay">Default delay</string>
+    <string name="ExportAyuDB">Export Database</string>
 </resources>

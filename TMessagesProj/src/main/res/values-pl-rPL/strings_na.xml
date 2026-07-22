@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">Konfiguracja-Max</string>
-    <string name="ForceCopy">Wymuś kopię</string>
+    <string name="N_Config">Konfiguracja-Nagram</string>
     <string name="CombineMessage">Połącz wiadomości</string>
     <string name="TextStyle">Styl tekstu</string>
     <string name="NoiseSuppressAndVoiceEnhance">Ulepszenia głosu</string>
@@ -20,7 +19,6 @@
     <string name="ShowMessageID">Pokaż identyfikator wiadomości</string>
     <string name="ShowRPCError">Pokaż błędy RPC</string>
     <string name="ShowPremiumStickersAnimation">Pokaż animację naklejek premium</string>
-    <string name="AlwaysSaveChatOffset">Zawsze zapisuj przesunięcie czatu</string>
     <string name="AppIconColorful">Kolorowy</string>
     <string name="AppIconDarkGreen">Ciemna zieleń</string>
     <string name="AppIconNeon">Neonowy</string>
@@ -32,16 +30,12 @@
     <string name="ToTheMessage">Idź do</string>
     <string name="ZalgoFilter">Filtruj symbole „Zalgo”</string>
     <string name="ZalgoFilterNotice">Wszystkie symbole „Z̷͍͌ā̸̜l̸̞̂g̷̝͘o̶̩̓” w pseudonimach i wiadomościach zostaną usunięte.</string>
-    <string name="labelChannelUser">Oznacz użytkowników kanału</string>
-    <string name="CustomChannelLabel">Niestandardowa etykieta kanału</string>
     <string name="AlwaysShowDownloadIcon">Zawsze pokazuj ikonę pobierania</string>
     <string name="HideTitle">Ukryj tytuł</string>
     <string name="IgnoreUnreadCount">Ukryj licznik nieprzeczytanych</string>
     <string name="SendWithoutMarkdown">Wyślij bez przeceny</string>
     <string name="SendAsEmoji">Wyślij jako emoji</string>
-    <string name="CustomArtworkApi">Niestandardowe API grafiki</string>
     <string name="CustomEditedMessage">Niestandardowy edytowany znak</string>
-    <string name="IconDecoration">Ikona Dekoracyjna</string>
     <string name="NotificationIcon">Ikona powiadomienia</string>
     <string name="Official">Oficjalny</string>
     <string name="HalloWeen">Halloweenowy</string>
@@ -67,7 +61,6 @@
     <string name="ShowSmallGIF">Pokaż mały GIF</string>
     <string name="DisableClickCommandToSend">Zapytaj przed wysłaniem polecenia do bota</string>
     <string name="DisableDialogsFloatingButton">Ukryj przycisk pływający</string>
-    <string name="DisableFlagSecure">Wyłącz źródło flagi</string>
     <string name="CenterActionBarTitleType">Użyj wyśrodkowanego tytułu</string>
     <string name="ShowQuickReplyInBotCommands">Pokaż szybką odpowiedź w poleceniach bota</string>
     <string name="PushServiceType">Typ usługi push</string>
@@ -79,7 +72,6 @@
     <string name="DisableChannelMuteButton">Ukryj dolny pasek w kanałach</string>
     <string name="DisablePreviewVideoSoundShortcut">Wyłącz wyciszanie filmów za pomocą przycisków głośności</string>
     <string name="DisablePreviewVideoSoundShortcutNotice">Zapobiegaj włączaniu dźwięku podglądu wideo za pomocą przycisku głośności.</string>
-    <string name="DisableAutoWebLogin">Wyłącz automatyczne logowanie do sieci</string>
     <string name="PreviewSendPhoto">Wyślij zdjęcie</string>
     <string name="PreviewSendVideo">Wyślij wideo</string>
     <string name="PreviewSendFile">Wyślij plik</string>

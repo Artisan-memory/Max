@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="N_Config">Налаштування N</string>
-    <string name="ForceCopy">Примусове копіювання</string>
     <string name="CombineMessage">Об\'єднати повідомлення</string>
     <string name="TextStyle">Стиль тексту</string>
-    <string name="NoiseSuppressAndVoiceEnhance">Покращення звуку</string>
+    <string name="NoiseSuppressAndVoiceEnhance">Покращення голосу</string>
     <string name="RepeatAsCopy">Відповісти як копія</string>
     <string name="DoubleTapAction">Дія при подвійному дотику</string>
     <string name="SendReactions">Надсилати реакції</string>
@@ -13,14 +12,13 @@
     <string name="CustomTitleHint">Залиште порожнім, щоб використовувати Nagram X</string>
     <string name="CreateMono">Створити монопростір</string>
     <string name="CreateMonoLanguage">Мова коду</string>
-    <string name="CopyPhoto">Копіювати зображення</string>
+    <string name="CopyPhoto">Копіювати фото</string>
     <string name="PhotoCopied">Фото скопійовано до буфера обміну</string>
     <string name="ToTheBeginning">На початок</string>
     <string name="DateOfForwardedMsg">Показувати дату на пересланих повідомленнях</string>
     <string name="ShowMessageID">Показати ID повідомлення</string>
     <string name="ShowRPCError">Показувати помилки RPC</string>
     <string name="ShowPremiumStickersAnimation">Показувати анімацію Premium наліпок</string>
-    <string name="AlwaysSaveChatOffset">Завжди зберігати зміщення чату</string>
     <string name="AppIconColorful">Барвистість</string>
     <string name="AppIconDarkGreen">Темно-зелений</string>
     <string name="AppIconNeon">Неон</string>
@@ -32,16 +30,12 @@
     <string name="ToTheMessage">Перейти до</string>
     <string name="ZalgoFilter">Фільтр символів «Zalgo»</string>
     <string name="ZalgoFilterNotice">Всі \"Z̷͍͌ā̸̜l̸̞̂g̷̝͘o̶̩̓\" символи в нікнеймах або повідомленнях буде видалено.</string>
-    <string name="labelChannelUser">Мітка користувачів каналу</string>
-    <string name="CustomChannelLabel">Власна мітка каналу</string>
     <string name="AlwaysShowDownloadIcon">Завжди показувати значок завантаження</string>
     <string name="HideTitle">Сховати заголовок</string>
-    <string name="IgnoreUnreadCount">Приховати кількість непрочитаних тек</string>
+    <string name="IgnoreUnreadCount">Приховати кількість непрочитаних</string>
     <string name="SendWithoutMarkdown">Відправити без форматування</string>
-    <string name="SendAsEmoji">Відправити як смайл</string>
-    <string name="CustomArtworkApi">АРІ користувацьких музичних обкладинок</string>
-    <string name="CustomEditedMessage">Підпис для видалених повідомлень</string>
-    <string name="IconDecoration">Оформлення іконки</string>
+    <string name="SendAsEmoji">Відправити як емодзі</string>
+    <string name="CustomEditedMessage">Підпис змінених повідомлень</string>
     <string name="NotificationIcon">Значок сповіщень</string>
     <string name="Official">Офіційний</string>
     <string name="HalloWeen">Хелловін</string>
@@ -51,7 +45,7 @@
     <string name="ShowFullAbout">Завжди розгортати опис чату</string>
     <string name="TypeMessageHintUseGroupName">Назва групи як текст підказки у полі введення</string>
     <string name="HideBotButtonInInputField">Приховати кнопку бота в полі вводу</string>
-    <string name="ShowSendAsUnderMessageHint">Показувати відправника під підказкою Повідомлення у полі введення</string>
+    <string name="ShowSendAsUnderMessageHint">Показувати відправника у полі введення</string>
     <string name="CheckAllForum">Додати форум</string>
     <string name="DecorationNone">Не обрано</string>
     <string name="ChatDecoration">Оформлення чатів</string>
@@ -67,7 +61,6 @@
     <string name="ShowSmallGIF">Маленькі GIF</string>
     <string name="DisableClickCommandToSend">Запитувати перед відправленням команди бота</string>
     <string name="DisableDialogsFloatingButton">Приховати плаваючу кнопку</string>
-    <string name="DisableFlagSecure">Вимкнути FLAG_SECURE</string>
     <string name="CenterActionBarTitleType">Заголовок по центру</string>
     <string name="ShowQuickReplyInBotCommands">Показувати швидку відповідь у командах бота</string>
     <string name="PushServiceType">Служба Push-сповіщень</string>
@@ -78,8 +71,7 @@
     <string name="StickersCopyStickerSet">Копіювати набір наліпок</string>
     <string name="DisableChannelMuteButton">Приховати нижню панель у каналах</string>
     <string name="DisablePreviewVideoSoundShortcut">Вимкнути вмикання звуку відео кнопками гучності</string>
-    <string name="DisablePreviewVideoSoundShortcutNotice">\nНе вмикати звук у прев\'ю відео кнопкою гучності.</string>
-    <string name="DisableAutoWebLogin">Вимкнути автоматичний вхід під час переходу до веб-версії</string>
+    <string name="DisablePreviewVideoSoundShortcutNotice">Не вмикати звук у прев\'ю відео кнопкою гучності.</string>
     <string name="PreviewSendPhoto">Надіслати фото</string>
     <string name="PreviewSendVideo">Надіслати відео</string>
     <string name="PreviewSendFile">Надіслати файл</string>
@@ -111,5 +103,5 @@
     <string name="VideoPlayerDecoder">Декодер відео</string>
     <string name="VideoPlayerDecoderPreferSW">Перевага програмному</string>
     <string name="VideoPlayerDecoderHardware">Тільки апаратне декодування</string>
-    <string name="VideoPlayerDecoderPreferHW">Перевага апаратному</string>
+    <string name="VideoPlayerDecoderPreferHW">Перевага HW</string>
 </resources>

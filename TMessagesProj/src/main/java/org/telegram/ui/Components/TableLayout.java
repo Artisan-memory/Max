@@ -4,15 +4,23 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.text.Layout;
 import android.util.Pair;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.customview.widget.ExploreByTouchHelper;
+
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.tgnet.TLRPC;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.tgnet.tl.TL_iv;
 import org.telegram.ui.ArticleViewer;
 import org.telegram.ui.Cells.TextSelectionHelper;
@@ -34,6 +42,7 @@ import static android.view.Gravity.RELATIVE_LAYOUT_DIRECTION;
 import static android.view.Gravity.VERTICAL_GRAVITY_MASK;
 import static android.view.View.MeasureSpec.EXACTLY;
 import static android.view.View.MeasureSpec.makeMeasureSpec;
+import static org.telegram.messenger.AndroidUtilities.dp;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
@@ -66,13 +75,13 @@ public class TableLayout extends View {
     private int mAlignmentMode = DEFAULT_ALIGNMENT_MODE;
     private int mDefaultGap;
     private int mLastLayoutParamsHashCode = UNINITIALIZED_HASH;
-    private int itemPaddingTop = AndroidUtilities.dp(7);
-    private int itemPaddingLeft = AndroidUtilities.dp(8);
+    private int itemPaddingTop = dp(7);
+    private int itemPaddingLeft = dp(8);
     private boolean drawLines;
     private boolean isStriped;
     private boolean isRtl;
     private ArrayList<Child> cellsToFixHeight = new ArrayList<>();
-    private ArrayList<Point> rowSpans = new ArrayList<>();
+    private ArrayList<PointF> rowSpans = new ArrayList<>();
 
     private Path linePath = new Path();
     private Path backgroundPath = new Path();
@@ -86,7 +95,6 @@ public class TableLayout extends View {
         void setX(int x);
         void setY(int y);
         void setRow(int row);
-
         default CharSequence getText() {
             return getLayout() == null ? null : getLayout().getText();
         }
@@ -95,7 +103,7 @@ public class TableLayout extends View {
     public class Child {
         private LayoutParams layoutParams;
         public CellText textLayout;
-        private Object cell;
+        private TL_iv.pageTableCell cell;
         private int index;
 
         public int textWidth;
@@ -128,69 +136,6 @@ public class TableLayout extends View {
             return measuredHeight;
         }
 
-        private boolean cellValignMiddle() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).valign_middle;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).valign_middle;
-            }
-            return false;
-        }
-
-        private boolean cellValignBottom() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).valign_bottom;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).valign_bottom;
-            }
-            return false;
-        }
-
-        private boolean cellAlignCenter() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).align_center;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).align_center;
-            }
-            return false;
-        }
-
-        private boolean cellAlignRight() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).align_right;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).align_right;
-            }
-            return false;
-        }
-
-        private boolean cellHeader() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).header;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).header;
-            }
-            return false;
-        }
-
-        private int cellRowspan() {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return ((TLRPC.TL_pageTableCell) cell).rowspan;
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return ((TL_iv.pageTableCell) cell).rowspan;
-            }
-            return 0;
-        }
-
-        private CellText createTextLayoutForCell(int maxWidth) {
-            if (cell instanceof TLRPC.TL_pageTableCell) {
-                return delegate.createTextLayout((TLRPC.TL_pageTableCell) cell, maxWidth);
-            } else if (cell instanceof TL_iv.pageTableCell) {
-                return delegate.createTextLayout((TL_iv.pageTableCell) cell, maxWidth);
-            }
-            return null;
-        }
-
         public void measure(int width, int height, boolean first) {
             measuredWidth = width;
             measuredHeight = height;
@@ -198,27 +143,27 @@ public class TableLayout extends View {
                 fixedHeight = measuredHeight;
             }
             if (cell != null) {
-                if (cellValignMiddle()) {
+                if (cell.valign_middle) {
                     textY = (measuredHeight - textHeight) / 2;
-                } else if (cellValignBottom()) {
+                } else if (cell.valign_bottom) {
                     textY = measuredHeight - textHeight - itemPaddingTop;
                 } else {
                     textY = itemPaddingTop;
                 }
 
                 if (textLayout != null) {
-                    Layout layout = textLayout.getLayout();
-                    int lineCount = layout == null ? 0 : layout.getLineCount();
-                    if (!first && (lineCount > 1 || lineCount > 0 && (cellAlignCenter() || cellAlignRight()))) {
-                        setTextLayout(createTextLayoutForCell(measuredWidth - itemPaddingLeft * 2));
+                    final Layout layout = textLayout.getLayout();
+                    int lineCount = layout != null ? layout.getLineCount() : 0;
+                    if (!first && (lineCount > 1 || lineCount > 0 && (cell.align_center || cell.align_right))) {
+                        setTextLayout(delegate.createTextLayout(cell, measuredWidth - itemPaddingLeft * 2));
                         fixedHeight = textHeight + itemPaddingTop * 2;
                     }
 
                     if (textLeft != 0) {
                         textX = -textLeft;
-                        if (cellAlignRight()) {
+                        if (cell.align_right) {
                             textX += (measuredWidth - textWidth - itemPaddingLeft);
-                        } else if (cellAlignCenter()) {
+                        } else if (cell.align_center) {
                             textX += Math.round((measuredWidth - textWidth) / 2);
                         } else {
                             textX += itemPaddingLeft;
@@ -231,28 +176,9 @@ public class TableLayout extends View {
         }
 
         public void setTextLayout(CellText cellLayout) {
-            Layout layout = cellLayout == null ? null : cellLayout.getLayout();
             textLayout = cellLayout;
 
-            if (layout != null) {
-                textWidth = 0;
-                textLeft = 0;
-                for (int a = 0, N = layout.getLineCount(); a < N; a++) {
-                    float lineLeft = layout.getLineLeft(a);
-                    textLeft = a == 0 ? (int) Math.ceil(lineLeft) : Math.min(textLeft, (int) Math.ceil(lineLeft));
-                    textWidth = (int) Math.ceil(Math.max(layout.getLineWidth(a), textWidth));
-                }
-                textHeight = layout.getHeight();
-            } else {
-                textLeft = 0;
-                textWidth = 0;
-                textHeight = 0;
-            }
-        }
-
-        public void setTextLayout(ArticleViewer.DrawingText layout) {
-            textLayout = layout;
-
+            final Layout layout = cellLayout != null ? cellLayout.getLayout() : null;
             if (layout != null) {
                 textWidth = 0;
                 textLeft = 0;
@@ -284,22 +210,26 @@ public class TableLayout extends View {
 
         public void setFixedHeight(int value) {
             measuredHeight = fixedHeight;
-            if (cellValignMiddle()) {
+            if (cell.valign_middle) {
                 textY = (measuredHeight - textHeight) / 2;
-            } else if (cellValignBottom()) {
+            } else if (cell.valign_bottom) {
                 textY = measuredHeight - textHeight - itemPaddingTop;
             }
         }
 
         public void draw(Canvas canvas, View view) {
+            draw(canvas, view, true);
+        }
+
+        public void draw(Canvas canvas, View view, boolean drawText) {
             if (cell == null) {
                 return;
             }
 
             boolean isLastX = x + measuredWidth == TableLayout.this.getMeasuredWidth();
             boolean isLastY = y + measuredHeight == TableLayout.this.getMeasuredHeight();
-            int rad = AndroidUtilities.dp(3);
-            if (cellHeader() || isStriped && layoutParams.rowSpec.span.min % 2 == 0) {
+            int rad = dp(8);
+            if (cell.header || isStriped && layoutParams.rowSpec.span.min % 2 == 0) {
                 boolean hasCorners = false;
                 if (x == 0 && y == 0) {
                     radii[0] = radii[1] = rad;
@@ -329,23 +259,23 @@ public class TableLayout extends View {
                     rect.set(x, y, x + measuredWidth, y + measuredHeight);
                     backgroundPath.reset();
                     backgroundPath.addRoundRect(rect, radii, Path.Direction.CW);
-                    if (cellHeader()) {
+                    if (cell.header) {
                         canvas.drawPath(backgroundPath, delegate.getHeaderPaint());
                     } else {
                         canvas.drawPath(backgroundPath, delegate.getStripPaint());
                     }
                 } else {
-                    if (cellHeader()) {
+                    if (cell.header) {
                         canvas.drawRect(x, y, x + measuredWidth, y + measuredHeight, delegate.getHeaderPaint());
                     } else {
                         canvas.drawRect(x, y, x + measuredWidth, y + measuredHeight, delegate.getStripPaint());
                     }
                 }
             }
-            if (textLayout != null) {
+            if (drawText && textLayout != null) {
                 canvas.save();
                 canvas.translate(getTextX(), getTextY());
-                if (selectionIndex >= 0) {
+                if (selectionIndex >= 0 && textSelectionHelper != null) {
                     textSelectionHelper.draw(canvas, (TextSelectionHelper.ArticleSelectableView) getParent().getParent(), selectionIndex);
                 }
                 textLayout.draw(canvas, view);
@@ -429,10 +359,6 @@ public class TableLayout extends View {
             }
         }
 
-        public void draw(Canvas canvas, View view, boolean unused) {
-            draw(canvas, view);
-        }
-
         public void setSelectionIndex(int selectionIndex) {
             this.selectionIndex = selectionIndex;
         }
@@ -443,23 +369,12 @@ public class TableLayout extends View {
     }
 
     public interface TableLayoutDelegate {
-        default CellText createTextLayout(TLRPC.TL_pageTableCell cell, int maxWidth) {
-            return null;
-        }
-        default CellText createTextLayout(TL_iv.pageTableCell cell, int maxWidth) {
-            return null;
-        }
+        CellText createTextLayout(TL_iv.pageTableCell cell, int maxWidth);
         Paint getLinePaint();
         Paint getHalfLinePaint();
         Paint getHeaderPaint();
         Paint getStripPaint();
-        default void onLayoutChild(CellText text, int x, int y) {
-            if (text instanceof ArticleViewer.DrawingText) {
-                onLayoutChild((ArticleViewer.DrawingText) text, x, y);
-            }
-        }
-        default void onLayoutChild(ArticleViewer.DrawingText text, int x, int y) {
-        }
+        default void onLayoutChild(CellText text, int x, int y) {}
     }
 
     private TableLayoutDelegate delegate;
@@ -477,58 +392,22 @@ public class TableLayout extends View {
         invalidateStructure();
     }
 
-    public void addChild(TLRPC.TL_pageTableCell cell, int x, int y, int colspan) {
-        addChild(cell, x, y, colspan, cell == null ? 1 : cell.rowspan);
-    }
-
-    public void addChild(TLRPC.TL_pageTableCell cell, int x, int y, int colspan, int rowspan) {
-        if (cell == null) {
-            return;
-        }
-        if (colspan == 0) {
-            colspan = 1;
-        }
-        if (rowspan == 0) {
-            rowspan = 1;
-        }
-        Child child = new Child(childrens.size());
-        child.cell = cell;
-        LayoutParams layoutParams = new LayoutParams();
-        layoutParams.rowSpec = new Spec(false, new Interval(y, y + rowspan), FILL, 0.0f);
-        layoutParams.columnSpec = new Spec(false, new Interval(x, x + colspan), FILL, 1.0f);
-        child.layoutParams = layoutParams;
-        child.rowspan = y;
-        childrens.add(child);
-        if (rowspan > 1) {
-            rowSpans.add(new Point(y, y + rowspan));
-        }
-        invalidateStructure();
-    }
-
     public void addChild(TL_iv.pageTableCell cell, int x, int y, int colspan) {
-        addChild(cell, x, y, colspan, cell == null ? 1 : cell.rowspan);
-    }
-
-    public void addChild(TL_iv.pageTableCell cell, int x, int y, int colspan, int rowspan) {
-        if (cell == null) {
-            return;
-        }
         if (colspan == 0) {
             colspan = 1;
-        }
-        if (rowspan == 0) {
-            rowspan = 1;
         }
         Child child = new Child(childrens.size());
         child.cell = cell;
         LayoutParams layoutParams = new LayoutParams();
-        layoutParams.rowSpec = new Spec(false, new Interval(y, y + rowspan), FILL, 0.0f);
+        layoutParams.rowSpec = new Spec(false, new Interval(y, y + (cell.rowspan != 0 ? cell.rowspan : 1)), FILL, 0.0f);
         layoutParams.columnSpec = new Spec(false, new Interval(x, x + colspan), FILL, 1.0f);
         child.layoutParams = layoutParams;
         child.rowspan = y;
         childrens.add(child);
-        if (rowspan > 1) {
-            rowSpans.add(new Point(y, y + rowspan));
+        if (cell.rowspan > 1) {
+            float x1 = y;
+            float y1 = y + cell.rowspan;
+            rowSpans.add(new PointF(x1, y1));
         }
         invalidateStructure();
     }
@@ -562,7 +441,13 @@ public class TableLayout extends View {
         return childrens.get(index);
     }
 
-    public TableLayout(Context context, TableLayoutDelegate tableLayoutDelegate, TextSelectionHelper.ArticleTextSelectionHelper textSelectionHelper) {
+    private TableA11yHelper accessibilityHelper;
+
+    public TableLayout(
+        Context context,
+        TableLayoutDelegate tableLayoutDelegate,
+        TextSelectionHelper.ArticleTextSelectionHelper textSelectionHelper
+    ) {
         super(context);
         this.textSelectionHelper = textSelectionHelper;
         setRowCount(DEFAULT_COUNT);
@@ -573,6 +458,75 @@ public class TableLayout extends View {
         setRowOrderPreserved(DEFAULT_ORDER_PRESERVED);
         setColumnOrderPreserved(DEFAULT_ORDER_PRESERVED);
         delegate = tableLayoutDelegate;
+        accessibilityHelper = new TableA11yHelper(this);
+        ViewCompat.setAccessibilityDelegate(this, accessibilityHelper);
+    }
+
+    @Override
+    protected boolean dispatchHoverEvent(MotionEvent event) {
+        if (accessibilityHelper != null && accessibilityHelper.dispatchHoverEvent(event)) {
+            return true;
+        }
+        return super.dispatchHoverEvent(event);
+    }
+
+    private class TableA11yHelper extends ExploreByTouchHelper {
+
+        private final Rect tmpRect = new Rect();
+
+        TableA11yHelper(@NonNull View host) {
+            super(host);
+        }
+
+        @Override
+        protected int getVirtualViewAt(float x, float y) {
+            for (int i = 0, n = getChildCount(); i < n; i++) {
+                Child c = getChildAt(i);
+                if (c.measuredWidth <= 0 || c.measuredHeight <= 0) continue;
+                if (x >= c.x && x < c.x + c.measuredWidth && y >= c.y && y < c.y + c.measuredHeight) {
+                    return i;
+                }
+            }
+            return INVALID_ID;
+        }
+
+        @Override
+        protected void getVisibleVirtualViews(List<Integer> list) {
+            for (int i = 0, n = getChildCount(); i < n; i++) {
+                Child c = getChildAt(i);
+                if (c.measuredWidth <= 0 || c.measuredHeight <= 0) continue;
+                list.add(i);
+            }
+        }
+
+        @Override
+        protected void onPopulateNodeForVirtualView(int id, @NonNull AccessibilityNodeInfoCompat info) {
+            if (id < 0 || id >= getChildCount()) {
+                tmpRect.set(0, 0, 1, 1);
+                info.setBoundsInParent(tmpRect);
+                info.setVisibleToUser(false);
+                info.setContentDescription("");
+                return;
+            }
+            Child c = getChildAt(id);
+            tmpRect.set(c.x, c.y, c.x + c.measuredWidth, c.y + c.measuredHeight);
+            info.setBoundsInParent(tmpRect);
+            info.setClassName("android.widget.TextView");
+            info.setEnabled(true);
+            CharSequence text = c.textLayout != null ? c.textLayout.getText() : null;
+            if (text == null || text.length() == 0) {
+                text = " ";
+            }
+            info.setText(text);
+            if (c.cell != null && c.cell.header) {
+                info.setHeading(true);
+            }
+        }
+
+        @Override
+        protected boolean onPerformActionForVirtualView(int id, int action, android.os.Bundle args) {
+            return false;
+        }
     }
 
     public int getOrientation() {
@@ -899,7 +853,7 @@ public class TableLayout extends View {
                 } else {
                     maxCellWidth = (int) (width / 1.5f);
                 }
-                c.setTextLayout(c.createTextLayoutForCell(maxCellWidth));
+                c.setTextLayout(delegate.createTextLayout(c.cell, maxCellWidth));
                 if (c.textLayout != null) {
                     lp.width = c.textWidth + itemPaddingLeft * 2;
                     lp.height = c.textHeight + itemPaddingTop * 2;
@@ -1037,7 +991,7 @@ public class TableLayout extends View {
                 if (c.fixedHeight != 0 && c.fixedHeight != height && c.layoutParams.rowSpec.span.max - c.layoutParams.rowSpec.span.min <= 1) {
                     boolean found = false;
                     for (int a = 0, size = rowSpans.size(); a < size; a++) {
-                        Point p = rowSpans.get(a);
+                        PointF p = rowSpans.get(a);
                         if (p.x <= c.layoutParams.rowSpec.span.min && p.y > c.layoutParams.rowSpec.span.min) {
                             found = true;
                             break;

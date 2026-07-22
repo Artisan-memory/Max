@@ -41,8 +41,6 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 
-import tw.nekomimi.nekogram.utils.AlertUtil;
-
 public class FragmentUsernameBottomSheet {
 
     public static final int TYPE_USERNAME = 0;
@@ -160,7 +158,7 @@ public class FragmentUsernameBottomSheet {
         descriptionView.setText(messageSpanned);
         layout.addView(descriptionView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 0, 32, 19));
 
-        ButtonWithCounterView button = new ButtonWithCounterView(context, resourcesProvider);
+        ButtonWithCounterView button = new ButtonWithCounterView(context, resourcesProvider).setRound();
         button.setText(getString(R.string.FragmentUsernameOpen), false);
         button.setOnClickListener(v -> {
             Browser.openUrl(context, info.url);
@@ -168,7 +166,7 @@ public class FragmentUsernameBottomSheet {
         layout.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 6, 0, 6, 0));
 
         if (copy != null) {
-            ButtonWithCounterView button2 = new ButtonWithCounterView(context, false, resourcesProvider);
+            ButtonWithCounterView button2 = new ButtonWithCounterView(context, resourcesProvider).setRound().setNeutral();
             button2.setText(getString(type == TYPE_USERNAME ? R.string.FragmentUsernameCopy : R.string.FragmentPhoneCopy), false);
             button2.setOnClickListener(v -> {
                 copy.run();
@@ -181,7 +179,9 @@ public class FragmentUsernameBottomSheet {
                 ButtonWithCounterView button3 = new ButtonWithCounterView(context, false, resourcesProvider);
                 button3.setText(getString(R.string.Copy), false);
                 button3.setOnClickListener(v -> {
-                    AlertUtil.copyAndAlert("@" + name);
+                    if (AndroidUtilities.addToClipboard("@" + name)) {
+                        BulletinFactory.of(sheet.getContainer(), resourcesProvider).createCopyBulletin(getString(R.string.UsernameCopied)).show();
+                    }
                     sheet.dismiss();
                 });
                 layout.addView(button3, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 6, 6, 6, 0));

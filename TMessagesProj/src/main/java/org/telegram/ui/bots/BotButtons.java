@@ -230,7 +230,16 @@ public class BotButtons extends FrameLayout {
     public void setMainState(ButtonState newState, boolean animated) {
         final int wasHeight = getTotalHeight();
         this.state.main = newState;
-        setText(buttons[0].textDrawable, newState, animated);
+        buttons[0].textDrawable.cancelAnimation();
+        if (newState.emojiId != 0) {
+            SpannableStringBuilder ssb = new SpannableStringBuilder();
+            ssb.append("* ");
+            ssb.append(newState.text);
+            ssb.setSpan(new AnimatedEmojiSpan(newState.emojiId, 1.4f, buttons[0].textDrawable.getPaint().getFontMetricsInt()), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            buttons[0].textDrawable.setText(ssb, animated);
+        } else {
+            buttons[0].textDrawable.setText(newState.text, animated);
+        }
         invalidate();
         if (wasHeight != getTotalHeight() && whenResized != null) {
             if (wasHeight < getTotalHeight()) {

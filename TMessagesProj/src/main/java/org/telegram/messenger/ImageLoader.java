@@ -19,6 +19,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.BitmapDrawable;
@@ -54,7 +55,6 @@ import org.telegram.ui.Cells.ChatMessageCell;
 import org.telegram.ui.Components.AnimatedFileDrawable;
 import org.telegram.ui.Components.BackgroundGradientDrawable;
 import org.telegram.ui.Components.MotionBackgroundDrawable;
-import org.telegram.ui.Components.Point;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.SlotsDrawable;
 import org.telegram.ui.Components.ThemePreviewDrawable;
@@ -113,18 +113,6 @@ public class ImageLoader {
     public static final int CACHE_TYPE_ENCRYPTED = 2;
 
     private static final boolean DEBUG_MODE = false;
-    private static final long INVALID_FILE_LOCATION_TTL = 5 * 60 * 1000L;
-    private static final long DECODE_STORM_WINDOW_MS = 2500L;
-    private static final int DECODE_STORM_MIN_COUNT = 24;
-    private static final int DECODE_STORM_MIN_SLOW_COUNT = 4;
-    private static final Object decodeStormLock = new Object();
-    private static final HashMap<String, DecodeStormBucket> decodeStormBuckets = new HashMap<>();
-    private static long decodeStormWindowStartedAt;
-    private static int decodeStormCount;
-    private static int decodeStormSlowCount;
-    private static long decodeStormTotalTime;
-    private static long decodeStormMaxTime;
-    private static String decodeStormMaxSample;
 
     private HashMap<String, Integer> bitmapUseCounts = new HashMap<>();
     private LruCache<BitmapDrawable> smallImagesMemCache;
@@ -146,7 +134,6 @@ public class ImageLoader {
     private DispatchQueue thumbGeneratingQueue = new DispatchQueue("thumbGeneratingQueue");
     private DispatchQueue imageLoadQueue = new DispatchQueue("imageLoadQueue");
     private HashMap<String, String> replacedBitmaps = new HashMap<>();
-    private HashMap<String, Long> invalidFileLocations = new HashMap<>();
     private ConcurrentHashMap<String, long[]> fileProgresses = new ConcurrentHashMap<>();
     private HashMap<String, ThumbGenerateTask> thumbGenerateTasks = new HashMap<>();
     private HashMap<String, Integer> forceLoadingImages = new HashMap<>();
@@ -154,7 +141,6 @@ public class ImageLoader {
     private static ThreadLocal<byte[]> bytesThumbLocal = new ThreadLocal<>();
     private static byte[] header = new byte[12];
     private static byte[] headerThumb = new byte[12];
-    private static final ConcurrentHashMap<String, Boolean> failedMediaStoreThumbnails = new ConcurrentHashMap<>();
     private int currentHttpTasksCount = 0;
     private int currentArtworkTasksCount = 0;
     private boolean canForce8888;
@@ -874,29 +860,9 @@ public class ImageLoader {
 
         private CacheImage cacheImage;
         private boolean isCancelled;
-        private long decodeStartedAt;
 
         public CacheOutTask(CacheImage image) {
             cacheImage = image;
-        }
-
-        private boolean isCancelledOrOrphaned() {
-            synchronized (sync) {
-                if (isCancelled) {
-                    return true;
-                }
-            }
-            return cacheImage.imageReceiverArray.isEmpty() && !forceLoadingImages.containsKey(cacheImage.key);
-        }
-
-        private void recycleDecodedDrawable(Drawable drawable) {
-            if (drawable instanceof AnimatedFileDrawable) {
-                ((AnimatedFileDrawable) drawable).recycle();
-            } else if (drawable instanceof RLottieDrawable) {
-                ((RLottieDrawable) drawable).recycle(false);
-            } else if (drawable instanceof BitmapDrawable) {
-                AndroidUtilities.recycleBitmap(((BitmapDrawable) drawable).getBitmap());
-            }
         }
 
         @Override
@@ -907,10 +873,6 @@ public class ImageLoader {
                 if (isCancelled) {
                     return;
                 }
-            }
-            decodeStartedAt = SystemClock.elapsedRealtime();
-            if (isCancelledOrOrphaned()) {
-                return;
             }
 
             if (cacheImage.imageLocation.photoSize instanceof TLRPC.TL_photoStrippedSize) {
@@ -1375,8 +1337,10 @@ public class ImageLoader {
                 if (cacheImage.type == ImageReceiver.TYPE_THUMB) {
                     try {
                         lastCacheOutTime = SystemClock.elapsedRealtime();
-                        if (isCancelledOrOrphaned()) {
-                            return;
+                        synchronized (sync) {
+                            if (isCancelled) {
+                                return;
+                            }
                         }
 
                         if (opts.inPurgeable || secureDocumentKey != null) {
@@ -1483,8 +1447,10 @@ public class ImageLoader {
                             Thread.sleep(delay);
                         }
                         lastCacheOutTime = SystemClock.elapsedRealtime();
-                        if (isCancelledOrOrphaned()) {
-                            return;
+                        synchronized (sync) {
+                            if (isCancelled) {
+                                return;
+                            }
                         }
 
                         if (force8888 || cacheImage.filter == null || blurType != 0 || cacheImage.imageLocation.path != null) {
@@ -1501,10 +1467,10 @@ public class ImageLoader {
                                     image = fileDrawable.getFrameAtTime(0, true);
                                     fileDrawable.recycle();
                                 } else {
-                                    image = loadMediaStoreThumbnail(mediaId, true, opts);
+                                    image = MediaStore.Video.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Video.Thumbnails.MINI_KIND, opts);
                                 }
                             } else {
-                                image = loadMediaStoreThumbnail(mediaId, false, opts);
+                                image = MediaStore.Images.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Images.Thumbnails.MINI_KIND, opts);
                             }
                         }
                         if (!mediaIsVideo && image == null) {
@@ -1732,40 +1698,7 @@ public class ImageLoader {
         }
 
         private void onPostExecute(final Drawable drawable) {
-            if (isCancelledOrOrphaned()) {
-                recycleDecodedDrawable(drawable);
-                return;
-            }
-            if (BuildVars.LOGS_ENABLED) {
-                long elapsed = decodeStartedAt == 0 ? 0 : SystemClock.elapsedRealtime() - decodeStartedAt;
-                int width = 0;
-                int height = 0;
-                if (drawable instanceof BitmapDrawable) {
-                    Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-                    if (bitmap != null) {
-                        width = bitmap.getWidth();
-                        height = bitmap.getHeight();
-                    }
-                }
-                recordDecodeStorm(cacheImage, elapsed, width, height);
-                // A slow decode is worth reporting always; a routine animation
-                // or lottie decode is not, and used to fire on every frame set.
-                if (elapsed > 24 || (BuildVars.LOGS_VERBOSE_IMAGES && (cacheImage.imageType == FileLoader.IMAGE_TYPE_ANIMATION || cacheImage.imageType == FileLoader.IMAGE_TYPE_LOTTIE))) {
-                    FileLog.w("NagramDiag image.decode time=" + elapsed +
-                            " key=" + cacheImage.key +
-                            " type=" + cacheImage.type +
-                            " imageType=" + cacheImage.imageType +
-                            " filter=" + cacheImage.filter +
-                            " file=" + cacheImage.finalFilePath +
-                            " size=" + width + "x" + height +
-                            " parent=" + getImageParentDiagnosticInfo(cacheImage.parentObject));
-                }
-            }
             AndroidUtilities.runOnUIThread(() -> {
-                if (isCancelledOrOrphaned()) {
-                    recycleDecodedDrawable(drawable);
-                    return;
-                }
                 // save deleted media from cache
                 if (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() && cacheImage.finalFilePath != null && cacheImage.parentObject instanceof MessageObject messageObject) {
                     if (messageObject.isAyuDeleted()) {
@@ -2116,33 +2049,11 @@ public class ImageLoader {
             if (key != null) {
                 imageLoadingByKeys.remove(key);
                 imageLoadingKeys.remove(cutFilter(key));
-                forceLoadingImages.remove(key);
             }
         }
     }
 
     private static volatile ImageLoader Instance = null;
-
-    private static Bitmap loadMediaStoreThumbnail(Long mediaId, boolean mediaIsVideo, BitmapFactory.Options opts) {
-        if (mediaId == null) {
-            return null;
-        }
-        String key = (mediaIsVideo ? "v" : "i") + mediaId;
-        if (failedMediaStoreThumbnails.containsKey(key)) {
-            return null;
-        }
-        try {
-            if (mediaIsVideo) {
-                return MediaStore.Video.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Video.Thumbnails.MINI_KIND, opts);
-            } else {
-                return MediaStore.Images.Thumbnails.getThumbnail(ApplicationLoader.applicationContext.getContentResolver(), mediaId, MediaStore.Images.Thumbnails.MINI_KIND, opts);
-            }
-        } catch (Throwable e) {
-            failedMediaStoreThumbnails.put(key, Boolean.TRUE);
-            FileLog.e(e, !(e instanceof FileNotFoundException));
-            return null;
-        }
-    }
 
     public static ImageLoader getInstance() {
         ImageLoader localInstance = Instance;
@@ -2169,8 +2080,8 @@ public class ImageLoader {
         }
         int cacheSize = DEBUG_MODE ? 1 : Math.min(maxSize, memoryClass / 7) * 1024 * 1024;
 
-        int commonCacheSize = DEBUG_MODE ? 1 : (int) (cacheSize * 0.6f);
-        int smallImagesCacheSize = DEBUG_MODE ? 1 : (cacheSize - commonCacheSize);
+        int commonCacheSize =  DEBUG_MODE ? 1 : (int) (cacheSize * 0.8f);
+        int smallImagesCacheSize =   DEBUG_MODE ? 1 : (int) (cacheSize * 0.2f);
 
         memCache = new LruCache<BitmapDrawable>(commonCacheSize) {
             @Override
@@ -3087,180 +2998,6 @@ public class ImageLoader {
         imageLoadQueue.postRunnable(() -> forceLoadingImages.remove(key));
     }
 
-    private static class DecodeStormBucket {
-        int count;
-        int slowCount;
-        long totalTime;
-        long maxTime;
-        String sample;
-    }
-
-    private static void recordDecodeStorm(CacheImage cacheImage, long elapsed, int width, int height) {
-        if (!BuildVars.LOGS_ENABLED || cacheImage == null) {
-            return;
-        }
-        long now = SystemClock.elapsedRealtime();
-        String parent = getImageParentDiagnosticInfo(cacheImage.parentObject);
-        String dir = getImageFileDir(cacheImage.finalFilePath);
-        String owner = getImageReceiverDiagnosticInfo(cacheImage);
-        String key = "filter=" + cacheImage.filter +
-                " imageType=" + cacheImage.imageType +
-                " type=" + cacheImage.type +
-                " parent=" + parent +
-                " dir=" + dir;
-        String sample = "time=" + elapsed +
-                " key=" + cacheImage.key +
-                " filter=" + cacheImage.filter +
-                " imageType=" + cacheImage.imageType +
-                " type=" + cacheImage.type +
-                " file=" + cacheImage.finalFilePath +
-                " size=" + width + "x" + height +
-                " parent=" + parent +
-                " owner={" + owner + "}";
-        synchronized (decodeStormLock) {
-            if (decodeStormWindowStartedAt == 0) {
-                decodeStormWindowStartedAt = now;
-            }
-            if (now - decodeStormWindowStartedAt > DECODE_STORM_WINDOW_MS) {
-                flushDecodeStormLocked(now);
-            }
-            decodeStormCount++;
-            decodeStormTotalTime += elapsed;
-            if (elapsed >= 50) {
-                decodeStormSlowCount++;
-            }
-            if (elapsed > decodeStormMaxTime) {
-                decodeStormMaxTime = elapsed;
-                decodeStormMaxSample = sample;
-            }
-            DecodeStormBucket bucket = decodeStormBuckets.get(key);
-            if (bucket == null) {
-                bucket = new DecodeStormBucket();
-                decodeStormBuckets.put(key, bucket);
-            }
-            bucket.count++;
-            bucket.totalTime += elapsed;
-            if (elapsed >= 50) {
-                bucket.slowCount++;
-            }
-            if (elapsed > bucket.maxTime) {
-                bucket.maxTime = elapsed;
-                bucket.sample = sample;
-            }
-        }
-    }
-
-    private static void flushDecodeStormLocked(long now) {
-        if (decodeStormCount >= DECODE_STORM_MIN_COUNT || decodeStormSlowCount >= DECODE_STORM_MIN_SLOW_COUNT) {
-            ArrayList<Map.Entry<String, DecodeStormBucket>> entries = new ArrayList<>(decodeStormBuckets.entrySet());
-            entries.sort((o1, o2) -> {
-                DecodeStormBucket b1 = o1.getValue();
-                DecodeStormBucket b2 = o2.getValue();
-                int score1 = b1.count * 100 + b1.slowCount * 500 + (int) Math.min(499, b1.maxTime);
-                int score2 = b2.count * 100 + b2.slowCount * 500 + (int) Math.min(499, b2.maxTime);
-                return score2 - score1;
-            });
-            StringBuilder builder = new StringBuilder();
-            int limit = Math.min(5, entries.size());
-            for (int i = 0; i < limit; i++) {
-                Map.Entry<String, DecodeStormBucket> entry = entries.get(i);
-                DecodeStormBucket bucket = entry.getValue();
-                if (i > 0) {
-                    builder.append(" | ");
-                }
-                builder.append("#").append(i + 1)
-                        .append(" count=").append(bucket.count)
-                        .append(" slow=").append(bucket.slowCount)
-                        .append(" avg=").append(bucket.count == 0 ? 0 : bucket.totalTime / bucket.count)
-                        .append(" max=").append(bucket.maxTime)
-                        .append(" ").append(entry.getKey())
-                        .append(" sample={").append(bucket.sample).append("}");
-            }
-            FileLog.w("NagramDiag image.decode_storm window=" + (now - decodeStormWindowStartedAt) +
-                    " count=" + decodeStormCount +
-                    " slow=" + decodeStormSlowCount +
-                    " avg=" + (decodeStormCount == 0 ? 0 : decodeStormTotalTime / decodeStormCount) +
-                    " max=" + decodeStormMaxTime +
-                    " maxSample={" + decodeStormMaxSample + "}" +
-                    " top=[" + builder + "]");
-        }
-        decodeStormWindowStartedAt = now;
-        decodeStormCount = 0;
-        decodeStormSlowCount = 0;
-        decodeStormTotalTime = 0;
-        decodeStormMaxTime = 0;
-        decodeStormMaxSample = null;
-        decodeStormBuckets.clear();
-    }
-
-    private static String getImageFileDir(File file) {
-        if (file == null || file.getParentFile() == null) {
-            return "null";
-        }
-        File parent = file.getParentFile();
-        File grandParent = parent.getParentFile();
-        if (grandParent == null) {
-            return parent.getName();
-        }
-        return grandParent.getName() + "/" + parent.getName();
-    }
-
-    private static String getImageReceiverDiagnosticInfo(CacheImage cacheImage) {
-        try {
-            if (cacheImage.imageReceiverArray == null || cacheImage.imageReceiverArray.isEmpty()) {
-                return "receivers=0";
-            }
-            ImageReceiver receiver = cacheImage.imageReceiverArray.get(0);
-            return "receivers=" + cacheImage.imageReceiverArray.size() + " " + (receiver != null ? receiver.getDiagnosticInfo() : "first=null");
-        } catch (Throwable e) {
-            return "diagnostic_error=" + e.getClass().getSimpleName();
-        }
-    }
-
-    private static String getImageParentDiagnosticInfo(Object parentObject) {
-        try {
-            if (parentObject instanceof MessageObject) {
-                MessageObject messageObject = (MessageObject) parentObject;
-                return "message dialog=" + messageObject.getDialogId() + " id=" + messageObject.getId() + " type=" + messageObject.type;
-            } else if (parentObject instanceof TLRPC.Message) {
-                TLRPC.Message message = (TLRPC.Message) parentObject;
-                return "tlMessage dialog=" + message.dialog_id + " id=" + message.id;
-            } else if (parentObject instanceof TLRPC.User) {
-                return "user " + ((TLRPC.User) parentObject).id;
-            } else if (parentObject instanceof TLRPC.Chat) {
-                return "chat " + ((TLRPC.Chat) parentObject).id;
-            } else if (parentObject != null) {
-                return parentObject.getClass().getSimpleName();
-            }
-        } catch (Throwable e) {
-            return "diagnostic_error=" + e.getClass().getSimpleName();
-        }
-        return "null";
-    }
-
-    private static String getImageLocationDiagnosticInfo(ImageLocation imageLocation) {
-        try {
-            if (imageLocation == null) {
-                return "null";
-            } else if (imageLocation.document != null) {
-                return "document id=" + imageLocation.document.id + " dc=" + imageLocation.document.dc_id + " mime=" + imageLocation.document.mime_type;
-            } else if (imageLocation.photo != null) {
-                return "photo id=" + imageLocation.photo.id + " dc=" + imageLocation.dc_id + " thumb=" + imageLocation.thumbSize;
-            } else if (imageLocation.photoPeer != null) {
-                return "peerPhoto did=" + DialogObject.getPeerDialogId(imageLocation.photoPeer) + " photo=" + imageLocation.photoId + " type=" + imageLocation.photoPeerType;
-            } else if (imageLocation.webFile != null) {
-                return "webFile size=" + imageLocation.webFile.size;
-            } else if (imageLocation.path != null) {
-                return "path " + imageLocation.path;
-            } else if (imageLocation.location != null) {
-                return "fileLocation dc=" + imageLocation.location.dc_id + " volume=" + imageLocation.location.volume_id + " local=" + imageLocation.location.local_id;
-            }
-            return imageLocation.getClass().getSimpleName();
-        } catch (Throwable e) {
-            return "diagnostic_error=" + e.getClass().getSimpleName();
-        }
-    }
-
     private void createLoadOperationForImageReceiver(final ImageReceiver imageReceiver, final String key, final String url, final String ext, final ImageLocation imageLocation, final String filter, final long size, final int cacheType, final int type, final int thumb, int guid) {
         if (imageReceiver == null || url == null || key == null || imageLocation == null) {
             return;
@@ -3535,60 +3272,12 @@ public class ImageLoader {
                     if (imageLocation.imageType != 0) {
                         img.imageType = imageLocation.imageType;
                     }
-                    boolean cacheFileOnDisk = cacheFile != null && cacheFile.exists();
-                    if (!cacheFileExists && !cacheFileOnDisk) {
-                        Long invalidUntil = invalidFileLocations.get(url);
-                        if (invalidUntil != null) {
-                            long now = SystemClock.elapsedRealtime();
-                            if (invalidUntil > now) {
-                                if (BuildVars.LOGS_ENABLED) {
-                                    FileLog.w("NagramDiag image.skip_invalid key=" + key +
-                                            " url=" + url +
-                                            " remaining=" + (invalidUntil - now) +
-                                            " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
-                                            " parent=" + getImageParentDiagnosticInfo(parentObject));
-                                }
-                                return;
-                            } else {
-                                invalidFileLocations.remove(url);
-                            }
-                        }
-                    }
-                    if (BuildVars.LOGS_VERBOSE_IMAGES) {
-                        FileLog.d("NagramDiag image.request key=" + key +
-                                " url=" + url +
-                                " type=" + type +
-                                " thumb=" + thumb +
-                                " cacheType=" + cacheType +
-                                " filter=" + filter +
-                                " imageType=" + img.imageType +
-                                " onlyCache=" + onlyCache +
-                                " cacheExists=" + (cacheFileExists || cacheFileOnDisk) +
-                                " priority=" + img.priority +
-                                " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
-                                " parent=" + getImageParentDiagnosticInfo(parentObject));
-                        if (!cacheFileExists && !cacheFileOnDisk || img.imageType == FileLoader.IMAGE_TYPE_ANIMATION || img.imageType == FileLoader.IMAGE_TYPE_LOTTIE) {
-                            FileLog.w("NagramDiag image.enqueue key=" + key +
-                                    " url=" + url +
-                                    " type=" + type +
-                                    " filter=" + filter +
-                                    " imageType=" + img.imageType +
-                                    " onlyCache=" + onlyCache +
-                                    " cacheExists=" + (cacheFileExists || cacheFileOnDisk) +
-                                    " priority=" + img.priority +
-                                    " loc=" + getImageLocationDiagnosticInfo(imageLocation) +
-                                    " parent=" + getImageParentDiagnosticInfo(parentObject));
-                        }
-                    }
                     if (cacheType == 2) {
                         img.encryptionKeyPath = new File(FileLoader.getInternalCacheDir(), url + ".enc.key");
                     }
                     img.addImageReceiver(imageReceiver, key, filter, type, guid);
-                    if (imageReceiver.isForceLoding()) {
-                        forceLoadingImages.put(img.key, 0);
-                    }
 
-                    if (onlyCache || cacheFileExists || cacheFileOnDisk) {
+                    if (onlyCache || cacheFileExists || cacheFile.exists()) {
                         img.finalFilePath = cacheFile;
                         img.imageLocation = imageLocation;
                         img.cacheTask = new CacheOutTask(img);
@@ -3635,6 +3324,9 @@ public class ImageLoader {
                                 FileLoader.getInstance(currentAccount).loadFile(imageLocation.secureDocument, loadingPriority);
                             } else if (imageLocation.webFile != null) {
                                 FileLoader.getInstance(currentAccount).loadFile(imageLocation.webFile, loadingPriority, cacheType);
+                            }
+                            if (imageReceiver.isForceLoding()) {
+                                forceLoadingImages.put(img.key, 0);
                             }
                         }
                     }
@@ -4062,7 +3754,6 @@ public class ImageLoader {
 
     private void fileDidLoaded(final String location, final File finalFile, final int mediaType) {
         imageLoadQueue.postRunnable(() -> {
-            invalidFileLocations.remove(location);
             ThumbGenerateInfo info = waitingForQualityThumb.get(location);
             if (info != null && info.parentDocument != null) {
                 generateThumb(mediaType, finalFile, info);
@@ -4121,12 +3812,6 @@ public class ImageLoader {
             return;
         }
         imageLoadQueue.postRunnable(() -> {
-            if (canceled == 3) {
-                invalidFileLocations.put(location, SystemClock.elapsedRealtime() + INVALID_FILE_LOCATION_TTL);
-                if (BuildVars.LOGS_ENABLED) {
-                    FileLog.w("NagramDiag image.mark_invalid url=" + location + " ttl=" + INVALID_FILE_LOCATION_TTL);
-                }
-            }
             CacheImage img = imageLoadingByUrl.get(location);
             if (img != null) {
                 img.setImageAndClear(null, null);
@@ -4947,7 +4632,7 @@ public class ImageLoader {
             if (file.exists() && message.grouped_id == 0) {
                 int h = photoSize.h;
                 int w = photoSize.w;
-                Point point = ChatMessageCell.getMessageSize(w, h);
+                PointF point = ChatMessageCell.getMessageSize(w, h);
                 int targetWidth = (int) (point.x / AndroidUtilities.density);
                 int targetHeight = (int) (point.y / AndroidUtilities.density);
                 if (targetWidth <= 0 || targetHeight <= 0) {
@@ -4988,7 +4673,7 @@ public class ImageLoader {
                         }
                     }
 
-                    Point point = ChatMessageCell.getMessageSize(w, h);
+                    PointF point = ChatMessageCell.getMessageSize(w, h);
                     int targetWidth = (int) (point.x / AndroidUtilities.density);
                     int targetHeight = (int) (point.y / AndroidUtilities.density);
                     if (targetWidth <= 0 || targetHeight <= 0) {

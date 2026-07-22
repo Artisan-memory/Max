@@ -1,22 +1,29 @@
 package tw.nekomimi.nekogram.utils;
 
+import static android.view.Display.DEFAULT_DISPLAY;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.RequiresApi;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BotWebViewVibrationEffect;
+import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessageObject;
@@ -25,15 +32,19 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
-import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.LaunchActivity;
 
 import java.io.File;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -43,22 +54,6 @@ import tw.nekomimi.nekogram.helpers.MessageHelper;
 import xyz.nextalone.nagram.NaConfig;
 
 public class AndroidUtil {
-
-    public static int getNavBarColor(int color, boolean animated) {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R || animated) {
-            return color;
-        }
-        BaseFragment fragment = LaunchActivity.getLastFragment();
-        Theme.ResourcesProvider resourcesProvider = fragment != null ? fragment.getResourceProvider() : null;
-        return Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-    }
-
-    public static int getNavBarColor(int color, Theme.ResourcesProvider resourcesProvider) {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
-            return color;
-        }
-        return Theme.getColor(Theme.key_windowBackgroundWhite, resourcesProvider);
-    }
 
     public static long getDirectorySize(File file) {
         if (file == null || !file.exists()) {
@@ -193,6 +188,12 @@ public class AndroidUtil {
         sharedPreferences.edit().putBoolean("logsEnabled", BuildVars.LOGS_ENABLED).apply();
     }
 
+    @SuppressWarnings("ConstantValue")
+    public static String getVersionText() {
+        String versionName = "release".equals(BuildConfig.BUILD_TYPE) && !BuildVars.LOGS_ENABLED ? BuildConfig.VERSION_NAME.split("-")[0] : BuildConfig.VERSION_NAME;
+        return "Nagram X v" + versionName + "(" + BuildConfig.VERSION_CODE + ") " + Build.SUPPORTED_ABIS[0].toLowerCase(Locale.ROOT) + " " + BuildConfig.BUILD_TYPE + (BuildVars.LOGS_ENABLED ? " " + BuildConfig.BUILD_TIMESTAMP : "");
+    }
+
     /*<!-- Controls the navigation bar interaction mode:
          0: 3 button mode (back, home, overview buttons)
          1: 2 button mode (back, home buttons + swipe up for overview)
@@ -251,5 +252,49 @@ public class AndroidUtil {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    public static boolean isScreenHDR() {
+        try {
+            DisplayManager displayManager = (DisplayManager) ApplicationLoader.applicationContext.getSystemService(Context.DISPLAY_SERVICE);
+            Display display = (displayManager != null) ? displayManager.getDisplay(DEFAULT_DISPLAY) : null;
+            return display != null && display.isHdr();
+        } catch (Throwable ignore) {
+            return false;
+        }
+    }
+
+    @RequiresApi(34)
+    public static boolean hasGainmap(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return false;
+        }
+        return bitmap.hasGainmap();
+    }
+
+    public static boolean hasSameAssetContent(String assetName, File file) {
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+        try (InputStream assetStream = ApplicationLoader.applicationContext.getAssets().open(assetName);
+             InputStream fileStream = new FileInputStream(file)
+        ) {
+            return contentEquals(assetStream, fileStream);
+        } catch (Exception e) {
+            FileLog.e(e);
+            return false;
+        }
+    }
+
+    public static boolean contentEquals(InputStream first, InputStream second) throws IOException {
+        InputStream firstBuffered = first instanceof BufferedInputStream ? first : new BufferedInputStream(first);
+        InputStream secondBuffered = second instanceof BufferedInputStream ? second : new BufferedInputStream(second);
+        int firstByte;
+        while ((firstByte = firstBuffered.read()) != -1) {
+            if (firstByte != secondBuffered.read()) {
+                return false;
+            }
+        }
+        return secondBuffered.read() == -1;
     }
 }

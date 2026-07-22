@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 public class EntitiesHelper {
+
     private static final Pattern[] PATTERNS = new Pattern[]{
             Pattern.compile("^`{3}(.*?)[\\n\\r](.*?[\\n\\r]?)`{3}", Pattern.MULTILINE | Pattern.DOTALL), // pre
             Pattern.compile("^`{3}[\\n\\r]?(.*?)[\\n\\r]?`{3}", Pattern.MULTILINE | Pattern.DOTALL), // pre
@@ -25,12 +26,6 @@ public class EntitiesHelper {
             Pattern.compile("[~]{2}([^~\\n]+)[~]{2}"), // strike
             Pattern.compile("[|]{2}([^|\\n]+)[|]{2}"), // spoiler
             Pattern.compile("\\[([^]]+?)]\\(" + LinkifyPort.WEB_URL_REGEX + "\\)")}; // link
-
-    public static CharSequence parseMarkdown(CharSequence text) {
-        var message = new CharSequence[]{text};
-        parseMarkdown(message, true);
-        return message[0];
-    }
 
     public static void parseMarkdown(CharSequence[] message, boolean allowStrike) {
         var spannable = message[0] instanceof Spannable ? (Spannable) message[0] : Spannable.Factory.getInstance().newSpannable(message[0]);
@@ -108,5 +103,4 @@ public class EntitiesHelper {
         }
         message[0] = spannable;
     }
-
 }

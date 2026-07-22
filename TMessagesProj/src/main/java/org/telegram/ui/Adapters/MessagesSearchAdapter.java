@@ -232,6 +232,7 @@ public class MessagesSearchAdapter extends RecyclerListView.SelectionAdapter imp
         if (holder.getItemViewType() == 0) {
             DialogCell cell = (DialogCell) holder.itemView;
             cell.useSeparator = true;
+            cell.useFromUserAsAvatar = !isSavedMessages;
             MessageObject messageObject = (MessageObject) getItem(position);
             int date;
             long did;
@@ -471,7 +472,7 @@ public class MessagesSearchAdapter extends RecyclerListView.SelectionAdapter imp
             static { setup(new Factory()); }
 
             @Override
-            public StoriesView createView(Context context, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            public StoriesView createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
                 return new StoriesView(context, resourcesProvider);
             }
 

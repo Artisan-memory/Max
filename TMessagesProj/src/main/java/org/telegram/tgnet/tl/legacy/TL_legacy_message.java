@@ -248,7 +248,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer224 extends TLRPC.TL_message {
         public static final int constructor = 0x3AE56482;
 
@@ -478,7 +477,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer222 extends TLRPC.TL_message {
         public static final int constructor = 0x9cb490e9;
 
@@ -701,7 +699,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer220 extends TLRPC.TL_message {
         public static final int constructor = 0xb92f76cf;
 
@@ -918,7 +915,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer216 extends TLRPC.TL_message {
         public static final int constructor = 0x9815cec8;
 
@@ -1129,7 +1125,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer205 extends TLRPC.TL_message {
         public static final int constructor = 0xeabcdd4d;
 
@@ -1329,7 +1324,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer199 extends TLRPC.TL_message {
         public static final int constructor = 0x96fdbbe9;
 
@@ -1523,7 +1517,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer195 extends TLRPC.TL_message {
         public static final int constructor = 0x94345242;
 
@@ -1711,7 +1704,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer180 extends TLRPC.TL_message {
         public static final int constructor = 0xbde09c2e;
 
@@ -1891,7 +1883,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer179 extends TLRPC.TL_message {
         public static final int constructor = 0x2357bf25;
 
@@ -2065,7 +2056,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer176 extends TLRPC.TL_message {
         public static final int constructor = 0xa66c7efc;
 
@@ -2229,7 +2219,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer175 extends TLRPC.TL_message {
         public static final int constructor = 0x1e4c8a69;
 
@@ -2387,7 +2376,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer173 extends TLRPC.TL_message {
         public static final int constructor = 0x76bec211;
 
@@ -2539,7 +2527,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer169 extends TLRPC.TL_message {
         public static final int constructor = 0x38116ee0;
 
@@ -2685,7 +2672,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer135 extends TLRPC.TL_message {
         public static final int constructor = 0x85d6cbe2;
 
@@ -2823,7 +2809,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer131 extends TLRPC.TL_message {
         public static final int constructor = 0xbce383d2;
 
@@ -2959,7 +2944,6 @@ public class TL_legacy_message {
             writeAttachPath(stream); //custom
         }
     }
-
     public static class TL_message_layer123 extends TLRPC.TL_message {
         public static final int constructor = 0x58ae39c9;
 
@@ -3089,7 +3073,6 @@ public class TL_legacy_message {
             writeAttachPath(stream);
         }
     }
-
     public static class TL_message_layer118 extends TLRPC.TL_message {
         public static final int constructor = 0xf52e6b7f;
 

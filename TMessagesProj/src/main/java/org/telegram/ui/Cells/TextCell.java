@@ -31,7 +31,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.tgnet.TLRPC;
@@ -39,13 +38,13 @@ import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedTextView;
-import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.Switch;
 import org.telegram.ui.FilterCreateActivity;
 import org.telegram.ui.PeerColorActivity;
+import org.telegram.ui.SettingsActivity;
 import org.telegram.ui.Stories.recorder.HintView2;
 
 public class TextCell extends FrameLayout {
@@ -216,9 +215,24 @@ public class TextCell extends FrameLayout {
 
     @Override
     public void setEnabled(boolean enabled) {
+        setEnabled(enabled, true);
+    }
+
+    public void setEnabled(boolean enabled, boolean animated) {
         super.setEnabled(enabled);
         if (checkBox != null) {
             checkBox.setEnabled(enabled);
+        }
+        if (animated) {
+            textView.animate().alpha(enabled ? 1.0f : 0.5f).start();
+            subtitleView.animate().alpha(enabled ? 1.0f : 0.5f).start();
+            valueTextView.animate().alpha(enabled ? 1.0f : 0.5f).start();
+            valueSpoilersTextView.animate().alpha(enabled ? 1.0f : 0.5f).start();
+        } else {
+            textView.setAlpha(enabled ? 1.0f : 0.5f);
+            subtitleView.setAlpha(enabled ? 1.0f : 0.5f);
+            valueTextView.setAlpha(enabled ? 1.0f : 0.5f);
+            valueSpoilersTextView.setAlpha(enabled ? 1.0f : 0.5f);
         }
     }
 
@@ -467,7 +481,7 @@ public class TextCell extends FrameLayout {
         valueTextView.setText(value == null ? "" : TextUtils.ellipsize(valueText = value, valueTextView.getPaint(), AndroidUtilities.displaySize.x / 2.5f, TextUtils.TruncateAt.END), animated);
     }
 
-    public void setTextAndValueAndColorfulIcon(String text, CharSequence value, boolean animated, int resId, int color, boolean divider) {
+    public void setTextAndValueAndColorfulIcon(String text, CharSequence value, boolean animated, int resId, int colorTop, int colorBottom, boolean divider) {
         imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
@@ -475,7 +489,7 @@ public class TextCell extends FrameLayout {
         valueTextView.setText(value == null ? "" : TextUtils.ellipsize(valueText = value, valueTextView.getPaint(), AndroidUtilities.displaySize.x / 2.5f, TextUtils.TruncateAt.END), animated);
         valueTextView.setVisibility(VISIBLE);
         valueSpoilersTextView.setVisibility(GONE);
-        setColorfulIcon(color, resId);
+        setColorfulIcon(colorTop, colorBottom, resId);
         valueImageView.setVisibility(GONE);
         needDivider = divider;
         setWillNotDraw(!needDivider);
@@ -603,13 +617,22 @@ public class TextCell extends FrameLayout {
     }
 
     public void setColorfulIcon(int color, int resId) {
+        setColorfulIcon(color, color, resId);
+    }
+
+    public void setColorfulIcon(int colorTop, int colorBottom, int resId) {
         offsetFromImage = getOffsetFromImage(true);
         imageView.setVisibility(VISIBLE);
         imageView.setPadding(dp(2), dp(2), dp(2), dp(2));
         imageView.setTranslationX(dp(LocaleController.isRTL ? 0 : -3));
         imageView.setImageResource(resId);
         imageView.setColorFilter(new PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN));
-        imageView.setBackground(Theme.createRoundRectDrawable(dp(9), color));
+
+        final boolean border = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+        SettingsActivity.SettingCell.Background drawable = new SettingsActivity.SettingCell.Background();
+        drawable.setColor(colorTop, colorBottom);
+        drawable.setDrawBorder(border);
+        imageView.setBackground(drawable);
     }
 
     public void setTextAndCheck(CharSequence text, boolean checked, boolean divider) {
@@ -859,43 +882,6 @@ public class TextCell extends FrameLayout {
         checkBox.setChecked(checked, true);
     }
 
-    public void showEnabledAlpha(boolean show) {
-        float alpha = show ? 0.5f : 1f;
-        if (attached) {
-            if (imageView != null) {
-                imageView.animate().alpha(alpha).start();
-            }
-            if (textView != null) {
-                textView.animate().alpha(alpha).start();
-            }
-            if (valueTextView != null) {
-                valueTextView.animate().alpha(alpha).start();
-            }
-            if (valueSpoilersTextView != null) {
-                valueSpoilersTextView.animate().alpha(alpha).start();
-            }
-            if (valueImageView != null) {
-                valueImageView.animate().alpha(alpha).start();
-            }
-        } else {
-            if (imageView != null) {
-                imageView.setAlpha(alpha);
-            }
-            if (textView != null) {
-                textView.setAlpha(alpha);
-            }
-            if (valueTextView != null) {
-                valueTextView.setAlpha(alpha);
-            }
-            if (valueSpoilersTextView != null) {
-                valueSpoilersTextView.setAlpha(alpha);
-            }
-            if (valueImageView != null) {
-                valueImageView.setAlpha(alpha);
-            }
-        }
-    }
-
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -982,8 +968,8 @@ public class TextCell extends FrameLayout {
             canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(3), dp(3), paint);
             invalidate();
         }
-        valueTextView.setAlpha((1f - drawLoadingProgress) * (emojiDrawable == null ? 1f : 1f - emojiDrawable.isNotEmpty()));
-        valueSpoilersTextView.setAlpha((1f - drawLoadingProgress) * (emojiDrawable == null ? 1f : 1f - emojiDrawable.isNotEmpty()));
+        valueTextView.setAlpha((1f - drawLoadingProgress) * (emojiDrawable == null ? 1f : 1f - emojiDrawable.isNotEmpty()) * (isEnabled() ? 1.0f : 0.5f));
+        valueSpoilersTextView.setAlpha((1f - drawLoadingProgress) * (emojiDrawable == null ? 1f : 1f - emojiDrawable.isNotEmpty()) * (isEnabled() ? 1.0f : 0.5f));
         super.dispatchDraw(canvas);
         if (emojiDrawable != null) {
             updateEmojiBounds();

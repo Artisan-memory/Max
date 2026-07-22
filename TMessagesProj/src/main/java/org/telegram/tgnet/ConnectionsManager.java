@@ -119,9 +119,6 @@ public class ConnectionsManager extends BaseController {
     private static long lastDnsRequestTime;
 
     public final static int DEFAULT_DATACENTER_ID = Integer.MAX_VALUE;
-    public final static int ErrorCodeRpcAnswerDroppedRunning = -2001;
-    private final static int API_RESPONSE_CONSTRUCTOR = 0x445663a7;
-    private final static int RPC_ANSWER_DROPPED_RUNNING_CONSTRUCTOR = 0xcd78e586;
 
     private long lastPauseTime = System.currentTimeMillis();
     private boolean appPaused = true;
@@ -387,7 +384,7 @@ public class ConnectionsManager extends BaseController {
         }
 
         // --- Ghost Mode ---
-        AyuGhostUtils.InterceptResult interceptResult = AyuGhostUtils.interceptRequest(currentAccount, object, onCompleteOrig);
+        AyuGhostUtils.InterceptResult interceptResult = AyuGhostUtils.interceptRequest(object, onCompleteOrig);
         if (interceptResult.blockRequest()) {
             FileLog.d("GhostMode: Request " + object.getClass().getSimpleName() + " blocked by handler.");
             return;
@@ -416,31 +413,14 @@ public class ConnectionsManager extends BaseController {
                         buff.reused = true;
                         responseSize = buff.limit();
                         int magic = buff.readInt32(true);
-                        if (magic == API_RESPONSE_CONSTRUCTOR && buff.position() < buff.limit()) {
-                            int innerMagic = buff.readInt32(true);
-                            if (BuildVars.LOGS_ENABLED) {
-                                FileLog.d("NagramDiag network.api_response_unwrap request=" + object + " token=" + requestToken + " outer=0x" + Integer.toHexString(magic) + " inner=0x" + Integer.toHexString(innerMagic) + " messageId=0x" + Long.toHexString(requestMsgId));
-                            }
-                            magic = innerMagic;
-                        }
                         try {
                             resp = object.deserializeResponse(buff, magic, true);
                         } catch (Exception e2) {
-                            if (isRpcAnswerDroppedRunningResponse(object, magic)) {
-                                error = new TLRPC.TL_error();
-                                error.code = ErrorCodeRpcAnswerDroppedRunning;
-                                error.text = "RPC_ANSWER_DROPPED_RUNNING";
-                                if (BuildVars.LOGS_ENABLED) {
-                                    FileLog.d("NagramDiag network.dropped_running request=" + object + " token=" + requestToken + " messageId=0x" + Long.toHexString(requestMsgId));
-                                }
-                                buff.position(buff.limit());
-                            } else {
-                                if (BuildVars.DEBUG_PRIVATE_VERSION) {
-                                    throw e2;
-                                }
-                                FileLog.fatal(e2);
-                                return;
+                            if (BuildVars.DEBUG_PRIVATE_VERSION) {
+                                throw e2;
                             }
+                            FileLog.fatal(e2);
+                            return;
                         }
                     } else if (errorText != null) {
                         error = new TLRPC.TL_error();
@@ -497,13 +477,6 @@ public class ConnectionsManager extends BaseController {
         } catch (Exception e) {
             FileLog.e(e);
         }
-    }
-
-    private static boolean isRpcAnswerDroppedRunningResponse(TLObject object, int constructor) {
-        return constructor == RPC_ANSWER_DROPPED_RUNNING_CONSTRUCTOR
-                && (object instanceof TLRPC.TL_upload_getFile
-                || object instanceof TLRPC.TL_upload_getWebFile
-                || object instanceof TLRPC.TL_upload_getCdnFile);
     }
 
     private final ConcurrentHashMap<Integer, RequestCallbacks> requestCallbacks = new ConcurrentHashMap<>();
@@ -735,7 +708,7 @@ public class ConnectionsManager extends BaseController {
 
     public void switchBackend(boolean restart) {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        preferences.edit().remove("language_showed2").commit();
+        preferences.edit().remove("language_showed3").commit();
         native_switchBackend(currentAccount, restart);
     }
 
@@ -778,17 +751,23 @@ public class ConnectionsManager extends BaseController {
         return native_checkProxy(currentAccount, address, port, username, password, secret, requestTimeDelegate);
     }
 
-    public synchronized void setAppPaused(final boolean value, final boolean byScreenState) {
+    public void setAppPaused(final boolean value, final boolean byScreenState) {
         if (!byScreenState) {
             appPaused = value;
+            if (BuildVars.LOGS_ENABLED) {
+                FileLog.d("app paused = " + value);
+            }
             if (value) {
-                appResumeCount = Math.max(0, appResumeCount - 1);
+                appResumeCount--;
             } else {
                 appResumeCount++;
             }
-        }
-        if (BuildVars.LOGS_ENABLED) {
-            FileLog.d("connection lifecycle account=" + currentAccount + " source=" + (byScreenState ? "screen" : "holder") + " paused=" + value + " holders=" + appResumeCount + " action=" + (appResumeCount == 0 ? "pause" : appPaused ? "keep" : "resume"));
+            if (BuildVars.LOGS_ENABLED) {
+                FileLog.d("app resume count " + appResumeCount);
+            }
+            if (appResumeCount < 0) {
+                appResumeCount = 0;
+            }
         }
         if (appResumeCount == 0) {
             if (lastPauseTime == 0) {
@@ -798,6 +777,9 @@ public class ConnectionsManager extends BaseController {
         } else {
             if (appPaused) {
                 return;
+            }
+            if (BuildVars.LOGS_ENABLED) {
+                FileLog.d("reset app pause time");
             }
             if (lastPauseTime != 0 && System.currentTimeMillis() - lastPauseTime > 5000) {
                 getContactsController().checkContacts();

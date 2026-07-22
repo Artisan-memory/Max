@@ -5,16 +5,22 @@ import static org.telegram.messenger.LocaleController.getString;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.util.Pair;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -39,6 +45,8 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenu;
+import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.Theme;
@@ -58,11 +66,13 @@ import java.util.Objects;
 
 import kotlin.Unit;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
+import tw.nekomimi.nekogram.llm.LlmConfig;
 import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.ui.MessageDetailsActivity;
-import xyz.nextalone.nagram.NaConfig;
+import tw.nekomimi.nekogram.ui.NekoDelegateFragment;
+import tw.nekomimi.nekogram.ui.cells.NekoMessageCell;
 
-public class AyuMessageHistory extends AyuMessageDelegateFragment {
+public class AyuMessageHistory extends NekoDelegateFragment {
     private static final int OPTION_DELETE = 1;
     private static final int OPTION_COPY = 2;
     private static final int OPTION_COPY_PHOTO = 3;
@@ -76,9 +86,14 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
     private final ArrayList<MessageObject> messageObjects = new ArrayList<>();
     private int rowCount;
     private RecyclerListView listView;
+    private TextView emptyView;
+    private Runnable showEmptyViewRunnable;
     private ActionBarPopupWindow scrimPopupWindow;
     private final WindowInsetsStateHolder windowInsetsStateHolder = new WindowInsetsStateHolder(this::checkInsets);
     private String[] cachedAttachmentFileNames;
+    private ActionBarMenuItem searchItem;
+    private String searchQuery = "";
+    private final ArrayList<EditedMessage> filteredMessages = new ArrayList<>();
 
     public AyuMessageHistory(MessageObject messageObject) {
         this.messageObject = messageObject;
@@ -87,15 +102,17 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
     private void checkInsets() {
         if (listView != null) {
-            listView.setPadding(0, 0, 0, windowInsetsStateHolder.getCurrentNavigationBarInset() + dp(8));
+            applyMessageListNavigationBarInset(listView, windowInsetsStateHolder.getCurrentNavigationBarInset());
         }
     }
 
     private void updateHistory() {
         messages = AyuMessagesController.getInstance().getRevisions(getUserConfig().clientUserId, messageObject.messageOwner.dialog_id, messageObject.messageOwner.id);
-        rowCount = messages.size();
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
         cacheAttachmentFileNames();
-        rebuildMessageObjects();
+        applySearchFilter();
     }
 
     private void cacheAttachmentFileNames() {
@@ -109,8 +126,8 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
     @Override
     public View createView(Context context) {
-        var firstMsg = messages.get(0);
-        var peer = getMessagesController().getUserOrChat(firstMsg.dialogId);
+        long dialogId = messageObject.messageOwner.dialog_id;
+        var peer = getMessagesController().getUserOrChat(dialogId);
         int currentAccount = UserConfig.selectedAccount;
 
         String name = switch (peer) {
@@ -123,7 +140,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(name);
-        actionBar.setSubtitle(String.valueOf(firstMsg.messageId));
+        actionBar.setSubtitle(String.valueOf(messageObject.getId()));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -133,7 +150,40 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
             }
         });
 
-        SizeNotifierFrameLayout frameLayout = new SizeNotifierFrameLayout(context) {
+        ActionBarMenu menu = actionBar.createMenu();
+        searchItem = menu.addItem(0, R.drawable.outline_header_search).setIsSearchField(true);
+        searchItem.setSearchPaddingStart(12);
+        searchItem.setSearchFieldHint(getString(R.string.Search));
+        searchItem.setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
+            @Override
+            public void onSearchExpand() {
+                searchItem.getSearchField().setText(searchQuery);
+                searchItem.getSearchField().setSelection(searchItem.getSearchField().length());
+            }
+
+            @Override
+            public void onSearchCollapse() {
+                searchQuery = "";
+                applySearchFilter();
+            }
+
+            @Override
+            public void onTextChanged(EditText editText) {
+                String newQuery = editText.getText().toString();
+                if (!TextUtils.equals(searchQuery, newQuery)) {
+                    searchQuery = newQuery;
+                    applySearchFilter();
+                }
+            }
+
+            @Override
+            public void onSearchPressed(EditText editText) {
+                searchQuery = editText.getText().toString();
+                applySearchFilter();
+            }
+        });
+
+        SizeNotifierFrameLayout frameLayout = new ScrimFrameLayout(context) {
             @Override
             protected boolean isActionBarVisible() {
                 return false;
@@ -159,36 +209,102 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         });
 
         listView = new RecyclerListView(context);
-        listView.setItemAnimator(null);
         listView.setLayoutAnimation(null);
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false) {
-            @Override
-            public boolean supportsPredictiveItemAnimations() {
-                return false;
-            }
-        };
+        LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false);
         layoutManager.setStackFromEnd(true);
 
         listView.setLayoutManager(layoutManager);
         listView.setVerticalScrollBarEnabled(true);
         listView.setAdapter(new ListAdapter(context, currentAccount));
+        setupMessageListItemAnimator(listView);
         listView.setSelectorType(9);
         listView.setSelectorDrawableColor(0);
-        listView.setClipToPadding(false);
-        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        applyGlassMessageListPadding(listView, 0);
+        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
         if (rowCount > 0) {
             listView.scrollToPosition(rowCount - 1);
         }
 
         listView.setOnItemClickListener((view, position, x, y) -> {
-            if (view instanceof AyuMessageCell) {
+            if (view instanceof NekoMessageCell) {
                 createMenu(view, x, y, position);
             }
         });
 
+        emptyView = new AppCompatTextView(context) {
+            @Override
+            protected void onDraw(Canvas canvas) {
+                Theme.applyServiceShaderMatrix(getMeasuredWidth(), frameLayout.getBackgroundSizeY(), getX(), getY());
+                Paint backgroundPaint = getThemedPaint(Theme.key_paint_chatActionBackground);
+                AndroidUtilities.rectTmp.set(0, 0, getWidth(), getHeight());
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(30), dp(30), backgroundPaint);
+                if (Theme.hasGradientService()) {
+                    canvas.drawRoundRect(AndroidUtilities.rectTmp, dp(30), dp(30), Theme.getThemePaint(Theme.key_paint_chatActionBackgroundDarken, getResourceProvider()));
+                }
+                super.onDraw(canvas);
+            }
+        };
+        emptyView.setText(getString(R.string.NoMessages));
+        emptyView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        emptyView.setTypeface(AndroidUtilities.bold());
+        emptyView.setTextColor(Theme.getColor(Theme.key_chat_serviceText, getResourceProvider()));
+        emptyView.setGravity(Gravity.CENTER);
+        emptyView.setVisibility(View.GONE);
+        emptyView.setPadding(dp(20), dp(4), dp(20), dp(6));
+        frameLayout.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+
+        updateEmptyView();
+
+        setupGlassActionBar(frameLayout, listView);
+
         return fragmentView;
+    }
+
+    private void applySearchFilter() {
+        filteredMessages.clear();
+        if (TextUtils.isEmpty(searchQuery)) {
+            filteredMessages.addAll(messages);
+        } else {
+            String q = searchQuery.toLowerCase();
+            for (EditedMessage edited : messages) {
+                if (edited == null) {
+                    continue;
+                }
+                if (!TextUtils.isEmpty(edited.text) && edited.text.toLowerCase().contains(q)) {
+                    filteredMessages.add(edited);
+                    continue;
+                }
+                if (edited.mediaPath != null && edited.mediaPath.toLowerCase().contains(q)) {
+                    filteredMessages.add(edited);
+                    continue;
+                }
+                if (edited.fwdName != null && edited.fwdName.toLowerCase().contains(q)) {
+                    filteredMessages.add(edited);
+                }
+            }
+        }
+        rowCount = filteredMessages.size();
+        rebuildMessageObjects();
+        notifyAdapterDataChanged();
+        updateEmptyView();
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private void notifyAdapterDataChanged() {
+        var adapter = listView == null ? null : listView.getAdapter();
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private void updateEmptyView() {
+        updateEmptyView(false);
+    }
+
+    private void updateEmptyView(boolean delayIfEmpty) {
+        showEmptyViewRunnable = updateListEmptyView(() -> emptyView, () -> listView, rowCount == 0, delayIfEmpty, showEmptyViewRunnable, () -> showEmptyViewRunnable = null);
     }
 
     @Override
@@ -207,16 +323,24 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
         NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, AyuConstants.MESSAGE_EDITED_NOTIFICATION);
         NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, NotificationCenter.voiceTranscriptionUpdate);
-        Bulletin.removeDelegate(this);
-
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
             scrimPopupWindow = null;
         }
 
+        if (showEmptyViewRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(showEmptyViewRunnable);
+            showEmptyViewRunnable = null;
+        }
+
         if (listView != null) {
             listView.setAdapter(null);
             listView.setOnItemClickListener((RecyclerListView.OnItemClickListener) null);
+        }
+
+        if (searchItem != null) {
+            searchItem.setActionBarMenuItemSearchListener(null);
+            searchItem = null;
         }
     }
 
@@ -246,13 +370,6 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         if (fragmentView instanceof SizeNotifierFrameLayout) {
             ((SizeNotifierFrameLayout) fragmentView).onResume();
         }
-
-        Bulletin.addDelegate(this, new Bulletin.Delegate() {
-            @Override
-            public int getBottomOffset(int tag) {
-                return windowInsetsStateHolder.getCurrentNavigationBarInset();
-            }
-        });
     }
 
     @Override
@@ -262,8 +379,6 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         if (fragmentView instanceof SizeNotifierFrameLayout) {
             ((SizeNotifierFrameLayout) fragmentView).onPause();
         }
-
-        Bulletin.removeDelegate(this);
 
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
@@ -321,7 +436,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         if (!TextUtils.isEmpty(textToTranslate) || msg.isPoll()) {
             boolean translated = msg.messageOwner != null && (msg.messageOwner.translated || msg.messageOwner.translatedPoll != null);
             items.add(getString(translated ? R.string.HideTranslation : R.string.Translate));
-            icons.add(NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
+            icons.add(LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
             options.add(OPTION_TRANSLATE);
         }
 
@@ -333,7 +448,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         icons.add(R.drawable.msg_info);
         options.add(OPTION_DETAILS);
 
-        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, getResourceProvider(), 0);
+        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert4, getResourceProvider(), 0);
         popupLayout.setMinimumWidth(dp(200));
         popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
@@ -346,18 +461,17 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
             final int pos = position;
             cell.setOnClickListener(v1 -> {
                 if (option == OPTION_DELETE) {
-                    EditedMessage edited = messages.get(pos);
+                    EditedMessage edited = filteredMessages.get(pos);
                     Utilities.globalQueue.postRunnable(() -> AyuMessagesController.getInstance().deleteRevision(edited.fakeId));
-                    if (pos >= 0 && pos < messages.size()) {
-                        messages.remove(pos);
+                    if (pos >= 0 && pos < filteredMessages.size()) {
+                        filteredMessages.remove(pos);
+                        messages.remove(edited);
                         if (pos < messageObjects.size()) {
                             messageObjects.remove(pos);
                         }
-                        rowCount = messages.size();
-                        var adapter = listView.getAdapter();
-                        if (adapter != null) {
-                            adapter.notifyItemRemoved(pos);
-                        }
+                        rowCount = filteredMessages.size();
+                        notifyMessageListItemRemoved(listView, pos);
+                        updateEmptyView(rowCount == 0);
                     }
                 } else if (option == OPTION_COPY) {
                     String text = msg.messageOwner != null ? msg.messageOwner.message : null;
@@ -468,6 +582,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
                 }
                 Bulletin.hideVisible();
                 scrimPopupWindow = null;
+                dimBehindView(false);
             }
         };
         scrimPopupWindow.setPauseNotifications(true);
@@ -494,21 +609,22 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
         int height = scrimPopupContainerLayout.getMeasuredHeight();
         int totalHeight = fragmentView.getHeight();
+        int popupTopBound = getGlassActionBarBottomInWindow() + dp(8);
         int popupY;
         if (height < totalHeight) {
             popupY = listLocation[1] + v.getTop() + (int) y - height - dp(8);
-            if (popupY < dp(24)) {
-                popupY = dp(24);
+            if (popupY < popupTopBound) {
+                popupY = popupTopBound;
             } else if (popupY > totalHeight - height - dp(8)) {
                 popupY = totalHeight - height - dp(8);
             }
         } else {
-            popupY = AndroidUtilities.getStatusBarHeight(getContext());
+            popupY = popupTopBound;
         }
 
         scrimPopupContainerLayout.setMaxHeight(totalHeight - popupY);
         scrimPopupWindow.showAtLocation(listView, Gravity.LEFT | Gravity.TOP, popupX, popupY);
-        scrimPopupWindow.dimBehind();
+        dimBehindView(v, true);
     }
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
@@ -523,8 +639,8 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
         @Override
         public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-            if (holder.itemView instanceof AyuMessageCell) {
-                ((AyuMessageCell) holder.itemView).setAyuDelegate(null);
+            if (holder.itemView instanceof NekoMessageCell) {
+                ((NekoMessageCell) holder.itemView).setAyuDelegate(null);
             }
         }
 
@@ -541,7 +657,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         @NonNull
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            AyuMessageCell cell = new AyuMessageCell(context, currentAccount);
+            NekoMessageCell cell = new NekoMessageCell(context, currentAccount);
             cell.setShowAyuDeletedMark(false);
             return new RecyclerListView.Holder(cell);
         }
@@ -549,9 +665,9 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             if (holder.getItemViewType() == 1) {
-                var ayuMessageDetailCell = (AyuMessageCell) holder.itemView;
+                var ayuMessageDetailCell = (NekoMessageCell) holder.itemView;
 
-                var editedMessage = messages.get(position);
+                var editedMessage = filteredMessages.get(position);
                 MessageObject msg;
                 if (position >= 0 && position < messageObjects.size()) {
                     msg = messageObjects.get(position);
@@ -572,7 +688,7 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
         @Override
         public int getItemViewType(int position) {
-            return position >= 0 && position < messages.size() ? 1 : 0;
+            return position >= 0 && position < filteredMessages.size() ? 1 : 0;
         }
     }
 
@@ -612,6 +728,12 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
                     updateDocumentMediaWithLocalFile(msg, localFile, editedMessage);
                     localFileFound = true;
                 }
+            }
+        } else if (editedMessage.documentType == AyuConstants.DOCUMENT_TYPE_STORY) {
+            File localFile = findSavedMedia(editedMessage);
+            if (localFile != null) {
+                updateStoryMediaWithLocalFile(msg, localFile);
+                localFileFound = true;
             }
         } else if (editedMessage.documentType == AyuConstants.DOCUMENT_TYPE_PHOTO) {
             File localFile = findSavedMedia(editedMessage);
@@ -718,6 +840,36 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
         msg.attachPath = localFile.getAbsolutePath();
     }
 
+    private void updateStoryMediaWithLocalFile(TLRPC.Message msg, File localFile) {
+        if (!(msg.media instanceof TLRPC.TL_messageMediaStory story) || story.storyItem == null || story.storyItem.media == null) {
+            return;
+        }
+        String filePath = localFile.getAbsolutePath();
+        msg.attachPath = filePath;
+        story.storyItem.attachPath = filePath;
+        TLRPC.MessageMedia storyMedia = story.storyItem.media;
+        if (storyMedia.document != null) {
+            storyMedia.document.localPath = filePath;
+            return;
+        }
+        if (storyMedia.photo != null) {
+            Pair<Integer, Integer> size = AyuUtils.extractImageSizeFromFile(filePath);
+            if (size == null) {
+                size = new Pair<>(500, 500);
+            }
+            TLRPC.TL_photoSize photoSize = new TLRPC.TL_photoSize();
+            photoSize.size = (int) localFile.length();
+            photoSize.w = size.first;
+            photoSize.h = size.second;
+            photoSize.type = "y";
+            photoSize.location = new AyuFileLocation(filePath);
+            if (storyMedia.photo.sizes != null) {
+                storyMedia.photo.sizes.clear();
+                storyMedia.photo.sizes.add(photoSize);
+            }
+        }
+    }
+
     private void updateDocumentMediaWithLocalFile(TLRPC.Message msg, File localFile, EditedMessage editedMessage) {
         String filePath = localFile.getAbsolutePath();
         msg.attachPath = filePath;
@@ -788,11 +940,8 @@ public class AyuMessageHistory extends AyuMessageDelegateFragment {
 
     private void rebuildMessageObjects() {
         messageObjects.clear();
-        if (messages == null) {
-            return;
-        }
-        for (int i = 0; i < messages.size(); i++) {
-            messageObjects.add(createMessageObject(messages.get(i)));
+        for (int i = 0; i < filteredMessages.size(); i++) {
+            messageObjects.add(createMessageObject(filteredMessages.get(i)));
         }
     }
 

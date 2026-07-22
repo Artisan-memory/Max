@@ -215,7 +215,7 @@ public class ContactsController extends BaseController {
         }
     }
 
-    private String[] projectionPhones = {
+    private static final String[] projectionPhones = {
             ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
             ContactsContract.CommonDataKinds.Phone.TYPE,
@@ -223,7 +223,7 @@ public class ContactsController extends BaseController {
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             ContactsContract.RawContacts.ACCOUNT_TYPE,
     };
-    private String[] projectionNames = {
+    private static final String[] projectionNames = {
             ContactsContract.CommonDataKinds.StructuredName.LOOKUP_KEY,
             ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME,
             ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME,
@@ -1995,7 +1995,7 @@ public class ContactsController extends BaseController {
         sortedUsersSectionsArray = sortedSectionsArray;
     }
 
-    private boolean hasContactsPermission() {
+    public static boolean hasContactsPermission() {
         if (Build.VERSION.SDK_INT >= 23) {
             return ApplicationLoader.applicationContext.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
         }
@@ -2020,7 +2020,7 @@ public class ContactsController extends BaseController {
         return true;
     }
 
-    private boolean hasContactsWritePermission() {
+    public static boolean hasContactsWritePermission() {
         if (Build.VERSION.SDK_INT >= 23) {
             return ApplicationLoader.applicationContext.checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED;
         }
@@ -2310,7 +2310,7 @@ public class ContactsController extends BaseController {
 
         builder = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI);
         builder.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactId);
-        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd.org.telegram.messenger.android.profile");
+        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd." + BuildConfig.APPLICATION_ID + ".android.profile");
         builder.withValue(ContactsContract.Data.DATA1, user.id);
         builder.withValue(ContactsContract.Data.DATA2, "Telegram Profile");
         builder.withValue(ContactsContract.Data.DATA3, LocaleController.formatString("ContactShortcutMessage", R.string.ContactShortcutMessage, phoneOrName));
@@ -2319,7 +2319,7 @@ public class ContactsController extends BaseController {
 
         builder = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI);
         builder.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactId);
-        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd.org.telegram.messenger.android.call");
+        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd." + BuildConfig.APPLICATION_ID + ".android.call");
         builder.withValue(ContactsContract.Data.DATA1, user.id);
         builder.withValue(ContactsContract.Data.DATA2, "Telegram Voice Call");
         builder.withValue(ContactsContract.Data.DATA3, LocaleController.formatString("ContactShortcutVoiceCall", R.string.ContactShortcutVoiceCall, phoneOrName));
@@ -2328,7 +2328,7 @@ public class ContactsController extends BaseController {
 
         builder = ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI);
         builder.withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactId);
-        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd.org.telegram.messenger.android.call.video");
+        builder.withValue(ContactsContract.Data.MIMETYPE, "vnd.android.cursor.item/vnd." + BuildConfig.APPLICATION_ID + ".android.call.video");
         builder.withValue(ContactsContract.Data.DATA1, user.id);
         builder.withValue(ContactsContract.Data.DATA2, "Telegram Video Call");
         builder.withValue(ContactsContract.Data.DATA3, LocaleController.formatString("ContactShortcutVideoCall", R.string.ContactShortcutVideoCall, phoneOrName));

@@ -36,6 +36,8 @@ import org.telegram.ui.ActionBar.Theme;
 import java.util.ArrayList;
 import java.util.List;
 
+import tw.nekomimi.nekogram.filters.ReactionFilter;
+
 public class ReactedHeaderView extends FrameLayout {
     private FlickerLoadingView flickerLoadingView;
     private TextView titleView;
@@ -142,21 +144,23 @@ public class ReactedHeaderView extends FrameLayout {
                         for (Object obj : v.objects) {
                             if (obj instanceof Long) {
                                 long l = (long) obj;
-                                if (fromId != l) {
+                                if (fromId != l && !ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), l)) {
                                     usersToRequest.add(l);
                                     dates.add(0);
                                 }
                             } else if (obj instanceof TLRPC.TL_readParticipantDate) {
                                 long userId = ((TLRPC.TL_readParticipantDate) obj).user_id;
                                 int date = ((TLRPC.TL_readParticipantDate) obj).date;
-                                if (fromId != userId) {
+                                if (fromId != userId && !ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), userId)) {
                                     usersToRequest.add(userId);
                                     dates.add(date);
                                 }
                             }
                         }
-                        usersToRequest.add(fromId);
-                        dates.add(0);
+                        if (fromId != 0 && !ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), fromId)) {
+                            usersToRequest.add(fromId);
+                            dates.add(0);
+                        }
 
                         List<UserSeen> usersRes = new ArrayList<>();
                         Runnable callback = () -> {
@@ -235,8 +239,22 @@ public class ReactedHeaderView extends FrameLayout {
         ConnectionsManager.getInstance(currentAccount).sendRequest(getList, (response, error) -> {
             if (response instanceof TLRPC.TL_messages_messageReactionsList) {
                 TLRPC.TL_messages_messageReactionsList list = (TLRPC.TL_messages_messageReactionsList) response;
-                int c = list.count;
-                int ic = list.users.size();
+                final int c;
+                final ArrayList<TLRPC.MessagePeerReaction> visibleReactions;
+                final ArrayList<TLRPC.ReactionCount> visibleReactionCounts;
+                if (!ReactionFilter.shouldFilter(currentAccount, message.getDialogId())) {
+                    c = list.count;
+                    visibleReactions = list.reactions;
+                    visibleReactionCounts = message.messageOwner.reactions == null ? null : message.messageOwner.reactions.results;
+                } else {
+                    visibleReactions = ReactionFilter.getPeerReactions(currentAccount, message.getDialogId(), list.reactions);
+                    int hiddenCount = list.reactions.size() - visibleReactions.size();
+                    var result = ReactionFilter.getReactionCountResult(currentAccount, message.getDialogId(), message.messageOwner.reactions);
+                    visibleReactionCounts = result.counts();
+                    int visibleReactionsCount = result.totalCount();
+                    boolean useServerVisibleCount = visibleReactionsCount == 0 && (message.messageOwner.reactions == null || message.messageOwner.reactions.results == null || message.messageOwner.reactions.results.isEmpty());
+                    c = useServerVisibleCount ? Math.max(0, list.count - hiddenCount) : visibleReactionsCount;
+                }
                 LastSeenHelper.saveLastSeenFromPeerReactions(list.reactions, UserConfig.getInstance(currentAccount).getClientUserId());
                 post(() -> {
                     String str;
@@ -258,9 +276,9 @@ public class ReactedHeaderView extends FrameLayout {
                     }
                     titleView.setText(str);
                     boolean showIcon = true;
-                    if (message.messageOwner.reactions != null && message.messageOwner.reactions.results.size() == 1 && !list.reactions.isEmpty()) {
+                    if (visibleReactionCounts != null && visibleReactionCounts.size() == 1 && !visibleReactions.isEmpty()) {
                         for (TLRPC.TL_availableReaction r : MediaDataController.getInstance(currentAccount).getReactionsList()) {
-                            if (r.reaction.equals(list.reactions.get(0).reaction)) {
+                            if (r.reaction.equals(visibleReactions.get(0).reaction)) {
                                 reactView.setImage(ImageLocation.getForDocument(r.center_icon), "40_40_lastreactframe", "webp", null, r);
                                 reactView.setVisibility(VISIBLE);
                                 reactView.setAlpha(0);
@@ -277,7 +295,7 @@ public class ReactedHeaderView extends FrameLayout {
                         iconView.animate().alpha(1f).start();
                     }
                     for (TLRPC.User u : list.users) {
-                        if (message.messageOwner.from_id != null && u.id != message.messageOwner.from_id.user_id) {
+                        if (message.messageOwner.from_id != null && u.id != message.messageOwner.from_id.user_id && !ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), u.id)) {
                             boolean hasSame = false;
                             for (int i = 0; i < users.size(); i++) {
                                 if (users.get(i).dialogId == u.id) {
@@ -291,10 +309,11 @@ public class ReactedHeaderView extends FrameLayout {
                         }
                     }
                     for (TLRPC.Chat u : list.chats) {
-                        if (message.messageOwner.from_id != null && u.id != message.messageOwner.from_id.user_id) {
+                        long peerId = -u.id;
+                        if (message.messageOwner.from_id != null && u.id != message.messageOwner.from_id.user_id && !ReactionFilter.isBlockedPeer(currentAccount, message.getDialogId(), peerId)) {
                             boolean hasSame = false;
                             for (int i = 0; i < users.size(); i++) {
-                                if (users.get(i).dialogId == -u.id) {
+                                if (users.get(i).dialogId == peerId) {
                                     hasSame = true;
                                     break;
                                 }

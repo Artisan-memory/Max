@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -90,10 +91,6 @@ public class CodeHighlighting {
             }
             if (currentType == 2) {
                 p.setColor(0xffffffff);
-            } else if (currentType == 1) {
-                p.setColor(Theme.getColor(Theme.key_chat_messageTextOut));
-            } else {
-                p.setColor(Theme.getColor(Theme.key_chat_messageTextIn));
             }
             if (style != null) {
                 style.applyStyle(p);
@@ -136,7 +133,7 @@ public class CodeHighlighting {
             super(text);
         }
 
-        private boolean ready;
+        public boolean ready = false;
         public void unlock() {
             this.ready = true;
         }
@@ -171,36 +168,76 @@ public class CodeHighlighting {
             return super.getSpanFlags(what);
         }
     }
+    public static class LockedWithFallbackSpannableString extends LockedSpannableString {
+        public SpannableStringBuilder fallback;
+        public LockedWithFallbackSpannableString(CharSequence text, SpannableStringBuilder fallback) {
+            super(text);
+            this.fallback = fallback;
+        }
 
-    private static final HashMap<String, Highlighting> processedHighlighting = new HashMap<>();
+        @Override
+        public <T> T[] getSpans(int queryStart, int queryEnd, Class<T> kind) {
+            if (!ready && fallback != null) return fallback.getSpans(queryStart, queryEnd, kind);
+            return super.getSpans(queryStart, queryEnd, kind);
+        }
+
+        @Override
+        public int nextSpanTransition(int start, int limit, Class kind) {
+            if (!ready && fallback != null) return fallback.nextSpanTransition(start, limit, kind);
+            return super.nextSpanTransition(start, limit, kind);
+        }
+
+        @Override
+        public int getSpanStart(Object what) {
+            if (!ready && fallback != null) return fallback.getSpanStart(what);
+            return super.getSpanStart(what);
+        }
+
+        @Override
+        public int getSpanEnd(Object what) {
+            if (!ready && fallback != null) return fallback.getSpanEnd(what);
+            return super.getSpanEnd(what);
+        }
+
+        @Override
+        public int getSpanFlags(Object what) {
+            if (!ready && fallback != null) return fallback.getSpanFlags(what);
+            return super.getSpanFlags(what);
+        }
+    }
+
+    private static final ConcurrentHashMap<String, Highlighting> processedHighlighting = new ConcurrentHashMap<>();
     private static class Highlighting {
-        String text, language;
+        CharSequence text;
+        String language;
         SpannableString result;
     }
 
-    public static SpannableString getHighlighted(String text, String language) {
+    public static SpannableString getHighlighted(CharSequence text, String language) {
         if (TextUtils.isEmpty(language)) {
             return new SpannableString(text);
         }
         final String key = language + "`" + text;
-        Highlighting process = processedHighlighting.get(key);
-        if (process == null) {
-            process = new Highlighting();
-            process.text = text;
-            process.language = language;
-            process.result = new LockedSpannableString(text);
+        synchronized (processedHighlighting) {
+            Highlighting process = processedHighlighting.get(key);
+            if (process == null) {
+                process = new Highlighting();
+                process.text = text;
+                process.language = language;
+                process.result = new LockedSpannableString(text);
 
-            highlight(process.result, 0, process.result.length(), language, 0, null, true);
+                highlight(process.result, 0, process.result.length(), language, 0, null, true);
 
-            Iterator<String> keys = processedHighlighting.keySet().iterator();
-            while (keys.hasNext() && processedHighlighting.size() > 8) {
-                keys.next();
-                keys.remove();
+                final Iterator<String> keys = processedHighlighting.keySet().iterator();
+                while (keys.hasNext() && processedHighlighting.size() > 8) {
+                    keys.next();
+                    keys.remove();
+                }
+
+                processedHighlighting.put(key, process);
             }
-
-            processedHighlighting.put(key, process);
+            return process.result;
         }
-        return process.result;
     }
 
     public static void highlight(Spannable text, int start, int end, String lng, int type, TextStyleSpan.TextStyleRun style, boolean smallerSize) {

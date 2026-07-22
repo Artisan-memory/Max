@@ -6,15 +6,12 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
+import android.database.Cursor;
 import android.os.Build;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -22,11 +19,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.radolyn.ayugram.AyuConstants;
 import com.radolyn.ayugram.database.AyuData;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -34,29 +33,24 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_account;
-import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.ActionBar.ThemeDescription;
-import org.telegram.ui.Cells.EmptyCell;
-import org.telegram.ui.Cells.NotificationsCheckCell;
-import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextCheckBoxCell;
 import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Cells.TextDetailSettingsCell;
-import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BlurredRecyclerView;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
-import org.telegram.ui.Components.SeekBarView;
 import org.telegram.ui.Components.UndoView;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -72,33 +66,37 @@ import tw.nekomimi.nekogram.config.cell.ConfigCellSelectBox;
 import tw.nekomimi.nekogram.config.cell.ConfigCellText;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextCheck;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextCheckIcon;
-import tw.nekomimi.nekogram.config.cell.ConfigCellTextDetail;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextInput;
-import tw.nekomimi.nekogram.config.cell.WithOnClick;
+import tw.nekomimi.nekogram.filters.RegexFiltersSettingActivity;
 import tw.nekomimi.nekogram.ui.PopupBuilder;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
-import tw.nekomimi.nekogram.utils.AlertUtil;
+import tw.nekomimi.nekogram.utils.ShareUtil;
 import xyz.nextalone.nagram.NaConfig;
-import xyz.nextalone.nagram.helper.ExternalStickerCacheHelper;
 
 @SuppressLint("RtlHardcoded")
 @SuppressWarnings("unused")
 public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity {
 
-    private static final int INTENT_PICK_EXTERNAL_STICKER_DIRECTORY = 514;
-
     private ListAdapter listAdapter;
+
+    @Override
+    protected RecyclerListView.SelectionAdapter getListAdapter() {
+        return listAdapter;
+    }
+
+    @Override
+    protected CellGroup getCellGroup() {
+        return cellGroup;
+    }
+
+    @Override
+    protected String getSettingsPrefix() {
+        return "experimental";
+    }
+
     private AnimatorSet animatorSet;
     private boolean sensitiveCanChange = false;
     private boolean sensitiveEnabled = false;
-    private ExternalStickerCacheHelper.CacheStats stickerCacheStats = new ExternalStickerCacheHelper.CacheStats(0, 0, 0);
-    private StickerCacheUsageCell stickerCacheUsageCell;
-    private final ExternalStickerCacheHelper.StatsListener stickerCacheStatsListener = stats -> {
-        stickerCacheStats = stats;
-        if (stickerCacheUsageCell != null) {
-            stickerCacheUsageCell.setStats(stats);
-        }
-    };
 
     private final CellGroup cellGroup = new CellGroup(this);
 
@@ -114,9 +112,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
                     getString(R.string.BackAnimationSpring),
             }, null));
     private final AbstractConfigCell springAnimationCrossfadeRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSpringAnimationCrossfade()));
-    private final AbstractConfigCell forceEdgeToEdgeRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getForceEdgeToEdge()));
-    private final AbstractConfigCell smoothRoundedMenuRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSmoothRoundedMenu()));
-    private final AbstractConfigCell saveToChatSubfolderRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSaveToChatSubfolder()));
     private final AbstractConfigCell localPremiumRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.localPremium));
     private final AbstractConfigCell unlimitedPinnedDialogsRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.unlimitedPinnedDialogs, getString(R.string.UnlimitedPinnedDialogsAbout)));
     private final AbstractConfigCell unlimitedFavedStickersRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.unlimitedFavedStickers, getString(R.string.UnlimitedFavoredStickersAbout)));
@@ -131,7 +126,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     // Media
     private final AbstractConfigCell headerMedia = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.MediaSettings)));
     private final AbstractConfigCell audioEnhanceRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getNoiseSuppressAndVoiceEnhance()));
-    private final AbstractConfigCell useMediaStreamInVoipRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.useMediaStreamInVoip));
     private final AbstractConfigCell sendMp4DocumentAsVideoRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSendMp4DocumentAsVideo()));
     private final AbstractConfigCell enhancedVideoBitrateRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnhancedVideoBitrate()));
     private final AbstractConfigCell customAudioBitrateRow = cellGroup.appendCell(new ConfigCellCustom("customGroupVoipAudioBitrate", CellGroup.ITEM_TYPE_TEXT_SETTINGS_CELL, true));
@@ -142,20 +136,9 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     }, null));
     private final AbstractConfigCell dividerMedia = cellGroup.appendCell(new ConfigCellDivider());
 
-    // Local sticker cache
-    private final AbstractConfigCell headerExternalStickerCache = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.ExternalStickerCache)));
-    private final AbstractConfigCell externalStickerCacheRow = cellGroup.appendCell(new ConfigCellTextDetail(NaConfig.INSTANCE.getExternalStickerCache(), (view, position) -> pickExternalStickerCacheFolder(), getString(R.string.ExternalStickerCacheHint), ExternalStickerCacheHelper::getDisplayPath));
-    private final AbstractConfigCell externalStickerCacheUsageRow = cellGroup.appendCell(new ConfigCellCustom("ExternalStickerCacheUsage", ConfigCellCustom.CUSTOM_ITEM_StickerCacheUsage, false));
-    private final AbstractConfigCell externalStickerCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheRefreshAll", ExternalStickerCacheHelper::syncAllStickerCaches));
-    private final AbstractConfigCell externalEmojiCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalEmojiCacheRefreshAll", ExternalStickerCacheHelper::syncAllEmojiCaches));
-    private final AbstractConfigCell externalStickerCacheDeleteAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheDeleteAll", ExternalStickerCacheHelper::deleteAllCaches));
-    private final AbstractConfigCell dividerExternalStickerCache = cellGroup.appendCell(new ConfigCellDivider());
-
     // Ayu
     private final AbstractConfigCell headerAyuMoments = cellGroup.appendCell(new ConfigCellHeader("AyuMoments"));
-    private final AbstractConfigCell GhostModeRow = cellGroup.appendCell(new ConfigCellText("GhostMode", () -> presentFragment(new GhostModeActivity())));
-    private final AbstractConfigCell scheduleMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.scheduleMessages));
-    private final AbstractConfigCell showScheduleMessagesInDrawerRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.showScheduleMessagesInDrawer));
+    private final AbstractConfigCell ghostModeRow = cellGroup.appendCell(new ConfigCellText("GhostMode", () -> presentFragment(new GhostModeActivity())));
     private final AbstractConfigCell regexFiltersEnabledRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getRegexFiltersEnabled(), getString(R.string.RegexFiltersNotice)));
     private final AbstractConfigCell saveLastSeenRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getSaveLocalLastSeen()));
     private final AbstractConfigCell enableSaveDeletedMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnableSaveDeletedMessages()));
@@ -189,8 +172,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
 
     // N-Config
     private final AbstractConfigCell headerNConfig = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.N_Config)));
-    private final AbstractConfigCell forceCopyRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getForceCopy()));
-    private final AbstractConfigCell disableFlagSecureRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableFlagSecure()));
     private final AbstractConfigCell showRPCErrorRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getShowRPCError()));
     private final AbstractConfigCell disableChoosingStickerRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableChoosingSticker));
     private final AbstractConfigCell disableFilteringRow = cellGroup.appendCell(new ConfigCellCustom("SensitiveDisableFiltering", CellGroup.ITEM_TYPE_TEXT_CHECK, true));
@@ -200,7 +181,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
             getString(R.string.PerformanceClassAverage),
             getString(R.string.PerformanceClassLow),
     }, null));
-    private final AbstractConfigCell customArtworkApiRow = cellGroup.appendCell(new ConfigCellTextInput(null, NaConfig.INSTANCE.getCustomArtworkApi(), "", null));
     private final AbstractConfigCell dividerNConfig = cellGroup.appendCell(new ConfigCellDivider());
 
     // Story
@@ -234,17 +214,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     @Override
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
-        updateRows();
         AyuData.loadSizes(this);
-        ExternalStickerCacheHelper.addStatsListener(stickerCacheStatsListener);
-
         return true;
-    }
-
-    @Override
-    public void onFragmentDestroy() {
-        ExternalStickerCacheHelper.removeStatsListener(stickerCacheStatsListener);
-        super.onFragmentDestroy();
     }
 
     @Override
@@ -265,116 +236,15 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     public View createView(Context context) {
         View superView = super.createView(context);
 
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
-            @Override
-            public void onItemClick(int id) {
-                if (id == -1) {
-                    finishFragment();
-                }
-            }
-        });
-
         listAdapter = new ListAdapter(context);
 
         listView.setAdapter(listAdapter);
 
-        // Fragment: Set OnClick Callbacks
-        listView.setOnItemClickListener((view, position, x, y) -> {
-            AbstractConfigCell a = cellGroup.rows.get(position);
-            if (a instanceof ConfigCellTextCheck) {
-                if (position == cellGroup.rows.indexOf(regexFiltersEnabledRow) && (LocaleController.isRTL && x > AndroidUtilities.dp(76) || !LocaleController.isRTL && x < (view.getMeasuredWidth() - AndroidUtilities.dp(76)))) {
-                    presentFragment(new RegexFiltersSettingActivity());
-                    return;
-                }
-                if (position == cellGroup.rows.indexOf(messageSavingSaveMediaRow) && (LocaleController.isRTL && x > AndroidUtilities.dp(76) || !LocaleController.isRTL && x < (view.getMeasuredWidth() - AndroidUtilities.dp(76)))) {
-                    showBottomSheet();
-                    return;
-                }
-                ((ConfigCellTextCheck) a).onClick((TextCheckCell) view);
-            } else if (a instanceof ConfigCellSelectBox) {
-                ((ConfigCellSelectBox) a).onClick(view);
-            } else if (a instanceof WithOnClick) {
-                ((WithOnClick) a).onClick();
-            } else if (a instanceof ConfigCellTextInput) {
-                ((ConfigCellTextInput) a).onClick();
-            } else if (a instanceof ConfigCellTextDetail) {
-                RecyclerListView.OnItemClickListener o = ((ConfigCellTextDetail) a).onItemClickListener;
-                if (o != null) {
-                    try {
-                        o.onItemClick(view, position);
-                    } catch (Exception ignored) {
-                    }
-                }
-            } else if (a instanceof ConfigCellCustom) { // Custom onclick
-                if (position == cellGroup.rows.indexOf(disableFilteringRow)) {
-                    sensitiveEnabled = !sensitiveEnabled;
-                    TL_account.setContentSettings req = new TL_account.setContentSettings();
-                    req.sensitive_enabled = sensitiveEnabled;
-                    AlertDialog progressDialog = new AlertDialog(getParentActivity(), 3);
-                    progressDialog.show();
-                    getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
-                        progressDialog.dismiss();
-                        if (error == null) {
-                            if (response instanceof TLRPC.TL_boolTrue && view instanceof TextCheckCell) {
-                                ((TextCheckCell) view).setChecked(sensitiveEnabled);
-                            }
-                        } else {
-                            AndroidUtilities.runOnUIThread(() -> AlertsCreator.processError(currentAccount, error, this, req));
-                        }
-                    }));
-                } else if (position == cellGroup.rows.indexOf(customAudioBitrateRow)) {
-                    PopupBuilder builder = new PopupBuilder(view);
-                    builder.setItems(new String[]{
-                            "32 (" + getString(R.string.Default) + ")",
-                            "64",
-                            "128",
-                            "192",
-                            "256",
-                            "320"
-                    }, (i, __) -> {
-                        switch (i) {
-                            case 0:
-                                NekoConfig.customAudioBitrate.setConfigInt(32);
-                                break;
-                            case 1:
-                                NekoConfig.customAudioBitrate.setConfigInt(64);
-                                break;
-                            case 2:
-                                NekoConfig.customAudioBitrate.setConfigInt(128);
-                                break;
-                            case 3:
-                                NekoConfig.customAudioBitrate.setConfigInt(192);
-                                break;
-                            case 4:
-                                NekoConfig.customAudioBitrate.setConfigInt(256);
-                                break;
-                            case 5:
-                                NekoConfig.customAudioBitrate.setConfigInt(320);
-                                break;
-                        }
-                        listAdapter.notifyItemChanged(position);
-                        return Unit.INSTANCE;
-                    });
-                    builder.show();
-                }
-            } else if (a instanceof ConfigCellTextCheckIcon) {
-                ((ConfigCellTextCheckIcon) a).onClick();
-            }
-        });
-        listView.setOnItemLongClickListener((view, position, x, y) -> {
-            var holder = listView.findViewHolderForAdapterPosition(position);
-            if (holder != null && listAdapter.isEnabled(holder)) {
-                createLongClickDialog(context, NekoExperimentalSettingsActivity.this, "experimental", position);
-                return true;
-            }
-            return false;
-        });
+        setupDefaultListeners();
 
         // Cells: Set OnSettingChanged Callbacks
         cellGroup.callBackSettingsChanged = (key, newValue) -> {
-            if (key.equals(NaConfig.INSTANCE.getDisableFlagSecure().getKey())) {
-                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
-            } else if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
+            if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
                 checkSaveDeletedRows();
             } else if (key.equals(NaConfig.INSTANCE.getDisableStories().getKey())) {
                 checkStoriesRows();
@@ -410,64 +280,102 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             } else if (key.equals(NaConfig.INSTANCE.getHideStoriesFromHeader().getKey())) {
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
-            } else if (key.equals(NaConfig.INSTANCE.getForceEdgeToEdge().getKey())) {
-                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
-            } else if (key.equals(NaConfig.INSTANCE.getSmoothRoundedMenu().getKey())) {
-                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             }
         };
-
-        //Cells: Set ListAdapter
-        cellGroup.setListAdapter(listView, listAdapter);
 
         return superView;
     }
 
-    private void pickExternalStickerCacheFolder() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
-                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        startActivityForResult(intent, INTENT_PICK_EXTERNAL_STICKER_DIRECTORY);
-    }
-
-    @Override
-    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
-        if (requestCode == INTENT_PICK_EXTERNAL_STICKER_DIRECTORY && resultCode == Activity.RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                int takeFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                try {
-                    ApplicationLoader.applicationContext.getContentResolver().takePersistableUriPermission(uri, takeFlags);
-                    NaConfig.INSTANCE.setExternalStickerCacheUri(uri);
-                    ExternalStickerCacheHelper.onFolderSelected();
-                    if (listAdapter != null) {
-                        listAdapter.notifyItemChanged(cellGroup.rows.indexOf(externalStickerCacheRow));
-                    }
-                } catch (SecurityException e) {
-                    AlertUtil.showToast(getString(R.string.ExternalStickerCacheFolderError));
-                }
-            }
-            return;
-        }
-        super.onActivityResultFragment(requestCode, resultCode, data);
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
     @Override
     public void onResume() {
         super.onResume();
-        if (listAdapter != null) {
-            checkSensitive();
-            listAdapter.notifyDataSetChanged();
-        }
+        checkSensitive();
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     @Override
-    protected void updateRows() {
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
+    protected void handleCellClick(View view, int position, float x, float y) {
+        if (position < 0 || position >= cellGroup.rows.size()) {
+            return;
+        }
+        AbstractConfigCell a = cellGroup.rows.get(position);
+        if (a instanceof ConfigCellTextCheck) {
+            if (position == cellGroup.rows.indexOf(regexFiltersEnabledRow) && (LocaleController.isRTL && x > AndroidUtilities.dp(76) || !LocaleController.isRTL && x < (view.getMeasuredWidth() - AndroidUtilities.dp(76)))) {
+                presentFragment(new RegexFiltersSettingActivity());
+                return;
+            }
+            if (position == cellGroup.rows.indexOf(messageSavingSaveMediaRow) && (LocaleController.isRTL && x > AndroidUtilities.dp(76) || !LocaleController.isRTL && x < (view.getMeasuredWidth() - AndroidUtilities.dp(76)))) {
+                showBottomSheet();
+                return;
+            }
+        }
+        super.handleCellClick(view, position, x, y);
+    }
+
+    @Override
+    protected boolean onItemLongClick(View view, int position, float x, float y) {
+        AbstractConfigCell a = cellGroup.rows.get(position);
+        if (a == clearMessageDatabaseRow) {
+            ItemOptions options = makeLongClickOptions(view);
+            options.add(R.drawable.msg_instant_link_solar, getString(R.string.ExportAyuDB), this::exportAyuDB);
+            addDefaultLongClickOptions(options, "experimental", position);
+            showLongClickOptions(view, options);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    protected void onCustomCellClick(View view, int position, float x, float y) {
+        if (position == cellGroup.rows.indexOf(disableFilteringRow)) {
+            sensitiveEnabled = !sensitiveEnabled;
+            TL_account.setContentSettings req = new TL_account.setContentSettings();
+            req.sensitive_enabled = sensitiveEnabled;
+            AlertDialog progressDialog = new AlertDialog(getParentActivity(), 3);
+            progressDialog.show();
+            getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                progressDialog.dismiss();
+                if (error == null) {
+                    if (response instanceof TLRPC.TL_boolTrue && view instanceof TextCheckCell) {
+                        ((TextCheckCell) view).setChecked(sensitiveEnabled);
+                    }
+                } else {
+                    AndroidUtilities.runOnUIThread(() -> AlertsCreator.processError(currentAccount, error, this, req));
+                }
+            }));
+        } else if (position == cellGroup.rows.indexOf(customAudioBitrateRow)) {
+            PopupBuilder builder = new PopupBuilder(view);
+            builder.setItems(new String[]{
+                    "32 (" + getString(R.string.Default) + ")",
+                    "64",
+                    "128",
+                    "192",
+                    "256",
+                    "320"
+            }, (i, __) -> {
+                switch (i) {
+                    case 0:
+                        NekoConfig.customAudioBitrate.setConfigInt(32);
+                        break;
+                    case 1:
+                        NekoConfig.customAudioBitrate.setConfigInt(64);
+                        break;
+                    case 2:
+                        NekoConfig.customAudioBitrate.setConfigInt(128);
+                        break;
+                    case 3:
+                        NekoConfig.customAudioBitrate.setConfigInt(192);
+                        break;
+                    case 4:
+                        NekoConfig.customAudioBitrate.setConfigInt(256);
+                        break;
+                    case 5:
+                        NekoConfig.customAudioBitrate.setConfigInt(320);
+                        break;
+                }
+                listAdapter.notifyItemChanged(position);
+                return Unit.INSTANCE;
+            });
+            builder.show();
         }
     }
 
@@ -484,47 +392,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     @Override
     public String getTitle() {
         return getString(R.string.Experimental);
-    }
-
-    @Override
-    public ArrayList<ThemeDescription> getThemeDescriptions() {
-        ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_CELLBACKGROUNDCOLOR, new Class[]{EmptyCell.class, TextSettingsCell.class, TextCheckCell.class, HeaderCell.class, TextDetailSettingsCell.class, NotificationsCheckCell.class}, null, null, null, Theme.key_windowBackgroundWhite));
-        themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundGray));
-
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_avatar_backgroundActionBarBlue));
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_LISTGLOWCOLOR, null, null, null, null, Theme.key_avatar_backgroundActionBarBlue));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_avatar_actionBarIconBlue));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_avatar_actionBarSelectorBlue));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUBACKGROUND, null, null, null, null, Theme.key_actionBarDefaultSubmenuBackground));
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SUBMENUITEM, null, null, null, null, Theme.key_actionBarDefaultSubmenuItem));
-
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_SELECTOR, null, null, null, null, Theme.key_listSelector));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{View.class}, Theme.dividerPaint, null, null, Theme.key_divider));
-
-        themeDescriptions.add(new ThemeDescription(listView, ThemeDescription.FLAG_BACKGROUNDFILTER, new Class[]{ShadowSectionCell.class}, null, null, null, Theme.key_windowBackgroundGrayShadow));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextSettingsCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextSettingsCell.class}, new String[]{"valueTextView"}, null, null, null, Theme.key_windowBackgroundWhiteValueText));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{NotificationsCheckCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{NotificationsCheckCell.class}, new String[]{"valueTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText2));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{NotificationsCheckCell.class}, new String[]{"checkBox"}, null, null, null, Theme.key_switchTrack));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{NotificationsCheckCell.class}, new String[]{"checkBox"}, null, null, null, Theme.key_switchTrackChecked));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextCheckCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextCheckCell.class}, new String[]{"valueTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText2));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextCheckCell.class}, new String[]{"checkBox"}, null, null, null, Theme.key_switchTrack));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextCheckCell.class}, new String[]{"checkBox"}, null, null, null, Theme.key_switchTrackChecked));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
-
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextDetailSettingsCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
-        themeDescriptions.add(new ThemeDescription(listView, 0, new Class[]{TextDetailSettingsCell.class}, new String[]{"valueTextView"}, null, null, null, Theme.key_windowBackgroundWhiteGrayText2));
-
-        return themeDescriptions;
     }
 
     private void checkSensitive() {
@@ -572,157 +439,43 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     }
 
     //impl ListAdapter
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
-
-        private final Context mContext;
+    private class ListAdapter extends BaseListAdapter {
 
         public ListAdapter(Context context) {
-            mContext = context;
+            super(context);
         }
 
         @Override
-        public int getItemCount() {
-            return cellGroup.rows.size();
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            int position = holder.getAdapterPosition();
-            AbstractConfigCell a = cellGroup.rows.get(position);
-            if (a != null) {
-                return a.isEnabled();
-            }
-            return true;
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            AbstractConfigCell a = cellGroup.rows.get(position);
-            if (a != null) {
-                return a.getType();
-            }
-            return CellGroup.ITEM_TYPE_TEXT_DETAIL;
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-            AbstractConfigCell a = cellGroup.rows.get(position);
-            if (a != null) {
-                if (a instanceof ConfigCellCustom) {
-                    // Custom binds
-                    if (holder.itemView instanceof StickerCacheUsageCell usageCell) {
-                        stickerCacheUsageCell = usageCell;
-                        usageCell.setStats(stickerCacheStats);
-                    } else if (holder.itemView instanceof TextCheckCell textCheckCell) {
-                        textCheckCell.setEnabled(true, null);
-                        if (position == cellGroup.rows.indexOf(disableFilteringRow)) {
-                            textCheckCell.setTextAndValueAndCheck(getString(R.string.SensitiveDisableFiltering), getString(R.string.SensitiveAbout), sensitiveEnabled, true, true);
-                            textCheckCell.setEnabled(sensitiveCanChange, null);
-                        }
-                    } else if (holder.itemView instanceof TextSettingsCell textSettingsCell) {
-                        textSettingsCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                        if (position == cellGroup.rows.indexOf(customAudioBitrateRow)) {
-                            String value = NekoConfig.customAudioBitrate.Int() + "kbps";
-                            if (NekoConfig.customAudioBitrate.Int() == 32)
-                                value += " (" + getString(R.string.Default) + ")";
-                            textSettingsCell.setTextAndValue(getString(R.string.customGroupVoipAudioBitrate), value, true);
-                        }
-                    }
-                } else {
-                    // Default binds
-                    a.onBindViewHolder(holder);
-                    if (a instanceof ConfigCellTextCheckIcon) {
-                        if (holder.itemView instanceof TextCell textCell) {
-                            if (position == cellGroup.rows.indexOf(clearMessageDatabaseRow)) {
-                                textCell.setColors(Theme.key_text_RedRegular, Theme.key_text_RedRegular);
-                            }
-                        }
-                    }
+        protected void onBindCustomViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (holder.itemView instanceof TextCheckCell textCheckCell) {
+                textCheckCell.setEnabled(true, null);
+                if (position == cellGroup.rows.indexOf(disableFilteringRow)) {
+                    textCheckCell.setTextAndValueAndCheck(getString(R.string.SensitiveDisableFiltering), getString(R.string.SensitiveAbout), sensitiveEnabled, true, true);
+                    textCheckCell.setEnabled(sensitiveCanChange, null);
+                }
+            } else if (holder.itemView instanceof TextSettingsCell textSettingsCell) {
+                textSettingsCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+                if (position == cellGroup.rows.indexOf(customAudioBitrateRow)) {
+                    String value = NekoConfig.customAudioBitrate.Int() + "kbps";
+                    if (NekoConfig.customAudioBitrate.Int() == 32)
+                        value += " (" + getString(R.string.Default) + ")";
+                    textSettingsCell.setTextAndValue(getString(R.string.customGroupVoipAudioBitrate), value, true);
                 }
             }
         }
 
-        @NonNull
         @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = null;
-            switch (viewType) {
-                case CellGroup.ITEM_TYPE_DIVIDER:
-                    view = new ShadowSectionCell(mContext);
-                    break;
-                case CellGroup.ITEM_TYPE_TEXT_SETTINGS_CELL:
-                    view = new TextSettingsCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case CellGroup.ITEM_TYPE_TEXT_CHECK:
-                    view = new TextCheckCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case CellGroup.ITEM_TYPE_HEADER:
-                    view = new HeaderCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case CellGroup.ITEM_TYPE_TEXT_DETAIL:
-                    view = new TextDetailSettingsCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case CellGroup.ITEM_TYPE_TEXT:
-                    view = new TextInfoPrivacyCell(mContext);
-                    break;
-                case CellGroup.ITEM_TYPE_TEXT_CHECK_ICON:
-                    view = new TextCell(mContext);
-                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case ConfigCellCustom.CUSTOM_ITEM_StickerCacheUsage:
-                    view = new StickerCacheUsageCell(mContext);
-                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                    break;
+        protected void onBindDefaultViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            CellGroup cellGroup = getCellGroup();
+            if (cellGroup == null) return;
+            AbstractConfigCell a = cellGroup.rows.get(position);
+            if (a instanceof ConfigCellTextCheckIcon) {
+                if (holder.itemView instanceof TextCell textCell) {
+                    if (position == cellGroup.rows.indexOf(clearMessageDatabaseRow)) {
+                        textCell.setColors(Theme.key_text_RedRegular, Theme.key_text_RedRegular);
+                    }
+                }
             }
-            //noinspection ConstantConditions
-            view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
-            return new RecyclerListView.Holder(view);
-        }
-    }
-
-    private class StickerCacheUsageCell extends FrameLayout {
-        private final TextView titleView;
-        private final TextView valueView;
-        private final SeekBarView usageBar;
-
-        StickerCacheUsageCell(Context context) {
-            super(context);
-            setWillNotDraw(false);
-            setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(6), AndroidUtilities.dp(20), AndroidUtilities.dp(4));
-
-            titleView = new TextView(context);
-            titleView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-            titleView.setSingleLine(true);
-            titleView.setText(getString(R.string.ExternalStickerCacheUsage));
-            addView(titleView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 24, Gravity.LEFT | Gravity.TOP));
-
-            valueView = new TextView(context);
-            valueView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteValueText));
-            valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-            valueView.setSingleLine(true);
-            valueView.setGravity(Gravity.RIGHT);
-            addView(valueView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 24, Gravity.RIGHT | Gravity.TOP));
-
-            usageBar = new SeekBarView(context, getResourceProvider());
-            usageBar.setEnabled(false);
-            usageBar.setFocusable(false);
-            addView(usageBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 30, Gravity.LEFT | Gravity.BOTTOM));
-        }
-
-        void setStats(ExternalStickerCacheHelper.CacheStats stats) {
-            int totalCount = stats.getTotalCount();
-            usageBar.setProgress(totalCount == 0 ? 0f : Math.min(1f, stats.getCachedCount() / (float) totalCount), true);
-            valueView.setText(stats.getCachedCount() + " / " + totalCount + " - " + AndroidUtilities.formatFileSize(stats.getTotalBytes()));
-        }
-
-        @Override
-        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(62), MeasureSpec.EXACTLY));
         }
     }
 
@@ -804,6 +557,43 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
             ((ConfigCellTextCheckIcon) clearMessageDatabaseRow).setValue(AyuData.totalSize > 0 ? AndroidUtilities.formatFileSize(AyuData.totalSize) : "...");
             listAdapter.notifyItemChanged(cellGroup.rows.indexOf(clearMessageDatabaseRow));
         }
+    }
+
+    private void exportAyuDB() {
+        if (getParentActivity() == null) return;
+        AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        Utilities.globalQueue.postRunnable(() -> {
+            try {
+                File dbFile = ApplicationLoader.applicationContext.getDatabasePath(AyuConstants.AYU_DATABASE);
+                File exportFile = new File(AndroidUtilities.getCacheDir(), "ayu-data.db");
+                try (Cursor cursor = AyuData.getDatabase().getOpenHelper().getWritableDatabase().query("PRAGMA wal_checkpoint(FULL)")) {
+                    if (cursor.moveToFirst() && cursor.getInt(0) != 0) {
+                        throw new IOException("Ayu database checkpoint is busy");
+                    }
+                }
+                if (!AndroidUtilities.copyFile(dbFile, exportFile)) {
+                    if (!exportFile.delete()) exportFile.deleteOnExit();
+                    throw new IOException("Failed to copy Ayu database");
+                }
+                AndroidUtilities.runOnUIThread(() -> {
+                    Context parentActivity = getParentActivity();
+                    progressDialog.dismiss();
+                    if (parentActivity != null) {
+                        ShareUtil.shareFile(parentActivity, exportFile);
+                    }
+                });
+            } catch (Exception e) {
+                FileLog.e(e);
+                AndroidUtilities.runOnUIThread(() -> {
+                    progressDialog.dismiss();
+                    if (getParentActivity() != null) {
+                        BulletinFactory.of(this).createSimpleBulletin(R.raw.error, getString(R.string.ErrorOccurred)).show();
+                    }
+                });
+            }
+        });
     }
 
     private void checkStoriesRows() {

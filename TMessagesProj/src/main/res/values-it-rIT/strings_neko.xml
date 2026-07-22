@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-Impostazioni</string>
+    <string name="NekoSettings">N-Impostazioni</string>
     <string name="IPv6">Preferisci IPv6</string>
-    <string name="MessageMenu">Menu dei messaggi</string>
+    <string name="MessageMenu">Menu Messaggi</string>
     <string name="HidePhone">Nascondi numero di telefono</string>
     <string name="DeleteAllFromSelf">Elimina i miei messaggi</string>
     <string name="DeleteAllFromSelfAlert">Attenzione! Questo **eliminerà tutti i tuoi messaggi prima di %s** in questa chat per **tutti** i partecipanti.</string>
@@ -20,8 +20,6 @@
     <string name="Repeat">Ripubblicare</string>
     <string name="AddToSavedMessages">Salva</string>
     <string name="CreateMention">Crea menzione</string>
-    <string name="TransparentStatusBar">Barra di stato trasparente</string>
-    <string name="ChristmasHat">Mostra il cappello di Babbo Natale ogni giorno</string>
     <string name="ActionBarDecoration">Decorazione della barra del titolo</string>
     <string name="DependsOnDate">Dipende dalla data</string>
     <string name="Christmas">Natale</string>
@@ -51,7 +49,6 @@
     <string name="TranslateApiUnsupported">Il fornitore di servizi di traduzione selezionato non supporta la tua lingua.</string>
     <string name="ProviderLingocloud">Traduttore LingoCloud</string>
     <string name="UndoTranslate">Nascondi traduzione</string>
-    <string name="DisablePhotoViewerSideAction">Disabilita il tocco laterale per cambiare foto</string>
     <string name="BotToken">Token</string>
     <string name="UnlimitedPinnedDialogs">Finestre di dialogo appuntate illimitate</string>
     <string name="UnlimitedPinnedDialogsAbout">Aggiungi dialoghi illimitati disattivando la loro sincronizzazione.</string>
@@ -73,26 +70,21 @@
     <string name="CallTo">Chiamare **%1$s**?</string>
     <string name="DisableNumberRounding">Disabilita l\'arrotondamento dei numeri</string>
     <string name="Categories">Categorie</string>
-    <string name="OfficialChannel">Canale Max</string>
+    <string name="OfficialChannel">Canale Nagram</string>
     <string name="About">Informazioni</string>
     <string name="IgnoreBlockedAbout">Non vedrai più i messaggi degli utenti bloccati nei gruppi.</string>
     <string name="SourceCode">Codice Sorgente</string>
     <string name="ResetStickerSize">Reimposta la dimensione dello sticker</string>
     <string name="RestartAppToTakeEffect">Riavvia l\'app per applicare i cambiamenti.</string>
-    <string name="DisableAppBarShadow">Nascondi Divisore Superiore</string>
     <string name="MediaPreview">Anteprima multimediale nell\'elenco delle chat</string>
     <string name="AutoPauseVideo">Pausa automatica del video</string>
     <string name="AutoPauseVideoAbout">Quando si blocca lo schermo/si passa allo sfondo.</string>
     <string name="DisableProximityEvents">Disabilita eventi di prossimità</string>
-    <string name="SelectBetween">Seleziona intervallo</string>
-    <string name="AvatarAsBackground">Tipo di sfondo</string>
-    <string name="BlurAvatarBackground">Sfondo sfocato</string>
-    <string name="DarkenAvatarBackground">Sfondo scuro</string>
+    <string name="SelectBetween">Seleziona messaggi</string>
     <string name="ProviderDeepLTranslate">Traduttore DeepL</string>
     <string name="ProviderMicrosoftTranslator">Traduttore Bing</string>
     <string name="DontSendGreetingSticker">Non inviare adesivi di saluto</string>
     <string name="TakeGIFasVideo">Acquisisci GIF come Video</string>
-    <string name="UseMediaStreamInVoip">Utilizza Media Stream in VoIP</string>
     <string name="HideTimeForSticker">Nascondi l\'ora sugli sticker</string>
     <string name="hideGroupSticker">Nascondi sticker di gruppo</string>
     <string name="customGroupVoipAudioBitrate">Bitrate audio VoIP di gruppo</string>
@@ -111,8 +103,6 @@
     <string name="customSavePath">Percorso di archiviazione personalizzato</string>
     <string name="customSavePathHint">Lasciare vuoto per salvare direttamente</string>
     <string name="channelLabel">canale</string>
-    <string name="forceBlurInChat">Forza l\'attivazione della sfocatura della chat</string>
-    <string name="ChatBlurAlphaValue">Sfocatura chat alfa</string>
     <string name="MutualContact">Contatto in comune</string>
     <string name="MutualContactDescription">Questo contatto è un contatto in comune.</string>
     <string name="DatacenterStatusAbout">Controlla lo stato dei **datacenter** di Telegram.</string>
@@ -162,7 +152,7 @@
     <string name="ClearRecentChatAlert">Vuoi cancellare le tue chat recenti?</string>
     <string name="CloudConfig">Impostazioni Cloud</string>
     <string name="CloudConfigDesc">Salva le tue N-Impostazioni sul cloud di Telegram.</string>
-    <string name="CloudConfigSyncDate">Ultima sincronizzazione: %1$s, cloud: %2$s</string>
+    <string name="CloudConfigSyncDate">Ultima sincronizzazione: %s, cloud: %s</string>
     <string name="CloudConfigSyncDateNever">Mai</string>
     <string name="CloudConfigSync">Sincronizza con il cloud</string>
     <string name="CloudConfigSyncShort">Sincronizza</string>
@@ -204,8 +194,6 @@
     <string name="DisableSystemAccount">Disabilita account di sistema</string>
     <string name="FilterMenu">Menu Filtro Dialoghi</string>
     <string name="DisableProxyWhenVpnEnabled">Disabilita proxy quando VPN è abilitato</string>
-    <string name="UseProxyItem">Mostra Proxy nel Drawer</string>
-    <string name="HideProxyByDefault">Nascondi proxy quando inattivo</string>
     <string name="SkipOpenLinkConfirm">Ignora conferma apertura link</string>
     <string name="DeleteAllInChatAlert">Attenzione! Questa operazione **eliminerà tutti i messaggi** presenti in questa chat per **tutti** i partecipanti.</string>
     <string name="UnblockAll">Sblocca tutti</string>
@@ -214,12 +202,11 @@
     <string name="AddProxySocks5">Aggiungi SOCKS5 Proxy</string>
     <string name="AddProxyTelegram">Aggiungi MTProto Proxy</string>
     <string name="RetestPing">Riprova il test del ping per tutti i server</string>
-    <string name="ImportProxyList">Importa server proxy</string>
     <string name="ExportStickers">Esporta stickers</string>
     <string name="ImportStickersX">Importa stickers da file</string>
     <string name="ImportStickersList">Importa stickers</string>
     <string name="StickerSets">Set di stickers</string>
-    <string name="InvalidStickersFile">File stickers non valido:</string>
+    <string name="InvalidStickersFile">File stickers non valido: </string>
     <string name="ImportedProxies">Server proxy importati: </string>
     <string name="DeleteAllServer">Elimina tutti i server</string>
     <string name="DeleteUnavailableServer">Elimina i server non disponibili</string>
@@ -259,14 +246,10 @@
     <string name="useCustomEmojiInvalid">Pacchetto emoji non valido.</string>
     <string name="repeatConfirm">Chiedere prima di ripubblicare</string>
     <string name="repeatConfirmText">Sei sicuro di voler ripubblicare?</string>
-    <string name="valuesLargeAvatarInDrawer">Predefinito\nAvatar\nAvatar grande\nSfondo</string>
     <string name="rememberAllBackMessages">Ricorda tutte le risposte cliccate</string>
     <string name="DisableInstantCamera">Disattiva Instant Camera</string>
     <string name="showSeconds">Mostra timestamp in secondi</string>
     <string name="Name">Nome</string>
-    <string name="channelAlias">Alias Canale</string>
-    <string name="ChannelAliasDetails">Etichetta gli utenti del canale con un nome personalizzato. Abilita l\'impostazione di un alias nel menu del profilo del canale.</string>
-    <string name="setChannelAliasName">Imposta alias</string>
     <string name="StickerSettings">Stickers</string>
     <string name="ConfirmSettings">Conferme</string>
     <string name="InteractionSettings">Interazioni</string>

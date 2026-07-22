@@ -34,8 +34,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.radolyn.ayugram.database.entities.DeletedMessageFull;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 import com.radolyn.ayugram.proprietary.AyuMessageUtils;
-import com.radolyn.ayugram.ui.AyuMessageCell;
-import com.radolyn.ayugram.ui.AyuMessageDelegateFragment;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
@@ -73,15 +71,16 @@ import org.telegram.ui.Components.inset.WindowInsetsStateHolder;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Locale;
 
 import kotlin.Unit;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
+import tw.nekomimi.nekogram.llm.LlmConfig;
 import tw.nekomimi.nekogram.translate.Translator;
+import tw.nekomimi.nekogram.ui.cells.NekoMessageCell;
 import xyz.nextalone.nagram.NaConfig;
 import xyz.nextalone.nagram.helper.BookmarksHelper;
 
-public class BookmarksActivity extends AyuMessageDelegateFragment {
+public class BookmarksActivity extends NekoDelegateFragment {
     private static final int OPTION_SHOW_IN_CHAT = 1;
     private static final int OPTION_DELETE_BOOKMARK = 2;
     private static final int OPTION_COPY = 3;
@@ -103,6 +102,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
     private ActionBarPopupWindow scrimPopupWindow;
     private ChatActionCell floatingDateView;
     private TextView emptyView;
+    private Runnable showEmptyViewRunnable;
     private ActionBarMenuItem searchItem;
     private String searchQuery = "";
     private AnimatorSet floatingDateAnimation;
@@ -116,7 +116,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
 
     private void checkInsets() {
         if (listView != null) {
-            listView.setPadding(0, 0, 0, windowInsetsStateHolder.getCurrentNavigationBarInset() + dp(8));
+            applyMessageListNavigationBarInset(listView, windowInsetsStateHolder.getCurrentNavigationBarInset());
         }
         updatePagedownButtonPosition();
     }
@@ -211,7 +211,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
                     if (messageObject.messageOwner.media != null) {
                         messageObject.messageOwner.media.ttl_seconds = 0;
                     }
-                } else {
+                } else if (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool()) {
                     DeletedMessageFull deleted = AyuMessagesController.getInstance().getMessage(userId, dialogId, messageId);
                     if (hasAyuDeletedContent(deleted)) {
                         var base = deleted.message;
@@ -361,7 +361,8 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         });
 
         ActionBarMenu menu = actionBar.createMenu();
-        searchItem = menu.addItem(0, R.drawable.ic_ab_search).setIsSearchField(true);
+        searchItem = menu.addItem(0, R.drawable.outline_header_search).setIsSearchField(true);
+        searchItem.setSearchPaddingStart(12);
         searchItem.setSearchFieldHint(getString(R.string.Search));
         searchItem.setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
             @Override
@@ -392,7 +393,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
             }
         });
 
-        SizeNotifierFrameLayout frameLayout = new SizeNotifierFrameLayout(context) {
+        SizeNotifierFrameLayout frameLayout = new ScrimFrameLayout(context) {
             @Override
             protected boolean isActionBarVisible() {
                 return false;
@@ -416,29 +417,25 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
             windowInsetsStateHolder.setInsets(insets);
             return WindowInsetsCompat.CONSUMED;
         });
+        int actionBarOffset = getGlassActionBarOffset();
 
         listView = new RecyclerListView(context);
-        listView.setItemAnimator(null);
         listView.setLayoutAnimation(null);
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false) {
-            @Override
-            public boolean supportsPredictiveItemAnimations() {
-                return false;
-            }
-        };
+        LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false);
         layoutManager.setStackFromEnd(true);
 
         listView.setLayoutManager(layoutManager);
         listView.setVerticalScrollBarEnabled(true);
         listView.setAdapter(new ListAdapter(context, getCurrentAccount()));
+        setupMessageListItemAnimator(listView);
         listView.setSelectorType(9);
         listView.setSelectorDrawableColor(0);
-        listView.setClipToPadding(false);
-        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        applyGlassMessageListPadding(listView, 0);
+        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
         listView.setOnItemClickListener((view, position, x, y) -> {
-            if (view instanceof AyuMessageCell) {
+            if (view instanceof NekoMessageCell) {
                 createMenu(view, x, y, position);
             }
         });
@@ -454,7 +451,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         floatingDateView.setAlpha(0.0f);
         floatingDateView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         floatingDateView.setInvalidateColors(true);
-        frameLayout.addView(floatingDateView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 4, 0, 0));
+        frameLayout.addView(floatingDateView, LayoutHelper.createFrameMarginPx(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, actionBarOffset + dp(4), 0, 0));
 
         emptyView = new AppCompatTextView(context) {
             @Override
@@ -493,8 +490,6 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
 
         listView.post(updateFloatingDateRunnable);
 
-        updateEmptyView();
-
         updateBookmarks(() -> {
             if (rowCount > 0 && listView != null) {
                 listView.scrollToPosition(rowCount - 1);
@@ -503,6 +498,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
             updatePagedownButtonVisibility(false);
         });
 
+        setupGlassActionBar(frameLayout, listView);
         return fragmentView;
     }
 
@@ -513,13 +509,6 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         if (fragmentView instanceof SizeNotifierFrameLayout) {
             ((SizeNotifierFrameLayout) fragmentView).onResume();
         }
-
-        Bulletin.addDelegate(this, new Bulletin.Delegate() {
-            @Override
-            public int getBottomOffset(int tag) {
-                return windowInsetsStateHolder.getCurrentNavigationBarInset();
-            }
-        });
 
         updateActionBarCount();
         updateBookmarks();
@@ -533,8 +522,6 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
             ((SizeNotifierFrameLayout) fragmentView).onPause();
         }
 
-        Bulletin.removeDelegate(this);
-
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
             scrimPopupWindow = null;
@@ -545,8 +532,6 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
     public void onFragmentDestroy() {
         super.onFragmentDestroy();
 
-        Bulletin.removeDelegate(this);
-
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
             scrimPopupWindow = null;
@@ -555,6 +540,11 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         if (floatingDateAnimation != null) {
             floatingDateAnimation.cancel();
             floatingDateAnimation = null;
+        }
+
+        if (showEmptyViewRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(showEmptyViewRunnable);
+            showEmptyViewRunnable = null;
         }
 
         AndroidUtilities.cancelRunOnUIThread(updateFloatingDateRunnable);
@@ -629,7 +619,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         if (!TextUtils.isEmpty(textToTranslate) || msg.isPoll()) {
             boolean translated = msg.messageOwner != null && (msg.messageOwner.translated || msg.messageOwner.translatedPoll != null);
             items.add(getString(translated ? R.string.HideTranslation : R.string.Translate));
-            icons.add(NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
+            icons.add(LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
             options.add(OPTION_TRANSLATE);
         }
 
@@ -637,7 +627,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         icons.add(R.drawable.msg_info);
         options.add(OPTION_DETAILS);
 
-        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, getResourceProvider(), 0);
+        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert4, getResourceProvider(), 0);
         popupLayout.setMinimumWidth(dp(200));
         popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
@@ -669,13 +659,20 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
                 } else if (option == OPTION_DELETE_BOOKMARK) {
                     BookmarksHelper.removeBookmark(getCurrentAccount(), dialogId, msg.getId());
                     if (position >= 0 && position < filteredMessages.size()) {
-                        MessageObject toRemove = filteredMessages.get(position);
-                        filteredMessages.remove(position);
+                        MessageObject toRemove = filteredMessages.remove(position);
                         bookmarkedMessages.remove(toRemove);
                         rowCount = filteredMessages.size();
-                        notifyAdapterDataChanged();
+                        notifyMessageListItemRemoved(listView, position);
                         updateActionBarCount();
-                        updateEmptyView();
+                        updateEmptyView(rowCount == 0);
+                        if (listView != null) {
+                            listView.post(() -> {
+                                updatePagedownButtonVisibility(false);
+                                updateVisibleMessageCells();
+                            });
+                        } else {
+                            updatePagedownButtonVisibility(false);
+                        }
                     } else {
                         updateBookmarks();
                     }
@@ -789,6 +786,7 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
                 }
                 Bulletin.hideVisible();
                 scrimPopupWindow = null;
+                dimBehindView(false);
             }
         };
         scrimPopupWindow.setPauseNotifications(true);
@@ -815,21 +813,22 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
 
         int height = scrimPopupContainerLayout.getMeasuredHeight();
         int totalHeight = fragmentView.getHeight();
+        int popupTopBound = getGlassActionBarBottomInWindow() + dp(8);
         int popupY;
         if (height < totalHeight) {
             popupY = listLocation[1] + v.getTop() + (int) y - height - dp(8);
-            if (popupY < dp(24)) {
-                popupY = dp(24);
+            if (popupY < popupTopBound) {
+                popupY = popupTopBound;
             } else if (popupY > totalHeight - height - dp(8)) {
                 popupY = totalHeight - height - dp(8);
             }
         } else {
-            popupY = AndroidUtilities.getStatusBarHeight(getContext());
+            popupY = popupTopBound;
         }
 
         scrimPopupContainerLayout.setMaxHeight(totalHeight - popupY);
         scrimPopupWindow.showAtLocation(listView, Gravity.LEFT | Gravity.TOP, popupX, popupY);
-        scrimPopupWindow.dimBehind();
+        dimBehindView(v, true);
     }
 
     private void updateActionBarCount() {
@@ -943,15 +942,15 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         if (TextUtils.isEmpty(searchQuery)) {
             filteredMessages.addAll(bookmarkedMessages);
         } else {
-            String q = searchQuery.toLowerCase(Locale.getDefault());
+            String q = searchQuery.toLowerCase();
             for (MessageObject msg : bookmarkedMessages) {
                 String text = msg.messageOwner != null ? msg.messageOwner.message : null;
-                if (!TextUtils.isEmpty(text) && text.toLowerCase(Locale.getDefault()).contains(q)) {
+                if (!TextUtils.isEmpty(text) && text.toLowerCase().contains(q)) {
                     filteredMessages.add(msg);
                     continue;
                 }
                 String attachPath = msg.messageOwner != null ? msg.messageOwner.attachPath : null;
-                if (!TextUtils.isEmpty(attachPath) && attachPath.toLowerCase(Locale.getDefault()).contains(q)) {
+                if (!TextUtils.isEmpty(attachPath) && attachPath.toLowerCase().contains(q)) {
                     filteredMessages.add(msg);
                 }
             }
@@ -971,16 +970,11 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
     }
 
     private void updateEmptyView() {
-        if (emptyView == null || listView == null) {
-            return;
-        }
-        if (rowCount == 0) {
-            emptyView.setVisibility(View.VISIBLE);
-            listView.setVisibility(View.GONE);
-        } else {
-            emptyView.setVisibility(View.GONE);
-            listView.setVisibility(View.VISIBLE);
-        }
+        updateEmptyView(false);
+    }
+
+    private void updateEmptyView(boolean delayIfEmpty) {
+        showEmptyViewRunnable = updateListEmptyView(() -> emptyView, () -> listView, rowCount == 0, delayIfEmpty, showEmptyViewRunnable, () -> showEmptyViewRunnable = null);
     }
 
     @Override
@@ -999,8 +993,8 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
 
         @Override
         public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-            if (holder.itemView instanceof AyuMessageCell) {
-                ((AyuMessageCell) holder.itemView).setAyuDelegate(null);
+            if (holder.itemView instanceof NekoMessageCell) {
+                ((NekoMessageCell) holder.itemView).setAyuDelegate(null);
             }
         }
 
@@ -1017,13 +1011,13 @@ public class BookmarksActivity extends AyuMessageDelegateFragment {
         @NonNull
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new RecyclerListView.Holder(new AyuMessageCell(context, currentAccount));
+            return new RecyclerListView.Holder(new NekoMessageCell(context, currentAccount));
         }
 
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             if (holder.getItemViewType() == 1) {
-                var cell = (AyuMessageCell) holder.itemView;
+                var cell = (NekoMessageCell) holder.itemView;
                 var msg = filteredMessages.get(position);
                 msg.forceAvatar = true;
                 cell.setAyuDelegate(BookmarksActivity.this);

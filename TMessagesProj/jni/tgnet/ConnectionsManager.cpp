@@ -708,22 +708,6 @@ void ConnectionsManager::onConnectionClosed(Connection *connection, int reason) 
     if ((connection->getConnectionType() == ConnectionTypeGeneric || connection->getConnectionType() == ConnectionTypeGenericMedia) && datacenter->isHandshakingAny()) {
         datacenter->onHandshakeConnectionClosed(connection);
     }
-    // A TLS hash mismatch proves the secret we hold does not match this
-    // endpoint, so rotating ports on the same address can never recover. Only
-    // ConnectionTypeGeneric used to escalate to a fresh address list, which
-    // left temp/download/upload connections retrying a dead endpoint forever.
-    if (connection->getConnectionType() != ConnectionTypeGeneric && connection->hasTlsHashMismatch() && !connection->isSuspended() && networkAvailable) {
-        int64_t now = getCurrentTimeMonotonicMillis();
-        if (lastNonGenericTlsMismatchEscalation == 0 || now - lastNonGenericTlsMismatchEscalation >= 30000) {
-            lastNonGenericTlsMismatchEscalation = now;
-            if (LOGS_ENABLED) DEBUG_D("account%u: tls hash mismatch on connection type %d, requesting new address list", instanceNum, connection->getConnectionType());
-            requestingSecondAddressByTlsHashMismatch = true;
-            requestingSecondAddress = 1;
-            if (delegate != nullptr) {
-                delegate->onRequestNewServerIpAndPort(requestingSecondAddress, instanceNum);
-            }
-        }
-    }
     if (connection->getConnectionType() == ConnectionTypeGeneric) {
         if (datacenter->getDatacenterId() == currentDatacenterId) {
             sendingPing = false;
@@ -1763,7 +1747,7 @@ void ConnectionsManager::processServerResponse(TLObject *message, int64_t messag
             processServerResponse(object, messageId, messageSeqNo, messageSalt, connection, innerMsgId, containerMessageId);
             delete object;
         } else {
-            if (LOGS_ENABLED) DEBUG_D("connection(%p, account%u, dc%u, type %d) received unparsed from gzip object on %0x" PRIx64, connection, instanceNum, datacenter->getDatacenterId(), connection->getConnectionType(), messageId);
+            if (LOGS_ENABLED) DEBUG_D("connection(%p, account%u, dc%u, type %d) received unparsed from gzip object on 0x%" PRIx64, connection, instanceNum, datacenter->getDatacenterId(), connection->getConnectionType(), messageId);
             if (delegate != nullptr) {
                 delegate->onUnparsedMessageReceived(messageId, data, connection->getConnectionType(), instanceNum);
             }
@@ -2548,10 +2532,6 @@ void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t 
                 requestStartTime = updatingDcStartTime;
                 updatingDcStartTime = currentTime;
                 timeout = 60;
-            } else if (updatingDcSettingsWorkaround && dynamic_cast<TL_help_getConfig *>(request->rawRequest)) {
-                requestStartTime = updatingDcSettingsWorkaroundStartTime;
-                updatingDcSettingsWorkaroundStartTime = currentTime;
-                timeout = 60;
             }
             if (request->startTime != 0 && abs(currentTime - requestStartTime) >= timeout) {
                 if (LOGS_ENABLED) DEBUG_D("move %s to requestsQueue", typeid(*request->rawRequest).name());
@@ -2790,14 +2770,9 @@ void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t 
         if (request->requestFlags & RequestFlagTryDifferentDc) {
             int32_t requestStartTime = request->startTime;
             int32_t timeout = 30;
-            bool workaroundGetConfig = false;
             if (updatingDcSettings && dynamic_cast<TL_help_getConfig *>(request->rawRequest)) {
                 requestStartTime = updatingDcStartTime;
                 timeout = 60;
-            } else if (updatingDcSettingsWorkaround && dynamic_cast<TL_help_getConfig *>(request->rawRequest)) {
-                requestStartTime = updatingDcSettingsWorkaroundStartTime;
-                timeout = 60;
-                workaroundGetConfig = true;
             } else {
                 request->startTime = 0;
                 request->startTimeMillis = 0;
@@ -2814,11 +2789,7 @@ void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t 
                 RAND_bytes(&index, 1);
                 datacenterId = allDc[index % allDc.size()];
                 if (dynamic_cast<TL_help_getConfig *>(request->rawRequest)) {
-                    if (workaroundGetConfig) {
-                        updatingDcSettingsWorkaroundStartTime = currentTime;
-                    } else {
-                        updatingDcStartTime = currentTime;
-                    }
+                    updatingDcStartTime = currentTime;
                     request->datacenterId = datacenterId;
                 } else {
                     currentDatacenterId = datacenterId;
@@ -3367,18 +3338,10 @@ inline std::string decodeSecret(std::string secret) {
 
 void ConnectionsManager::updateDcSettings(uint32_t dcNum, bool workaround, bool ifLoadingTryAgain) {
     if (workaround) {
-        int32_t now = (int32_t) (getCurrentTimeMonotonicMillis() / 1000);
         if (updatingDcSettingsWorkaround) {
-            // The flag is only cleared from the response callback. If the
-            // request never gets an answer (dead endpoint, blocked DC) it used
-            // to latch forever and no further address refresh could ever start.
-            if (updatingDcSettingsWorkaroundStartTime != 0 && abs(now - updatingDcSettingsWorkaroundStartTime) < 120) {
-                return;
-            }
-            if (LOGS_ENABLED) DEBUG_D("account%u: dc settings workaround stuck for %d s, restarting", instanceNum, abs(now - updatingDcSettingsWorkaroundStartTime));
+            return;
         }
         updatingDcSettingsWorkaround = true;
-        updatingDcSettingsWorkaroundStartTime = now;
     } else {
         if (updatingDcSettings) {
             if (ifLoadingTryAgain) {
@@ -3505,11 +3468,10 @@ void ConnectionsManager::updateDcSettings(uint32_t dcNum, bool workaround, bool 
         }
         if (workaround) {
             updatingDcSettingsWorkaround = false;
-            updatingDcSettingsWorkaroundStartTime = 0;
         } else {
             updatingDcSettings = false;
         }
-    }, nullptr, nullptr, RequestFlagEnableUnauthorized | RequestFlagWithoutLogin | RequestFlagUseUnboundKey | RequestFlagTryDifferentDc, dcNum == 0 ? currentDatacenterId : dcNum, workaround ? ConnectionTypeTemp : ConnectionTypeGeneric, true);
+    }, nullptr, nullptr, RequestFlagEnableUnauthorized | RequestFlagWithoutLogin | RequestFlagUseUnboundKey | (workaround ? 0 : RequestFlagTryDifferentDc), dcNum == 0 ? currentDatacenterId : dcNum, workaround ? ConnectionTypeTemp : ConnectionTypeGeneric, true);
 }
 
 void ConnectionsManager::moveToDatacenter(uint32_t datacenterId) {

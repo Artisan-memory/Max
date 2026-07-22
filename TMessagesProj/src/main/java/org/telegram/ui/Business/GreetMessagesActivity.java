@@ -52,10 +52,6 @@ public class GreetMessagesActivity extends BaseFragment implements NotificationC
         }
     }
 
-    public static void preloadSticker(int currentAccount) {
-
-    }
-
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
@@ -91,7 +87,11 @@ public class GreetMessagesActivity extends BaseFragment implements NotificationC
         recipientsHelper.setValue(currentValue == null ? null : currentValue.recipients);
 
         listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, null);
+        listView.setSections();
+        listView.adapter.setApplyBackground(false);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        actionBar.setAdaptiveBackground(listView, true);
+
         setValue();
 
         return fragmentView = contentView;
@@ -245,7 +245,7 @@ public class GreetMessagesActivity extends BaseFragment implements NotificationC
     private static final int RADIO_ALL_CHATS = 4;
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        items.add(UItem.asTopView(getString(R.string.BusinessGreetInfo), "RestrictedEmoji", "👋"));
+        items.add(UItem.asTopView(getString(R.string.BusinessGreet), getString(R.string.BusinessGreetInfo), "RestrictedEmoji", "👋"));
         items.add(UItem.asCheck(BUTTON_ENABLE, getString(R.string.BusinessGreetSend)).setChecked(enabled));
         items.add(UItem.asShadow(null));
         if (enabled) {
@@ -257,10 +257,10 @@ public class GreetMessagesActivity extends BaseFragment implements NotificationC
             }
             items.add(UItem.asShadow(null));
             items.add(UItem.asHeader(getString(R.string.BusinessRecipients)));
-            items.add(UItem.asRadio(RADIO_PRIVATE_CHATS, getString(R.string.BusinessChatsAllPrivateExcept)).setChecked(exclude));
-            items.add(UItem.asRadio(RADIO_ALL_CHATS, getString(R.string.BusinessChatsOnlySelected)).setChecked(!exclude));
+            items.add(UItem.asRadio(RADIO_PRIVATE_CHATS, getString(R.string.BusinessChatsAllPrivateExcept2)).setChecked(exclude));
+            items.add(UItem.asRadio(RADIO_ALL_CHATS, getString(R.string.BusinessChatsOnlySelected2)).setChecked(!exclude));
             items.add(UItem.asShadow(null));
-            recipientsHelper.fillItems(items);
+            recipientsHelper.fillItems(items, adapter);
             items.add(UItem.asShadow(getString(R.string.BusinessGreetRecipientsInfo)));
             items.add(UItem.asHeader(getString(R.string.BusinessGreetPeriod)));
             int daysIndex = -1;
@@ -331,5 +331,16 @@ public class GreetMessagesActivity extends BaseFragment implements NotificationC
         getNotificationCenter().removeObserver(this, NotificationCenter.quickRepliesUpdated);
         getNotificationCenter().removeObserver(this, NotificationCenter.userInfoDidLoad);
         super.onFragmentDestroy();
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        listView.setPadding(0, 0, 0, bottom);
+        listView.setClipToPadding(false);
     }
 }

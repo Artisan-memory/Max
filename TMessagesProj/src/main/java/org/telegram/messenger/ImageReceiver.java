@@ -37,6 +37,8 @@ import com.google.android.exoplayer2.util.Log;
 
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
+import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.AnimatedFileDrawable;
 import org.telegram.ui.Components.AttachableDrawable;
 import org.telegram.ui.Components.AvatarDrawable;
@@ -54,7 +56,7 @@ import java.util.List;
 
 import xyz.nextalone.nagram.NaConfig;
 
-public class ImageReceiver implements NotificationCenter.NotificationCenterDelegate {
+public class ImageReceiver implements NotificationCenter.NotificationCenterDelegate, AnimatedEmojiSpan.InvalidateHolder {
 
     List<ImageReceiver> preloadReceivers;
     private boolean allowCrossfadeWithImage = true;
@@ -320,6 +322,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
     private boolean isVisible = true;
     private boolean isAspectFit;
     private boolean forcePreview;
+    private boolean forceNotMedia;
     private boolean forceCrossfade;
     private boolean useRoundRadius = true;
     private final int[] roundRadius = new int[4];
@@ -490,10 +493,10 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
             ImageLocation location;
             String filter;
             if (!big) {
-                location = ImageLocation.getForUserOrChat(object, ImageLocation.TYPE_SMALL);
+                location = ImageLocation.getForUserOrChat(currentAccount, object, ImageLocation.TYPE_SMALL);
                 filter = "50_50";
             } else {
-                location = ImageLocation.getForUserOrChat(object, ImageLocation.TYPE_BIG);
+                location = ImageLocation.getForUserOrChat(currentAccount, object, ImageLocation.TYPE_BIG);
                 filter = "100_100";
             }
             if (videoLocation != null) {
@@ -503,7 +506,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
                 if (strippedBitmap != null) {
                     setImage(location, filter, strippedBitmap, null, parentObject, 0);
                 } else if (hasStripped) {
-                    setImage(location, filter, ImageLocation.getForUserOrChat(object, ImageLocation.TYPE_STRIPPED), "50_50_b", avatarDrawable, parentObject, 0);
+                    setImage(location, filter, ImageLocation.getForUserOrChat(currentAccount, object, ImageLocation.TYPE_STRIPPED), "50_50_b", avatarDrawable, parentObject, 0);
                 } else {
                     setImage(location, filter, avatarDrawable, null, parentObject, 0);
                 }
@@ -515,7 +518,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
     public static File getAvatarLocalFile(int currentAccount, TLObject obj) {
         try {
             final String ext = "jpg";
-            final ImageLocation location = ImageLocation.getForUserOrChat(obj, ImageLocation.TYPE_SMALL);
+            final ImageLocation location = ImageLocation.getForUserOrChat(currentAccount, obj, ImageLocation.TYPE_SMALL);
             File f = FileLoader.getInstance(currentAccount).getLocalFile(location);
             if (f != null) return f;
 
@@ -925,7 +928,12 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
             RecyclableDrawable drawable = (RecyclableDrawable) staticThumbDrawable;
             drawable.recycle();
         }
-        if (bitmap instanceof AnimatedFileDrawable) {
+        if (bitmap instanceof AnimatedEmojiDrawable) {
+            AnimatedEmojiDrawable animatedEmojiDrawable = (AnimatedEmojiDrawable) bitmap;
+            if (attachedToWindow) {
+                animatedEmojiDrawable.addView(this);
+            }
+        } else if (bitmap instanceof AnimatedFileDrawable) {
             AnimatedFileDrawable fileDrawable = (AnimatedFileDrawable) bitmap;
             fileDrawable.setParentView(parentView);
             if (attachedToWindow) {
@@ -1138,11 +1146,15 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
             pressedProgress = 0f;
         }
 
-        AnimatedFileDrawable animatedFileDrawable = getAnimation();
+        final AnimatedEmojiDrawable animatedEmojiDrawable = getAnimatedEmojiDrawable();
+        if (animatedEmojiDrawable != null) {
+            animatedEmojiDrawable.removeView(this);
+        }
+        final AnimatedFileDrawable animatedFileDrawable = getAnimation();
         if (animatedFileDrawable != null) {
             animatedFileDrawable.removeParent(this);
         }
-        RLottieDrawable lottieDrawable = getLottieAnimation();
+        final RLottieDrawable lottieDrawable = getLottieAnimation();
         if (lottieDrawable != null) {
             lottieDrawable.removeParentView(this);
         }
@@ -1193,7 +1205,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         if (setBackupImage()) {
             return true;
         }
-        RLottieDrawable lottieDrawable = getLottieAnimation();
+        final RLottieDrawable lottieDrawable = getLottieAnimation();
         if (lottieDrawable != null) {
             lottieDrawable.addParentView(this);
             lottieDrawable.setAllowVibration(allowLottieVibration);
@@ -1201,13 +1213,17 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         if (lottieDrawable != null && allowStartLottieAnimation && (!lottieDrawable.isHeavyDrawable() || currentOpenedLayerFlags == 0)) {
             lottieDrawable.start();
         }
-        AnimatedFileDrawable animatedFileDrawable = getAnimation();
+        final AnimatedFileDrawable animatedFileDrawable = getAnimation();
         if (animatedFileDrawable != null) {
             animatedFileDrawable.addParent(this);
         }
         if (animatedFileDrawable != null && allowStartAnimation && currentOpenedLayerFlags == 0) {
             animatedFileDrawable.checkRepeat();
             invalidate();
+        }
+        final AnimatedEmojiDrawable animatedEmojiDrawable = getAnimatedEmojiDrawable();
+        if (animatedEmojiDrawable != null) {
+            animatedEmojiDrawable.addView(this);
         }
         if (NotificationCenter.getGlobalInstance().isAnimationInProgress()) {
             didReceivedNotification(NotificationCenter.stopAllHeavyOperations, currentAccount, 512);
@@ -1948,7 +1964,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
             }
             int orientation = 0, invert = 0;
             BitmapShader shaderToUse = null;
-            if (!forcePreview && currentMediaDrawable != null && !animationNotReady) {
+            if (!forcePreview && !forceNotMedia && currentMediaDrawable != null && !animationNotReady) {
                 drawable = currentMediaDrawable;
                 shaderToUse = mediaShader;
                 orientation = imageOrientation;
@@ -2281,6 +2297,7 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         visibleInvalidate = invalidate;
     }
 
+    public final Runnable invalidateRunnable = this::invalidate;
     public void invalidate() {
         if (parentView == null) {
             return;
@@ -2501,6 +2518,10 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
 
     public void setForcePreview(boolean value) {
         forcePreview = value;
+    }
+
+    public void setForceNotMedia(boolean value) {
+        forceNotMedia = value;
     }
 
     public void setForceCrossfade(boolean value) {
@@ -2747,6 +2768,19 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         return animation != null && animation.isRunning();
     }
 
+    public AnimatedEmojiDrawable getAnimatedEmojiDrawable() {
+        if (currentMediaDrawable instanceof AnimatedEmojiDrawable) {
+            return (AnimatedEmojiDrawable) currentMediaDrawable;
+        } else if (currentImageDrawable instanceof AnimatedEmojiDrawable) {
+            return (AnimatedEmojiDrawable) currentImageDrawable;
+        } else if (currentThumbDrawable instanceof AnimatedEmojiDrawable) {
+            return (AnimatedEmojiDrawable) currentThumbDrawable;
+        } else if (staticThumbDrawable instanceof AnimatedEmojiDrawable) {
+            return (AnimatedEmojiDrawable) staticThumbDrawable;
+        }
+        return null;
+    }
+
     public AnimatedFileDrawable getAnimation() {
         if (currentMediaDrawable instanceof AnimatedFileDrawable) {
             return (AnimatedFileDrawable) currentMediaDrawable;
@@ -2949,7 +2983,12 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         if (delegate != null) {
             delegate.didSetImage(this, currentImageDrawable != null || currentThumbDrawable != null || staticThumbDrawable != null || currentMediaDrawable != null, currentImageDrawable == null && currentMediaDrawable == null, memCache);
         }
-        if (drawable instanceof AnimatedFileDrawable) {
+        if (drawable instanceof AnimatedEmojiDrawable) {
+            AnimatedEmojiDrawable animatedEmojiDrawable = (AnimatedEmojiDrawable) drawable;
+            if (attachedToWindow) {
+                animatedEmojiDrawable.addView(this);
+            }
+        } else if (drawable instanceof AnimatedFileDrawable) {
             AnimatedFileDrawable fileDrawable = (AnimatedFileDrawable) drawable;
             fileDrawable.setUseSharedQueue(useSharedAnimationQueue);
             if (attachedToWindow) {
@@ -3020,6 +3059,10 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         if (image instanceof AnimatedFileDrawable) {
             AnimatedFileDrawable animatedFileDrawable = (AnimatedFileDrawable) image;
             animatedFileDrawable.removeParent(this);
+        }
+        if (image instanceof AnimatedEmojiDrawable) {
+            AnimatedEmojiDrawable animatedEmojiDrawable = (AnimatedEmojiDrawable) image;
+            animatedEmojiDrawable.removeView(this);
         }
         if (key != null && (newKey == null || !newKey.equals(key)) && image != null) {
             if (image instanceof RLottieDrawable) {
@@ -3207,25 +3250,6 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
 
     public View getParentView() {
         return parentView;
-    }
-
-    public String getDiagnosticInfo() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("attached=").append(attachedToWindow);
-        builder.append(" visible=").append(isVisible);
-        builder.append(" priority=").append(fileLoadingPriority);
-        builder.append(" image=").append(currentImageKey);
-        builder.append(" media=").append(currentMediaKey);
-        builder.append(" thumb=").append(currentThumbKey);
-        if (parentView != null) {
-            builder.append(" view=").append(parentView.getClass().getSimpleName());
-            builder.append(" shown=").append(parentView.isShown());
-            builder.append(" alpha=").append(parentView.getAlpha());
-            builder.append(" size=").append(parentView.getWidth()).append("x").append(parentView.getHeight());
-        } else {
-            builder.append(" view=null");
-        }
-        return builder.toString();
     }
 
     public boolean isAttachedToWindow() {

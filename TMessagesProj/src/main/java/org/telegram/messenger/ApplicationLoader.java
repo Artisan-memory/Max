@@ -46,20 +46,16 @@ import org.telegram.messenger.voip.VideoCapturerDevice;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.Adapters.DrawerLayoutAdapter;
 import org.telegram.ui.Components.ForegroundDetector;
 import org.telegram.ui.Components.UpdateAppAlertDialog;
-import org.telegram.ui.Components.UpdateButton;
+import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.UpdateLayout;
-import org.telegram.ui.IUpdateButton;
 import org.telegram.ui.IUpdateLayout;
 import org.telegram.ui.LauncherIconController;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
@@ -68,8 +64,6 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import static android.os.Build.VERSION.SDK_INT;
 
 public class ApplicationLoader extends Application {
-
-    private static final long PUSH_SERVICE_RESTART_INTERVAL_MS = 10 * 60 * 1000L;
 
     public static ApplicationLoader applicationLoaderInstance;
 
@@ -356,6 +350,7 @@ public class ApplicationLoader extends Application {
         }
 
         NativeLoader.initNativeLibs(ApplicationLoader.applicationContext);
+
         try {
             ConnectionsManager.native_setJava(false);
         } catch (UnsatisfiedLinkError error) {
@@ -382,60 +377,6 @@ public class ApplicationLoader extends Application {
 
         LauncherIconController.tryFixLauncherIconIfNeeded();
         ProxyRotationController.init();
-        startMainThreadWatchdog();
-    }
-
-    private static volatile Thread mainThreadWatchdog;
-
-    /**
-     * DEBUG_HUNT freeze: pings the main looper once a second from a background
-     * thread and reports how long the reply took whenever it exceeds 500 ms.
-     * Log analysis could show that the UI was unresponsive but never how long
-     * the main thread was actually blocked, which is what this measures.
-     */
-    private static void startMainThreadWatchdog() {
-        if (!BuildVars.LOGS_ENABLED || mainThreadWatchdog != null) {
-            return;
-        }
-        Thread thread = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                if (!BuildVars.LOGS_ENABLED) {
-                    continue;
-                }
-                final long postedAt = SystemClock.elapsedRealtime();
-                final CountDownLatch latch = new CountDownLatch(1);
-                applicationHandler.post(latch::countDown);
-                try {
-                    // Report while still stuck, so a freeze that outlives the
-                    // process still leaves a trace, then wait for the real end.
-                    if (!latch.await(10, TimeUnit.SECONDS)) {
-                        FileLog.w("DEBUG_HUNT freeze component=main_thread event=blocked blocked_ms=10000+ foreground=" + isForegroundForLog());
-                        latch.await();
-                    }
-                } catch (InterruptedException e) {
-                    return;
-                }
-                long blockedMs = SystemClock.elapsedRealtime() - postedAt;
-                if (blockedMs >= 500) {
-                    FileLog.w("DEBUG_HUNT freeze component=main_thread event=slow blocked_ms=" + blockedMs
-                            + " foreground=" + isForegroundForLog());
-                }
-            }
-        }, "MainThreadWatchdog");
-        thread.setPriority(Thread.MIN_PRIORITY);
-        thread.setDaemon(true);
-        mainThreadWatchdog = thread;
-        thread.start();
-    }
-
-    private static boolean isForegroundForLog() {
-        ForegroundDetector detector = ForegroundDetector.getInstance();
-        return detector != null && detector.isForeground();
     }
 
     // Local Push Service, TFoss implementation
@@ -445,7 +386,6 @@ public class ApplicationLoader extends Application {
 
     private static void startPushServiceInternal() {
         if (PushListenerController.getProvider().hasServices()) {
-            FileLog.d("DEBUG_HUNT battery component=push_service event=skip reason=system_push_available");
             return;
         }
         SharedPreferences preferences = MessagesController.getNotificationsSettings(UserConfig.selectedAccount);
@@ -464,77 +404,35 @@ public class ApplicationLoader extends Application {
             AndroidUtilities.runOnUIThread(() -> {
                 try {
                     Log.d("TFOSS", "Starting push service...");
-                    boolean foreground = NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool();
-                    if (foreground) {
+                    if (NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool()) {
                         applicationContext.startForegroundService(new Intent(applicationContext, NotificationsService.class));
                     } else {
                         applicationContext.startService(new Intent(applicationContext, NotificationsService.class));
                     }
 
                     Log.d("TFOSS", "Trying to start push service every 10 minutes");
+                    // Telegram-FOSS: unconditionally enable push service
                     AlarmManager am = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
-                    cancelPushServiceAlarms(am);
-                    pendingIntent = createPushServicePendingIntent(foreground, PendingIntent.FLAG_UPDATE_CURRENT);
+                    Intent i = new Intent(applicationContext, NotificationsService.class);
+                    pendingIntent = PendingIntent.getBroadcast(applicationContext, 0, i, PendingIntent.FLAG_IMMUTABLE);
+
                     am.cancel(pendingIntent);
-                    long firstTrigger = SystemClock.elapsedRealtime() + PUSH_SERVICE_RESTART_INTERVAL_MS;
-                    am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, firstTrigger, PUSH_SERVICE_RESTART_INTERVAL_MS, pendingIntent);
-                    FileLog.d("DEBUG_HUNT battery component=push_service event=schedule_restart_alarm foreground=" + foreground
-                            + " interval_ms=" + PUSH_SERVICE_RESTART_INTERVAL_MS + " first_in_ms=" + PUSH_SERVICE_RESTART_INTERVAL_MS);
+                    am.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 10 * 60 * 1000, pendingIntent);
                 } catch (Throwable e) {
                     Log.e("TFOSS", "Failed to start push service");
-                    FileLog.e("DEBUG_HUNT battery component=push_service event=start_failed", e);
                 }
             });
 
         } else AndroidUtilities.runOnUIThread(() -> {
             applicationContext.stopService(new Intent(applicationContext, NotificationsService.class));
+
+            PendingIntent pintent = PendingIntent.getService(applicationContext, 0, new Intent(applicationContext, NotificationsService.class), PendingIntent.FLAG_MUTABLE);
             AlarmManager alarm = (AlarmManager)applicationContext.getSystemService(Context.ALARM_SERVICE);
-            cancelPushServiceAlarms(alarm);
-            FileLog.d("DEBUG_HUNT battery component=push_service event=disabled");
-        });
-    }
-
-    private static PendingIntent createPushServicePendingIntent(boolean foreground, int extraFlags) {
-        Intent intent = new Intent(applicationContext, NotificationsService.class);
-        int flags = PendingIntent.FLAG_IMMUTABLE | extraFlags;
-        if (foreground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return PendingIntent.getForegroundService(applicationContext, 0, intent, flags);
-        }
-        return PendingIntent.getService(applicationContext, 0, intent, flags);
-    }
-
-    private static void cancelPushServiceAlarms(AlarmManager alarmManager) {
-        if (pendingIntent != null) {
-            alarmManager.cancel(pendingIntent);
-            pendingIntent.cancel();
-            pendingIntent = null;
-        }
-        PendingIntent serviceIntent = createPushServicePendingIntent(false, PendingIntent.FLAG_NO_CREATE);
-        if (serviceIntent != null) {
-            alarmManager.cancel(serviceIntent);
-            serviceIntent.cancel();
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            PendingIntent foregroundIntent = createPushServicePendingIntent(true, PendingIntent.FLAG_NO_CREATE);
-            if (foregroundIntent != null) {
-                alarmManager.cancel(foregroundIntent);
-                foregroundIntent.cancel();
+            alarm.cancel(pintent);
+            if (pendingIntent != null) {
+                alarm.cancel(pendingIntent);
             }
-        }
-        // Cancel the broken getBroadcast() alarm created by older builds. A PendingIntent's
-        // sender type is part of its identity, so cancelling only service intents leaves it alive.
-        Intent legacyIntent = new Intent(applicationContext, NotificationsService.class);
-        PendingIntent legacyBroadcast = PendingIntent.getBroadcast(
-                applicationContext,
-                0,
-                legacyIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE
-        );
-        if (legacyBroadcast != null) {
-            alarmManager.cancel(legacyBroadcast);
-            legacyBroadcast.cancel();
-            FileLog.d("DEBUG_HUNT battery component=push_service event=cancel_legacy_broadcast_alarm");
-        }
+        });
     }
 
     @Override
@@ -774,6 +672,14 @@ public class ApplicationLoader extends Application {
         applicationLoaderInstance.checkForUpdatesInternal();
     }
 
+    public static void appCenterLog(Throwable e) {
+        applicationLoaderInstance.appCenterLogInternal(e);
+    }
+
+    protected void appCenterLogInternal(Throwable e) {
+
+    }
+
     protected void checkForUpdatesInternal() {
 
     }
@@ -847,12 +753,8 @@ public class ApplicationLoader extends Application {
         return false;
     }
 
-    public IUpdateLayout takeUpdateLayout(Activity activity, ViewGroup sideMenu, ViewGroup sideMenuContainer) {
-        return new UpdateLayout(activity, sideMenu, sideMenuContainer);
-    }
-
-    public IUpdateButton takeUpdateButton(Context context) {
-        return new UpdateButton(context);
+    public IUpdateLayout takeUpdateLayout(Activity activity, ViewGroup sideMenuContainer) {
+        return new UpdateLayout(activity, sideMenuContainer);
     }
 
     public TLRPC.Update parseTLUpdate(int constructor) {
@@ -871,8 +773,8 @@ public class ApplicationLoader extends Application {
         return false;
     }
 
-    public boolean extendDrawer(ArrayList<DrawerLayoutAdapter.Item> items) {
-        return false;
+    public void addItemOptions(ItemOptions itemOptions) {
+
     }
 
     public boolean checkRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) {

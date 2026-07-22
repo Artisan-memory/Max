@@ -26,7 +26,6 @@ public class UpdateHelper extends BaseRemoteHelper {
     public static final int UPDATE_OFF = 0;
     public static final int UPDATE_CHANNEL_RELEASE = 1;
     public static final int UPDATE_CHANNEL_BETA = 2;
-    public static final int DEFAULT_UPDATE_CHANNEL = UPDATE_CHANNEL_RELEASE;
     private boolean updateAlways = false;
 
     public static UpdateHelper getInstance() {
@@ -58,9 +57,7 @@ public class UpdateHelper extends BaseRemoteHelper {
     @Override
     protected String getTag() {
         if (BuildConfig.DEBUG) return "updateDebug";
-        // Disabled clients still read release metadata so mandatory updates can
-        // be delivered, but must never be switched to the beta feed implicitly.
-        return NaConfig.INSTANCE.getAutoUpdateChannel().Int() == UPDATE_CHANNEL_BETA ? "updateBeta" : "updateRelease";
+        return NaConfig.INSTANCE.getAutoUpdateChannel().Int() == UPDATE_CHANNEL_RELEASE ? "updateRelease" : "updateBeta";
     }
 
     @SuppressWarnings("ConstantConditions")

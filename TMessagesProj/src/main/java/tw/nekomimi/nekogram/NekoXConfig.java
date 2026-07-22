@@ -42,8 +42,6 @@ public class NekoXConfig {
 
     public static SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekox_config", Context.MODE_PRIVATE);
 
-    public static boolean disableFlagSecure = NaConfig.INSTANCE.getDisableFlagSecure().Bool();
-
     public static int customApi = preferences.getInt("custom_api", 0);
     public static int customAppId = preferences.getInt("custom_app_id", 0);
     public static String customAppHash = preferences.getString("custom_app_hash", "");
@@ -104,18 +102,6 @@ public class NekoXConfig {
             }
         }
         return color;
-    }
-
-    public static void setChannelAlias(long channelID, String name) {
-        preferences.edit().putString(NekoConfig.channelAliasPrefix + channelID, name).apply();
-    }
-
-    public static void emptyChannelAlias(long channelID) {
-        preferences.edit().remove(NekoConfig.channelAliasPrefix + channelID).apply();
-    }
-
-    public static String getChannelAlias(long channelID) {
-        return preferences.getString(NekoConfig.channelAliasPrefix + channelID, null);
     }
 
     public static void showCustomApiBottomSheet(BaseFragment fragment) {

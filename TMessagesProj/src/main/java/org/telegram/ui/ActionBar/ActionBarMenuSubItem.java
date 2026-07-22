@@ -22,16 +22,12 @@ import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
-import org.telegram.messenger.SharedConfig;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.ScaleStateListAnimator;
-
-import xyz.nextalone.nagram.NaConfig;
 
 public class ActionBarMenuSubItem extends FrameLayout {
 
@@ -45,9 +41,10 @@ public class ActionBarMenuSubItem extends FrameLayout {
 
     private int textColor;
     private int iconColor;
+    private PorterDuff.Mode iconColorMode;
     private int selectorColor;
 
-    int selectorRad = 6;
+    int selectorRad = 12;
     boolean top;
     boolean bottom;
 
@@ -80,15 +77,15 @@ public class ActionBarMenuSubItem extends FrameLayout {
 
         textColor = getThemedColor(Theme.key_actionBarDefaultSubmenuItem);
         iconColor = getThemedColor(Theme.key_actionBarDefaultSubmenuItemIcon);
+        iconColorMode = PorterDuff.Mode.MULTIPLY;
         selectorColor = getThemedColor(Theme.key_dialogButtonSelector);
 
         updateBackground();
         setPadding(dp(18), 0, dp(18), 0);
-        ScaleStateListAnimator.apply(this, .04f, 1.2f);
 
         imageView = new RLottieImageView(context);
         imageView.setScaleType(ImageView.ScaleType.CENTER);
-        imageView.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_IN));
+        imageView.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.MULTIPLY));
         addView(imageView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 40, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT)));
 
         textView = new AnimatedEmojiSpan.TextViewEmojis(context);
@@ -108,7 +105,7 @@ public class ActionBarMenuSubItem extends FrameLayout {
         if (needCheck > 0) {
             checkView = new CheckBox2(getContext(), 26, resourcesProvider);
             checkView.setDrawUnchecked(false);
-            checkView.setColor(-1, -1, Theme.key_radioBackgroundChecked);
+            checkView.setColor(-1, -1, Theme.key_actionBarDefaultSubmenuItem);
             checkView.setDrawBackgroundAsArc(-1);
             if (needCheck == 1) {
                 checkViewLeft = !LocaleController.isRTL;
@@ -246,6 +243,20 @@ public class ActionBarMenuSubItem extends FrameLayout {
         backupImageView.setImage(imageLocation, imageFilter, thumb, parentObject);
     }
 
+
+    public void setIconColorImage(int iconColor) {
+        if (backupImageView != null) {
+            backupImageView.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_IN));
+        }
+    }
+
+    public void setImageSize(int widthDp, int heightDp) {
+        if (backupImageView != null) {
+            backupImageView.setLayoutParams(LayoutHelper.createFrame(widthDp, heightDp, Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT)));
+        }
+    }
+
+
     public ActionBarMenuSubItem setColors(int textColor, int iconColor) {
         setTextColor(textColor);
         setIconColor(iconColor);
@@ -259,8 +270,12 @@ public class ActionBarMenuSubItem extends FrameLayout {
     }
 
     public void setIconColor(int iconColor) {
-        if (this.iconColor != iconColor) {
-            imageView.setColorFilter(new PorterDuffColorFilter(this.iconColor = iconColor, PorterDuff.Mode.MULTIPLY));
+        setIconColor(iconColor, PorterDuff.Mode.MULTIPLY);
+    }
+
+    public void setIconColor(int iconColor, PorterDuff.Mode mode) {
+        if (this.iconColor != iconColor || this.iconColorMode != mode) {
+            imageView.setColorFilter(new PorterDuffColorFilter(this.iconColor = iconColor, this.iconColorMode = mode));
         }
     }
 
@@ -410,13 +425,7 @@ public class ActionBarMenuSubItem extends FrameLayout {
     }
 
     public void updateBackground() {
-        if (NaConfig.INSTANCE.getSmoothRoundedMenu().Bool()) {
-            selectorRad = SharedConfig.bubbleRadius;
-        } else {
-            selectorRad = 10;
-        }
-        // setBackground(Theme.createRadSelectorDrawable(selectorColor, top ? selectorRad : 0, bottom ? selectorRad : 0));
-        setBackground(Theme.createRadSelectorDrawable(selectorColor, selectorRad, selectorRad, selectorRad, selectorRad, true));
+        setBackground(Theme.createRadSelectorDrawable(selectorColor, top ? selectorRad : 0, bottom ? selectorRad : 0));
     }
 
     private int getThemedColor(int key) {

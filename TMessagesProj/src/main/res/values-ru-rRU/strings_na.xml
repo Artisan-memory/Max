@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">Настройки Max</string>
-    <string name="ForceCopy">Принудительное копирование</string>
+    <string name="N_Config">Настройки N</string>
     <string name="CombineMessage">Объединить сообщения</string>
     <string name="TextStyle">Стиль текста</string>
     <string name="NoiseSuppressAndVoiceEnhance">Улучшение голоса</string>
@@ -20,9 +19,6 @@
     <string name="ShowMessageID">Показывать ID сообщения</string>
     <string name="ShowRPCError">Показывать ошибки RPC</string>
     <string name="ShowPremiumStickersAnimation">Показывать анимацию Premium-стикеров</string>
-    <string name="AlwaysSaveChatOffset">Всегда сохранять смещение чатов</string>
-    <string name="DisableTopicTitleCache">Не кэшировать названия топиков</string>
-    <string name="DisableTopicTitleCacheNotice">Названия топиков форумов будут обновляться из Telegram, а не переиспользоваться из локальной базы.</string>
     <string name="AppIconColorful">Красочная</string>
     <string name="AppIconDarkGreen">Тёмно-зелёная</string>
     <string name="AppIconNeon">Неон</string>
@@ -34,16 +30,12 @@
     <string name="ToTheMessage">К сообщению</string>
     <string name="ZalgoFilter">Фильтровать символы «Zalgo»</string>
     <string name="ZalgoFilterNotice">Все символы «Z̷͍͌ā̸̜l̸̞̂g̷̝͘o̶̩̓» в никнеймах и сообщениях будут удалены.</string>
-    <string name="labelChannelUser">Помечать пользователей каналов</string>
-    <string name="CustomChannelLabel">Пользовательская метка каналов</string>
     <string name="AlwaysShowDownloadIcon">Всегда показывать значок «Загрузки»</string>
     <string name="HideTitle">Скрыть заголовок</string>
     <string name="IgnoreUnreadCount">Скрыть количество непрочитанных</string>
     <string name="SendWithoutMarkdown">Отправить без разметки</string>
     <string name="SendAsEmoji">Отправить как эмодзи</string>
-    <string name="CustomArtworkApi">API пользовательских музыкальных обложек</string>
     <string name="CustomEditedMessage">Подпись для изменённых сообщений</string>
-    <string name="IconDecoration">Оформление значков</string>
     <string name="NotificationIcon">Иконка уведомления</string>
     <string name="Official">Официальная</string>
     <string name="HalloWeen">Хэллоуин</string>
@@ -69,20 +61,18 @@
     <string name="ShowSmallGIF">Маленькие GIF</string>
     <string name="DisableClickCommandToSend">Спрашивать перед отправкой команды бота</string>
     <string name="DisableDialogsFloatingButton">Скрыть плавающую кнопку</string>
-    <string name="DisableFlagSecure">Отключить FLAG_SECURE</string>
     <string name="CenterActionBarTitleType">Заголовок по центру</string>
     <string name="ShowQuickReplyInBotCommands">Показывать кнопку быстрого ответа в поле ввода</string>
     <string name="PushServiceType">Тип сервиса уведомлений</string>
     <string name="PushServiceTypeInApp">В приложении</string>
     <string name="PushServiceTypeInAppDialog">Показывать постоянное уведомление</string>
-    <string name="PushServiceTypeUnifiedGateway">Шлюз Unified Push</string>
+    <string name="PushServiceTypeUnifiedGateway">Шлюз UnifiedPush</string>
     <string name="SendMp4DocumentAsVideo">Отправлять MP4 «без сжатия» как видео</string>
     <string name="StickersChooseShortNameForStickerPack">Выберите короткое имя для вашего набора.</string>
     <string name="StickersCopyStickerSet">Копировать набор стикеров</string>
     <string name="DisableChannelMuteButton">Скрыть нижнюю панель в каналах</string>
     <string name="DisablePreviewVideoSoundShortcut">Отключить включение звука видео клавишами громкости</string>
     <string name="DisablePreviewVideoSoundShortcutNotice">Запретить включение звука предварительного просмотра видео клавишами громкости.</string>
-    <string name="DisableAutoWebLogin">Отключить автоматический вход при переходе в веб-версию</string>
     <string name="PreviewSendPhoto">Отправить фото</string>
     <string name="PreviewSendVideo">Отправить видео</string>
     <string name="PreviewSendFile">Отправить файл</string>
@@ -103,7 +93,7 @@
     <string name="SearchHashtagDefaultPageChannel">Страница поиска по хэштегам в каналах по умолчанию</string>
     <string name="SearchHashtagDefaultPageChat">Страница поиска по хэштегам в чатах по умолчанию</string>
     <string name="EnablePanguOnSending">Включить Pangu при отправке</string>
-    <string name="PanguInfo">Для удобства чтения текстового интервала, автоматически вставляйте пробелы между CJK (китайский, японский, корейский), английским языком, цифрами и символами.</string>
+    <string name="PanguInfo">Автоматическая расстановка пробелов для удобочитаемости: добавление пробелов между символами CJK (китайскими, японскими, корейскими), латинскими буквами, цифрами и специальными знаками.</string>
     <string name="SendWithPangu">Отправить с Pangu</string>
     <string name="SendWithoutPangu">Отправить без Pangu</string>
     <string name="DefaultHlsVideoQuality">Качество видео HLS по умолчанию</string>
@@ -115,17 +105,4 @@
     <string name="VideoPlayerDecoderPreferSW">Предпочтение SW</string>
     <string name="VideoPlayerDecoderHardware">Только HW</string>
     <string name="VideoPlayerDecoderPreferHW">Предпочтение HW</string>
-    <string name="ExternalStickerCache">Локальный кеш стикеров и эмодзи</string>
-    <string name="ExternalStickerCacheHint">Выберите папку для кеша стикеров и эмодзи</string>
-    <string name="ExternalStickerCacheUsage">Заполнение постоянного кеша стикеров и эмодзи</string>
-    <string name="ExternalStickerCacheRefreshAll">Закешировать все стикеры аккаунта</string>
-    <string name="ExternalEmojiCacheRefreshAll">Закешировать все эмодзи аккаунта</string>
-    <string name="ExternalStickerCacheDeleteAll">Очистить локальный кеш стикеров и эмодзи</string>
-    <string name="ExternalStickerCacheFolderRequired">Сначала выберите папку для кеша</string>
-    <string name="ExternalStickerCacheFolderReady">Папка кеша стикеров готова</string>
-    <string name="ExternalStickerCacheFolderError">Не удалось использовать папку кеша стикеров</string>
-    <string name="ExternalStickerCacheSyncStarted">Кеширование стикеров запущено в фоне</string>
-    <string name="ExternalEmojiCacheSyncStarted">Кеширование эмодзи запущено в фоне</string>
-    <string name="ExternalStickerCacheSyncQueued">Загрузки стикеров поставлены в очередь. Заполнение обновится по мере завершения.</string>
-    <string name="ExternalEmojiCacheSyncQueued">Загрузки эмодзи поставлены в очередь. Заполнение обновится по мере завершения.</string>
 </resources>

@@ -37,6 +37,7 @@ import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.Components.AudioPlayerAlert;
 import org.telegram.ui.Components.SwipeGestureSettingsView;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.LaunchActivity;
@@ -232,6 +233,7 @@ public class SharedConfig {
     public static byte[] pushAuthKeyId;
     public static boolean forceForumTabs;
     public static boolean fastWallpaperDisabled;
+    public static boolean frameMetricsEnabled;
 
     public static String directShareHash;
 
@@ -299,8 +301,6 @@ public class SharedConfig {
     public static boolean raiseToListen = true;
     public static boolean nextMediaTap = true;
     public static boolean recordViaSco = false;
-    public static boolean customTabs = true;
-    public static boolean inappBrowser = true;
     public static boolean adaptableColorInBrowser = true;
     public static boolean onlyLocalInstantView = false;
     public static boolean directShare = true;
@@ -337,6 +337,10 @@ public class SharedConfig {
     public static int emojiInteractionsHintCount;
     public static int dayNightThemeSwitchHintCount;
     public static int callEncryptionHintDisplayedCount;
+    public static boolean shadowsInSections;
+    public static boolean debugViewMetrics;
+    public static boolean photoHighQualityDefault;
+    public static boolean photoLiveDefault;
 
     public static TLRPC.TL_help_appUpdate pendingAppUpdate;
     public static int pendingAppUpdateBuildVersion;
@@ -361,8 +365,6 @@ public class SharedConfig {
     public static int fastScrollHintCount = 3;
     public static boolean dontAskManageStorage;
     public static boolean multipleReactionsPromoShowed;
-
-    public static boolean translateChats = true;
 
     public static boolean isFloatingDebugActive;
     public static LiteMode liteMode;
@@ -627,8 +629,6 @@ public class SharedConfig {
             raiseToSpeak = preferences.getBoolean("raise_to_speak", false);
             nextMediaTap = preferences.getBoolean("next_media_on_tap", true);
             recordViaSco = preferences.getBoolean("record_via_sco", false);
-            customTabs = preferences.getBoolean("custom_tabs", true);
-            inappBrowser = preferences.getBoolean("inapp_browser", false);
             adaptableColorInBrowser = preferences.getBoolean("adaptableBrowser", false);
             onlyLocalInstantView = preferences.getBoolean("onlyLocalInstantView", BuildVars.DEBUG_PRIVATE_VERSION);
             directShare = preferences.getBoolean("direct_share", true);
@@ -638,7 +638,7 @@ public class SharedConfig {
             hasCameraCache = preferences.contains("cameraCache");
             roundCamera16to9 = true;
             repeatMode = preferences.getInt("repeatMode", 0);
-            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() ? 18 : 16);
+            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 18 : 16);
             fontSizeIsDefault = !preferences.contains("fons_size");
             bubbleRadius = preferences.getInt("bubbleRadius", 17);
             ivFontSize = preferences.getInt("iv_font_size", fontSize);
@@ -647,6 +647,7 @@ public class SharedConfig {
             useSystemBoldFont = preferences.getBoolean("useSystemBoldFont", false);
             forceForumTabs = preferences.getBoolean("forceForumTabs", false);
             fastWallpaperDisabled = preferences.getBoolean("fastWallpaperDisabled", false);
+            frameMetricsEnabled = preferences.getBoolean("frameMetricsEnabled", false);
             if (useSystemBoldFont) {
                 AndroidUtilities.mediumTypeface = null;
             }
@@ -708,6 +709,10 @@ public class SharedConfig {
             multipleReactionsPromoShowed = preferences.getBoolean("multipleReactionsPromoShowed", false);
             callEncryptionHintDisplayedCount = preferences.getInt("callEncryptionHintDisplayedCount", 0);
             debugVideoQualities = preferences.getBoolean("debugVideoQualities", false);
+            shadowsInSections = preferences.getBoolean("shadowsInSections", false);
+            debugViewMetrics = preferences.getBoolean("debugViewMetrics", false);
+            photoHighQualityDefault = preferences.getBoolean("photoHighQualityDefault", false);
+            photoLiveDefault = preferences.getBoolean("photoLiveDefault", false);
 
             loadDebugConfig(preferences);
 
@@ -730,7 +735,7 @@ public class SharedConfig {
     public static void updateTabletConfig() {
         if (fontSizeIsDefault) {
             SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() ? 18 : 16);
+            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 18 : 16);
             ivFontSize = preferences.getInt("iv_font_size", fontSize);
         }
     }
@@ -1166,6 +1171,14 @@ public class SharedConfig {
         editor.apply();
     }
 
+    public static void toggleFrameMetricsEnabled() {
+        frameMetricsEnabled = !frameMetricsEnabled;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("frameMetricsEnabled", frameMetricsEnabled);
+        editor.apply();
+    }
+
     public static void toggleSuggestAnimatedEmoji() {
         suggestAnimatedEmoji = !suggestAnimatedEmoji;
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
@@ -1195,7 +1208,7 @@ public class SharedConfig {
 
     public static void setRepeatMode(int mode) {
         repeatMode = mode;
-        if (repeatMode < 0 || repeatMode > 2) {
+        if (repeatMode < 0 || repeatMode > AudioPlayerAlert.PLAY_ONCE) {
             repeatMode = 0;
         }
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
@@ -1294,22 +1307,6 @@ public class SharedConfig {
 
     public static boolean enabledRaiseTo(boolean speak) {
         return raiseToListen && (!speak || raiseToSpeak);
-    }
-
-    public static void toggleCustomTabs(boolean newValue) {
-        customTabs = newValue;
-        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("custom_tabs", customTabs);
-        editor.apply();
-    }
-
-    public static void toggleInappBrowser() {
-        inappBrowser = !inappBrowser;
-        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("inapp_browser", inappBrowser);
-        editor.apply();
     }
 
     public static void toggleBrowserAdaptableColors() {
@@ -1780,12 +1777,19 @@ public class SharedConfig {
         int cpuCount = ConnectionsManager.CPU_COUNT;
         int memoryClass = ((ActivityManager) ApplicationLoader.applicationContext.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Build.SOC_MODEL != null) {
-            int hash = Build.SOC_MODEL.toUpperCase().hashCode();
-            for (int i = 0; i < LOW_SOC.length; ++i) {
-                if (LOW_SOC[i] == hash) {
-                    return PERFORMANCE_CLASS_LOW;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                String socModel = Build.SOC_MODEL;
+                if (socModel != null) {
+                    int hash = socModel.toUpperCase().hashCode();
+                    for (int i = 0; i < LOW_SOC.length; ++i) {
+                        if (LOW_SOC[i] == hash) {
+                            return PERFORMANCE_CLASS_LOW;
+                        }
+                    }
                 }
+            } catch (NoSuchFieldError ignored) {
+                // SOC_MODEL field may not exist on some devices
             }
         }
 
@@ -1884,11 +1888,11 @@ public class SharedConfig {
     }
 
     public static boolean canBlurChat() {
-        return getDevicePerformanceClass() >= (Build.VERSION.SDK_INT >= 31 ? PERFORMANCE_CLASS_AVERAGE : PERFORMANCE_CLASS_HIGH) || BuildVars.DEBUG_PRIVATE_VERSION || NekoConfig.forceBlurInChat.Bool();
+        return getDevicePerformanceClass() >= (Build.VERSION.SDK_INT >= 31 ? PERFORMANCE_CLASS_AVERAGE : PERFORMANCE_CLASS_HIGH) || BuildVars.DEBUG_PRIVATE_VERSION;
     }
 
     public static boolean chatBlurEnabled() {
-        return (canBlurChat() && LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR)) || NekoConfig.forceBlurInChat.Bool();
+        return canBlurChat() && LiteMode.isEnabled(LiteMode.FLAG_CHAT_BLUR);
     }
 
     public static class BackgroundActivityPrefs {

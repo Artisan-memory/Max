@@ -78,6 +78,17 @@ public class BusinessLinksActivity extends UniversalFragment implements Notifica
 
     private static AlertDialog currentDialog;
 
+    @Override
+    public View createView(Context context) {
+        super.createView(context);
+
+        listView.setSections();
+        listView.adapter.setApplyBackground(false);
+        actionBar.setAdaptiveBackground(listView, true);
+
+        return fragmentView;
+    }
+
     public static void openRenameAlert(Context context, int currentAccount, TL_account.TL_businessChatLink link, Theme.ResourcesProvider resourcesProvider, boolean forceNotAdaptive) {
         BaseFragment fragment = LaunchActivity.getLastFragment();
         Activity activity = AndroidUtilities.findActivity(context);
@@ -318,7 +329,7 @@ public class BusinessLinksActivity extends UniversalFragment implements Notifica
 
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        items.add(UItem.asTopView(getString(R.string.BusinessLinksInfo), R.raw.biz_links));
+        items.add(UItem.asTopView(getString(R.string.BusinessLinks), getString(R.string.BusinessLinksInfo), R.raw.biz_links));
         adapter.whiteSectionStart();
         if (BusinessLinksController.getInstance(currentAccount).canAddNew()) {
             items.add(UItem.asButton(BUTTON_ADD, R.drawable.menu_link_create, getString(R.string.BusinessLinksAdd)).accent());
@@ -410,6 +421,7 @@ public class BusinessLinksActivity extends UniversalFragment implements Notifica
                     button.setTextColor(getThemedColor(Theme.key_text_RedBold));
                 }
             });
+            options.setScrimViewBackground(listView.getClipBackground(view));
             options.show();
             return true;
         }

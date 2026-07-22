@@ -79,6 +79,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
@@ -86,6 +87,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tw.nekomimi.nekogram.NekoConfig;
+import tw.nekomimi.nekogram.filters.AyuFilter;
+import tw.nekomimi.nekogram.parts.MessageTransKt;
 import xyz.nextalone.nagram.NaConfig;
 
 public class MessageHelper extends BaseController {
@@ -111,6 +114,10 @@ public class MessageHelper extends BaseController {
     }
 
     public static String getPathToMessage(MessageObject messageObject) {
+        return getPathToMessage(messageObject, UserConfig.selectedAccount);
+    }
+
+    private static String getPathToMessage(MessageObject messageObject, int accountId) {
         String path = messageObject.messageOwner.attachPath;
         if (!TextUtils.isEmpty(path)) {
             File f = new File(path);
@@ -119,12 +126,12 @@ public class MessageHelper extends BaseController {
             }
         }
         if (TextUtils.isEmpty(path)) {
-            path = FileLoader.getInstance(UserConfig.selectedAccount).getPathToMessage(messageObject.messageOwner).toString();
+            path = FileLoader.getInstance(accountId).getPathToMessage(messageObject.messageOwner).toString();
             File f = new File(path);
             if (!f.exists() || f.getAbsolutePath().endsWith("/cache")) {
                 path = null;
             }
-            if (TextUtils.isEmpty(path)) {
+            if (TextUtils.isEmpty(path) && (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() || NaConfig.INSTANCE.getEnableSaveEditsHistory().Bool())) {
                 String fileName = f.getName();
                 if (!TextUtils.isEmpty(fileName)) {
                     File found = AyuMessageUtils.findExistingFileByBaseNameFast(fileName);
@@ -139,11 +146,11 @@ public class MessageHelper extends BaseController {
             }
         }
         if (TextUtils.isEmpty(path)) {
-            File f = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(messageObject.getDocument(), true);
+            File f = FileLoader.getInstance(accountId).getPathToAttach(messageObject.getDocument(), true);
             if (f.exists() && !f.getAbsolutePath().endsWith("/cache")) {
                 path = f.getAbsolutePath();
             } else {
-                f = FileLoader.getInstance(UserConfig.selectedAccount).getPathToAttach(messageObject.getDocument());
+                f = FileLoader.getInstance(accountId).getPathToAttach(messageObject.getDocument());
                 if (f.exists()) {
                     path = f.getAbsolutePath();
                 }
@@ -186,35 +193,77 @@ public class MessageHelper extends BaseController {
 
     public MessageObject getLastMessageSkippingFiltered(long dialogId) {
         SQLiteCursor cursor = null;
+        NativeByteBuffer data = null;
         try {
-            cursor = getMessagesStorage().getDatabase().queryFinalized(String.format(Locale.US, "SELECT data,send_state,mid,date FROM messages_v2 WHERE uid = %d ORDER BY date DESC LIMIT %d,%d", dialogId, 0, 20));
+            boolean ignoreBlocked = NekoConfig.ignoreBlocked.Bool();
+            long currentUserId = UserConfig.getInstance(currentAccount).clientUserId;
+            HashMap<Long, HashMap<Long, TLRPC.Message>> replyMessageCache = ignoreBlocked ? new HashMap<>() : null;
+            String query = ignoreBlocked
+                ? String.format(Locale.US, "SELECT data,send_state,mid,date,replydata FROM messages_v2 WHERE uid = %d ORDER BY date DESC LIMIT %d,%d", dialogId, 0, 20)
+                : String.format(Locale.US, "SELECT data,send_state,mid,date FROM messages_v2 WHERE uid = %d ORDER BY date DESC LIMIT %d,%d", dialogId, 0, 20);
+            cursor = getMessagesStorage().getDatabase().queryFinalized(query);
             while (cursor.next()) {
-                NativeByteBuffer data = cursor.byteBufferValue(0);
+                data = cursor.byteBufferValue(0);
                 if (data == null) {
                     continue;
                 }
                 TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
-                data.reuse();
-                MessageObject obj = new MessageObject(currentAccount, message, false, false);
-                if (NekoConfig.ignoreBlocked.Bool()) {
-                    long fromId = obj.getFromChatId();
-                    if (isBlockedUser(fromId) || AyuFilter.isBlockedChannel(fromId)) {
-                        continue;
-                    }
-                    if (obj.replyMessageObject != null) {
-                        fromId = obj.replyMessageObject.getFromChatId();
-                        if (isBlockedUser(fromId) || AyuFilter.isBlockedChannel(fromId)) {
-                            continue;
-                        }
-                    }
-                }
-                if (AyuFilter.isFiltered(obj, null)) {
+                if (message == null) {
+                    data.reuse();
+                    data = null;
                     continue;
                 }
                 message.send_state = cursor.intValue(1);
                 message.id = cursor.intValue(2);
                 message.date = cursor.intValue(3);
                 message.dialog_id = dialogId;
+                message.readAttachPath(data, currentUserId);
+                data.reuse();
+                data = null;
+
+                if (ignoreBlocked) {
+                    long fromId = MessageObject.getFromChatId(message);
+                    if (isBlockedUser(fromId) || AyuFilter.isBlockedChannel(fromId)) {
+                        continue;
+                    }
+                    if (message.reply_to != null && message.reply_to.reply_to_msg_id != 0) {
+                        if (!cursor.isNull(4)) {
+                            NativeByteBuffer replyData = cursor.byteBufferValue(4);
+                            if (replyData != null) {
+                                message.replyMessage = TLRPC.Message.TLdeserialize(replyData, replyData.readInt32(false), false);
+                                if (message.replyMessage != null) {
+                                    message.replyMessage.readAttachPath(replyData, currentUserId);
+                                }
+                                replyData.reuse();
+                            }
+                        }
+                        if (message.replyMessage == null) {
+                            long replyDialogId = MessageObject.getReplyToDialogId(message);
+                            if (replyDialogId == 0) {
+                                replyDialogId = dialogId;
+                            }
+                            long replyMsgId = message.reply_to.reply_to_msg_id;
+                            HashMap<Long, TLRPC.Message> dialogCache = replyMessageCache.computeIfAbsent(replyDialogId, k -> new HashMap<>());
+                            if (dialogCache.containsKey(replyMsgId)) {
+                                message.replyMessage = dialogCache.get(replyMsgId);
+                            } else {
+                                message.replyMessage = getMessage(replyDialogId, replyMsgId);
+                                dialogCache.put(replyMsgId, message.replyMessage);
+                            }
+                        }
+                        if (message.replyMessage != null) {
+                            fromId = MessageObject.getFromChatId(message.replyMessage);
+                            if (isBlockedUser(fromId) || AyuFilter.isBlockedChannel(fromId)) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                MessageObject obj = new MessageObject(currentAccount, message, false, false);
+                if (AyuFilter.isFiltered(obj, null)) {
+                    continue;
+                }
                 if (getMessagesController().getUser(obj.getSenderId()) == null) {
                     TLRPC.User user = getMessagesStorage().getUser(obj.getSenderId());
                     if (user != null) {
@@ -226,6 +275,9 @@ public class MessageHelper extends BaseController {
         } catch (SQLiteException e) {
             FileLog.e("RegexFilter, SQLiteException when reading last unfiltered message", e);
         } finally {
+            if (data != null) {
+                data.reuse();
+            }
             if (cursor != null) {
                 cursor.dispose();
             }
@@ -272,12 +324,12 @@ public class MessageHelper extends BaseController {
                     TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
                     if (message != null) {
                         message.readAttachPath(data, UserConfig.getInstance(currentAccount).clientUserId);
+                        if (messages == null) {
+                            messages = new ArrayList<>();
+                        }
+                        messages.add(message);
                     }
                     data.reuse();
-                    if (messages == null) {
-                        messages = new ArrayList<>();
-                    }
-                    messages.add(message);
                 }
             }
             cursor.dispose();
@@ -292,62 +344,51 @@ public class MessageHelper extends BaseController {
         return messages;
     }
 
-    public void saveStickerToGallery(Context context, MessageObject messageObject) {
+    public void saveStickerToGallery(Context context, MessageObject messageObject, Utilities.Callback<Uri> callback) {
         if (messageObject.isAnimatedSticker()) return;
         // Animated Sticker is not supported.
 
-        String path = messageObject.messageOwner.attachPath;
+        String path = getPathToMessage(messageObject, currentAccount);
         if (!TextUtils.isEmpty(path)) {
-            File temp = new File(path);
-            if (!temp.exists()) {
-                path = null;
-            }
-        }
-        if (TextUtils.isEmpty(path)) {
-            path = FileLoader.getInstance(currentAccount).getPathToMessage(messageObject.messageOwner).toString();
-            File temp = new File(path);
-            if (!temp.exists()) {
-                path = null;
-            }
-        }
-        if (TextUtils.isEmpty(path)) {
-            path = FileLoader.getInstance(currentAccount).getPathToAttach(messageObject.getDocument(), true).toString();
-        }
-        if (!TextUtils.isEmpty(path)) {
-            if (messageObject.isVideoSticker()) {
-                MediaController.saveFile(path, context, 1, null, null);
-            } else {
-                try {
-                    Bitmap image = BitmapFactory.decodeFile(path);
-                    FileOutputStream stream = new FileOutputStream(path + ".png");
-                    image.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                    stream.close();
-                    MediaController.saveFile(path + ".png", context, 0, null, null);
-                } catch (Exception e) {
-                    FileLog.e(e);
-                }
-            }
+            saveStickerToGallery(context, path, messageObject.isVideoSticker(), null, callback);
         }
     }
 
-    public void saveStickerToGallery(Context context, TLRPC.Document document) {
+    public void saveStickerToGallery(Context context, TLRPC.Document document, Utilities.Callback<Uri> callback) {
         String path = FileLoader.getInstance(currentAccount).getPathToAttach(document, true).toString();
-
         if (!TextUtils.isEmpty(path)) {
-            if (MessageObject.isVideoSticker(document)) {
-                MediaController.saveFile(path, context, 1, null, document.mime_type);
-            } else {
-                try {
-                    Bitmap image = BitmapFactory.decodeFile(path);
-                    FileOutputStream stream = new FileOutputStream(path + ".png");
-                    image.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                    stream.close();
-                    MediaController.saveFile(path + ".png", context, 0, null, null);
-                } catch (Exception e) {
-                    FileLog.e(e);
-                }
-            }
+            saveStickerToGallery(context, path, MessageObject.isVideoSticker(document), document.mime_type, callback);
         }
+    }
+
+    private static void saveStickerToGallery(Context context, String path, boolean videoSticker, String mimeType, Utilities.Callback<Uri> callback) {
+        if (context == null || TextUtils.isEmpty(path)) {
+            return;
+        }
+        File f = new File(path);
+        if (!f.exists()) {
+            return;
+        }
+        Utilities.globalQueue.postRunnable(() -> {
+            try {
+                if (videoSticker) {
+                    MediaController.saveFile(path, context, 1, null, mimeType, callback);
+                } else {
+                    Bitmap image = BitmapFactory.decodeFile(path);
+                    if (image != null) {
+                        File file = new File(path.endsWith(".webp") ? path.replace(".webp", ".png") : path + ".png");
+                        try (FileOutputStream stream = new FileOutputStream(file)) {
+                            image.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                        } finally {
+                            image.recycle();
+                        }
+                        MediaController.saveFile(file.toString(), context, 0, null, null, callback);
+                    }
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
     }
 
     public void addStickerToClipboard(TLRPC.Document document, Runnable callback) {
@@ -830,6 +871,14 @@ public class MessageHelper extends BaseController {
         return canSave || downloading;
     }
 
+    public boolean shouldKeepLocalMessageOnRestrictedEdit(TLRPC.Message oldMessage, TLRPC.Message newMessage) {
+        if (oldMessage == null || newMessage == null) {
+            return false;
+        }
+        return (oldMessage.restriction_reason == null || oldMessage.restriction_reason.isEmpty()) &&
+                newMessage.restriction_reason != null && !newMessage.restriction_reason.isEmpty();
+    }
+
     // Merged from xyz.nextalone.nagram.helper.MessageHelper.kt
 
     private static final SpannableStringBuilder[] spannedStrings = new SpannableStringBuilder[5];
@@ -853,13 +902,15 @@ public class MessageHelper extends BaseController {
                 Bitmap image = BitmapFactory.decodeFile(path);
                 if (image != null) {
                     File file2 = path.endsWith(".jpg") ? new File(path.replace(".jpg", ".webp")) : new File(path + ".webp");
-                    FileOutputStream stream = new FileOutputStream(file2);
-                    if (Build.VERSION.SDK_INT >= 30) {
-                        image.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, stream);
-                    } else {
-                        image.compress(Bitmap.CompressFormat.WEBP, 100, stream);
+                    try (FileOutputStream stream = new FileOutputStream(file2)) {
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            image.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, stream);
+                        } else {
+                            image.compress(Bitmap.CompressFormat.WEBP, 100, stream);
+                        }
+                    } finally {
+                        image.recycle();
                     }
-                    stream.close();
                     addFileToClipboard(file2, callback);
                 }
             }
@@ -985,7 +1036,10 @@ public class MessageHelper extends BaseController {
     }
 
     public boolean isBlockedUser(long senderId) {
-        return NekoConfig.ignoreBlocked.Bool() && getMessagesController().blockePeers.indexOfKey(senderId) >= 0;
+        if (!NekoConfig.ignoreBlocked.Bool()) {
+            return false;
+        }
+        return getMessagesController().blockePeers.indexOfKey(senderId) >= 0 || AyuFilter.isCustomFilteredPeer(senderId);
     }
 
     public boolean isBlockedOrFiltered(TLRPC.Message message) {
@@ -1103,8 +1157,12 @@ public class MessageHelper extends BaseController {
         }
         final TLRPC.Message messageOwner = messageObject.messageOwner;
         if (summarized) {
-            if (messageOwner.translated && messageOwner.translatedSummaryText != null) {
-                return messageOwner.translatedSummaryText.entities;
+            if (messageObject.translated && messageOwner.translatedSummaryText != null) {
+                return mergeAppendTranslatedEntities(
+                    messageOwner.summaryText != null ? messageOwner.summaryText.entities : null,
+                    messageOwner.translatedSummaryText,
+                    text
+                );
             } else if (messageOwner.summaryText != null) {
                 return messageOwner.summaryText.entities;
             }
@@ -1114,7 +1172,7 @@ public class MessageHelper extends BaseController {
             if (messageOwner.voiceTranscriptionOpen) {
                 return messageOwner.translatedVoiceTranscription != null ? messageOwner.translatedVoiceTranscription.entities : null;
             } else {
-                return messageOwner.translatedText != null ? reparseMessageEntities(messageOwner.translatedText.entities) : null;
+                return messageOwner.translatedText != null ? mergeAppendTranslatedEntities(messageOwner.entities, messageOwner.translatedText, text) : null;
             }
         }
         if (messageOwner.translated && messageOwner.translatedText != null) {
@@ -1191,5 +1249,38 @@ public class MessageHelper extends BaseController {
             }
         }
         return null;
+    }
+
+    public static boolean shouldKeepOriginalForManualTranslation(int translatorMode) {
+        return translatorMode == MessageTransKt.TRANSLATE_MODE_WITH_ORIGINAL_MANUAL_ONLY
+            || translatorMode == MessageTransKt.TRANSLATE_MODE_WITH_ORIGINAL_ALL;
+    }
+
+    public static boolean shouldKeepOriginalForDisplay(int translatorMode, boolean manualTranslated, boolean autoTranslated) {
+        if (translatorMode == MessageTransKt.TRANSLATE_MODE_WITH_ORIGINAL_ALL) {
+            return manualTranslated || autoTranslated;
+        }
+        return translatorMode == MessageTransKt.TRANSLATE_MODE_WITH_ORIGINAL_MANUAL_ONLY && manualTranslated;
+    }
+
+    public static String buildTranslatedDisplayText(CharSequence originalText, TLRPC.TL_textWithEntities translatedText, boolean keepOriginal) {
+        return buildTranslatedDisplayText(originalText, translatedText != null ? translatedText.text : null, keepOriginal);
+    }
+
+    public static String buildTranslatedDisplayText(CharSequence originalText, String translatedText, boolean keepOriginal) {
+        if (TextUtils.isEmpty(translatedText)) {
+            return originalText == null ? "" : originalText.toString();
+        }
+        if (!keepOriginal || TextUtils.isEmpty(originalText)) {
+            return translatedText;
+        }
+        return originalText + MessageTransKt.TRANSLATION_SEPARATOR + translatedText;
+    }
+
+    public static boolean isLegacyTranslatedSummary(TLRPC.TL_textWithEntities summaryText, TLRPC.TL_textWithEntities translatedSummaryText) {
+        if (summaryText == null || translatedSummaryText == null || TextUtils.isEmpty(summaryText.text) || TextUtils.isEmpty(translatedSummaryText.text)) {
+            return false;
+        }
+        return translatedSummaryText.text.startsWith(summaryText.text + MessageTransKt.TRANSLATION_SEPARATOR);
     }
 }

@@ -332,9 +332,7 @@ public class AnimatedTextView extends View {
                 ellipsizeGradientMatrix.reset();
                 ellipsizeGradientMatrix.postTranslate(bounds.right - rightPadding - w, 0);
                 ellipsizeGradient.setLocalMatrix(ellipsizeGradientMatrix);
-                canvas.save();
                 canvas.drawRect(bounds.right - rightPadding - w, bounds.top, bounds.right - rightPadding + AndroidUtilities.dp(1), bounds.bottom, ellipsizePaint);
-                canvas.restore();
                 canvas.restore();
             }
         }
@@ -496,7 +494,13 @@ public class AnimatedTextView extends View {
                 toSetTextMoveDown = false;
                 t = 0;
 
-                if (!text.equals(currentText)) {
+                boolean textChanged = !TextUtils.equals(text, currentText);
+                boolean widthChanged = currentParts == null
+                        || currentParts.length == 0
+                        || currentParts[0] == null
+                        || currentParts[0].layout == null
+                        || currentParts[0].layout.getWidth() != width;
+                if (textChanged || widthChanged) {
                     clearCurrentParts();
                     currentParts = new Part[1];
                     currentParts[0] = new Part(makeLayout(currentText = text, width), 0, -1);
@@ -1190,7 +1194,7 @@ public class AnimatedTextView extends View {
     protected void onDraw(Canvas canvas) {
         if (backgroundDrawable != null && (!hideBackgroundIfEmpty || drawable.isNotEmpty() > 0)) {
             final int width = (int) (getPaddingLeft() + drawable.getCurrentWidth() + getPaddingRight());
-            if (drawable.gravity == Gravity.RIGHT) {
+            if ((drawable.gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT) {
                 backgroundDrawable.setBounds(getWidth() - width, 0, getWidth(), getHeight());
             } else {
                 backgroundDrawable.setBounds(0, 0, width, getHeight());

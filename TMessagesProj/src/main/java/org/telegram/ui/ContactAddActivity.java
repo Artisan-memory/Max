@@ -484,7 +484,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
                         }));
                     },
                     null,
-                    false, resourcesProvider
+                    false, false, resourcesProvider
                 ).create());
             });
 
@@ -501,6 +501,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
         }
 
         listView = new UniversalRecyclerView(this, this::fillItems, this::onItemClick, null);
+        listView.setSections();
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -511,6 +512,12 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
         });
         listView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
+        actionBar.setAdaptiveBackground(listView);
+
+        if (addContact && needAddException) {
+            checkShare = true;
+        }
+        listView.adapter.update(false);
 
         return fragmentView = frameLayout;
     }
@@ -536,6 +543,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
         }
 
         if (addContact && needAddException) {
+            checkShare = false;
             items.add(UItem.asCheck(2, getString(R.string.AddContactShareNumber)).setChecked(checkShare));
             items.add(UItem.asShadow(formatString(R.string.AddContactShareNumberInfo, UserObject.getFirstName(user))));
         }
@@ -925,7 +933,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
                         src.renameTo(destFile);
                         String oldKey = avatar.volume_id + "_" + avatar.local_id + "@50_50";
                         String newKey = smallSize2.location.volume_id + "_" + smallSize2.location.local_id + "@50_50";
-                        ImageLoader.getInstance().replaceImageInCache(oldKey, newKey, ImageLocation.getForUser(user, ImageLocation.TYPE_SMALL), false);
+                        ImageLoader.getInstance().replaceImageInCache(oldKey, newKey, ImageLocation.getForUser(currentAccount, user, ImageLocation.TYPE_SMALL), false);
                     }
 
                     if (bigSize2 != null && bigAvatar != null) {
@@ -993,7 +1001,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
 
         themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundWhite));
 
-        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));
+//        themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_ITEMSCOLOR, null, null, null, null, Theme.key_actionBarDefaultIcon));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_TITLECOLOR, null, null, null, null, Theme.key_actionBarDefaultTitle));
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_AB_SELECTORCOLOR, null, null, null, null, Theme.key_actionBarDefaultSelector));

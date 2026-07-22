@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-设置</string>
+    <string name="NekoSettings">N-设置</string>
     <string name="IPv6">偏好 IPv6</string>
     <string name="MessageMenu">消息菜单</string>
     <string name="HidePhone">隐藏手机号码</string>
@@ -20,8 +20,6 @@
     <string name="Repeat">复读</string>
     <string name="AddToSavedMessages">保存消息</string>
     <string name="CreateMention">创建\@</string>
-    <string name="TransparentStatusBar">使用完全透明的状态栏</string>
-    <string name="ChristmasHat">一直显示圣诞帽</string>
     <string name="ActionBarDecoration">标题栏装饰</string>
     <string name="DependsOnDate">基于日期</string>
     <string name="Christmas">圣诞节</string>
@@ -48,10 +46,9 @@
     <string name="TranslateFailed">翻译服务器错误</string>
     <string name="TranslationProvider">翻译源</string>
     <string name="ProviderGoogleTranslate">Google 翻译</string>
-    <string name="TranslateApiUnsupported">您选择的翻译源不支持您的语言。</string>
+    <string name="TranslateApiUnsupported">您所选择的翻译源不支持您的语言。</string>
     <string name="ProviderLingocloud">彩云小译</string>
     <string name="UndoTranslate">撤销翻译</string>
-    <string name="DisablePhotoViewerSideAction">禁用点按切换图片</string>
     <string name="BotToken">令牌</string>
     <string name="UnlimitedPinnedDialogs">无限的置顶聊天</string>
     <string name="UnlimitedPinnedDialogsAbout">关闭同步以无限置顶聊天。</string>
@@ -73,31 +70,26 @@
     <string name="CallTo">呼叫 **%1$s**？</string>
     <string name="DisableNumberRounding">禁用数字舍入</string>
     <string name="Categories">类别</string>
-    <string name="OfficialChannel">Max 频道</string>
+    <string name="OfficialChannel">Nagram 频道</string>
     <string name="About">关于</string>
     <string name="IgnoreBlockedAbout">您将不会再看到被屏蔽的用户在群组中的消息。</string>
     <string name="SourceCode">源代码</string>
     <string name="ResetStickerSize">重置贴纸大小</string>
     <string name="RestartAppToTakeEffect">重启应用以生效。</string>
-    <string name="DisableAppBarShadow">隐藏顶部面板分隔线</string>
     <string name="MediaPreview">聊天列表中的媒体预览</string>
     <string name="AutoPauseVideo">自动暂停视频</string>
     <string name="AutoPauseVideoAbout">当锁定屏幕/切换到后台时。</string>
     <string name="DisableProximityEvents">禁用距离传感器事件</string>
     <string name="SelectBetween">选择范围内消息</string>
-    <string name="AvatarAsBackground">背景类型</string>
-    <string name="BlurAvatarBackground">模糊头像背景</string>
-    <string name="DarkenAvatarBackground">暗色头像背景</string>
     <string name="ProviderDeepLTranslate">DeepL 翻译</string>
     <string name="ProviderMicrosoftTranslator">Bing 翻译</string>
     <string name="DontSendGreetingSticker">不要发送问候贴纸</string>
     <string name="TakeGIFasVideo">GIF 显示为视频</string>
-    <string name="UseMediaStreamInVoip">在通话中使用媒体流</string>
     <string name="HideTimeForSticker">隐藏贴纸发送时间</string>
     <string name="hideGroupSticker">隐藏群组贴纸</string>
     <string name="customGroupVoipAudioBitrate">群组通话音频比特率</string>
     <string name="maxRecentStickerCount">最近贴纸数量上限</string>
-    <string name="disableSwipeToNextChannel">禁用滑动到下个频道</string>
+    <string name="disableSwipeToNextChannel">禁用滑动切换到下一个频道</string>
     <string name="disableChoosingSticker">在选择贴纸时发送输入状态</string>
     <string name="hideSendAsChannel">隐藏以频道身份发送</string>
     <string name="showSpoilersDirectly">直接显示剧透信息</string>
@@ -111,8 +103,6 @@
     <string name="customSavePath">自定义存储路径</string>
     <string name="customSavePathHint">留空以直接保存</string>
     <string name="channelLabel">频道</string>
-    <string name="forceBlurInChat">强制启用聊天顶栏模糊</string>
-    <string name="ChatBlurAlphaValue">聊天顶栏不透明度</string>
     <string name="MutualContact">双向联系人</string>
     <string name="MutualContactDescription">此联系人为双向联系人。</string>
     <string name="DatacenterStatusAbout">检查 Telegram 的**数据中心**的状态。</string>
@@ -120,10 +110,10 @@
     <string name="enhancedFileLoader">下载加速</string>
     <string name="mapDriftingFixForGoogleMaps">修复 Google 地图在中国的漂移问题</string>
     <string name="useOSMDroidMap">使用 OSMDroid 地图</string>
-    <string name="UnknownNekoSettingsOption">找不到这个N-设置选项。</string>
-    <string name="PasscodeNeeded">您必须先启用锁定码</string>
+    <string name="UnknownNekoSettingsOption">找不到这个 N-设置 选项。</string>
+    <string name="PasscodeNeeded">您必须先启用密码锁</string>
     <string name="PasscodeNeko">锁定码</string>
-    <string name="PasscodeShowInSettings">在N-设置中显示</string>
+    <string name="PasscodeShowInSettings">在 N-设置 中显示</string>
     <string name="PasscodeShowInSettingsAbout">隐藏后，您**只能**通过该链接打开此页面：</string>
     <string name="PasscodeSet">设置锁定码</string>
     <string name="PasscodeEdit">更改锁定码</string>
@@ -162,8 +152,8 @@
     <string name="ClearRecentChats">清除最近聊天</string>
     <string name="ClearRecentChatAlert">您确定要清除您的最近聊天吗？</string>
     <string name="CloudConfig">云设置</string>
-    <string name="CloudConfigDesc">保存N-设置到 Telegram 云。</string>
-    <string name="CloudConfigSyncDate">最后同步：%1$s，云端：%2$s</string>
+    <string name="CloudConfigDesc">保存 N-设置 到 Telegram 云。</string>
+    <string name="CloudConfigSyncDate">最后同步：%s，云端：%s</string>
     <string name="CloudConfigSyncDateNever">从未</string>
     <string name="CloudConfigSync">同步到云端</string>
     <string name="CloudConfigSyncShort">同步</string>
@@ -206,8 +196,6 @@
     <string name="DisableSystemAccount">禁用系统帐户</string>
     <string name="FilterMenu">分类菜单</string>
     <string name="DisableProxyWhenVpnEnabled">启用 VPN 时禁用代理</string>
-    <string name="UseProxyItem">在侧栏而不是顶部按钮显示代理 </string>
-    <string name="HideProxyByDefault">未连接时隐藏代理按钮</string>
     <string name="SkipOpenLinkConfirm">跳过打开链接确认</string>
     <string name="DeleteAllInChatAlert">警告！这将**删除此聊天中所有用户**的**所有消息**。</string>
     <string name="UnblockAll">解除屏蔽所有账户</string>
@@ -216,7 +204,6 @@
     <string name="AddProxySocks5">添加 SOCKS5 代理</string>
     <string name="AddProxyTelegram">添加 MTProto 代理</string>
     <string name="RetestPing">重新测试所有 Ping 值</string>
-    <string name="ImportProxyList">导入代理服务器列表</string>
     <string name="ExportStickers">导出贴纸集</string>
     <string name="ImportStickersX">从文件导入贴纸集</string>
     <string name="ImportStickersList">导入贴纸集</string>
@@ -251,7 +238,7 @@
     <string name="AutoLockImmediately">立即</string>
     <string name="BackupSettings">备份设置</string>
     <string name="ImportSettings">导入设置</string>
-    <string name="ImportSettingsAlert">确定要覆盖设置吗？从未知来源导入设置可能导致PIN被覆盖从而导致应用被锁定。</string>
+    <string name="ImportSettingsAlert">确定要覆盖设置吗？从未知来源导入设置可能导致锁定码被覆盖从而导致应用被锁定。</string>
     <string name="nekoXPaymentRemovedToast">支付功能已被移除。</string>
     <string name="unreadBadgeOnBackButton">聊天窗口返回按钮上显示未读数</string>
     <string name="DeleteDownloadedFileConfirm">从本地缓存中删除此文件？</string>
@@ -261,14 +248,10 @@
     <string name="useCustomEmojiInvalid">不是有效的 Emoji Zip 文件。</string>
     <string name="repeatConfirm">复读前确认</string>
     <string name="repeatConfirmText">确定要复读这条消息？</string>
-    <string name="valuesLargeAvatarInDrawer">默认\n头像\n大只头像\n聊天壁纸</string>
     <string name="rememberAllBackMessages">记住所有已点击的回复</string>
     <string name="DisableInstantCamera">禁用相机即时预览</string>
     <string name="showSeconds">以秒为单位显示时间戳</string>
     <string name="Name">名称</string>
-    <string name="channelAlias">频道别名</string>
-    <string name="ChannelAliasDetails">以自定义名称标记以特定频道身份发言的用户。启用后在对应频道资料页的菜单中设置别名。</string>
-    <string name="setChannelAliasName">标记别名</string>
     <string name="StickerSettings">贴纸</string>
     <string name="ConfirmSettings">操作确认</string>
     <string name="InteractionSettings">交互</string>

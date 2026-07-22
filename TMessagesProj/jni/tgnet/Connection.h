@@ -71,8 +71,6 @@ private:
     inline void encryptKeyWithSecret(uint8_t *array, uint8_t secretType);
     inline std::string *getCurrentSecret(uint8_t secretType);
     void onDisconnectedInternal(int32_t reason, int32_t error);
-    bool armProtocolFailureBackoff(int32_t reason);
-    void trackReconnectRate();
 
     ProtocolType currentProtocolType = ProtocolTypeEE;
 
@@ -100,11 +98,6 @@ private:
     bool waitForReconnectTimer = false;
     bool connectionInProcess = false;
     uint32_t lastReconnectTimeout = 100;
-    // DEBUG_HUNT net: reconnect rate, reported as one aggregate per window
-    // instead of a line per attempt.
-    int64_t reconnectWindowStartedAt = 0;
-    uint32_t reconnectWindowCount = 0;
-    uint32_t reconnectWindowTlsMismatchCount = 0;
     int64_t usefullDataReceiveTime;
     uint32_t currentTimeout = 4;
     uint32_t receivedDataAmount = 0;

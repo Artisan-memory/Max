@@ -53,7 +53,7 @@ public class MemberRequestCell extends FrameLayout {
 
         int btnPadding = AndroidUtilities.dp(17);
         TextView addButton = new TextView(getContext());
-        addButton.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 4));
+        addButton.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 16));
         addButton.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         addButton.setMaxLines(1);
         addButton.setPadding(btnPadding, 0, btnPadding, 0);
@@ -70,7 +70,7 @@ public class MemberRequestCell extends FrameLayout {
 
         float addButtonWidth = addButton.getPaint().measureText(addButton.getText().toString()) + btnPadding * 2;
         TextView dismissButton = new TextView(getContext());
-        dismissButton.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(4), Color.TRANSPARENT, Theme.getColor(Theme.key_listSelector), 0xff000000));
+        dismissButton.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(16), Color.TRANSPARENT, Theme.getColor(Theme.key_listSelector), 0xff000000));
         dismissButton.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         dismissButton.setMaxLines(1);
         dismissButton.setPadding(btnPadding, 0, btnPadding, 0);
@@ -89,13 +89,12 @@ public class MemberRequestCell extends FrameLayout {
         dismissLayoutParams.rightMargin = LocaleController.isRTL ? (int)(addButtonWidth + AndroidUtilities.dp(73 + 6)) : 0;
         addView(dismissButton, dismissLayoutParams);
 
-        float dismissButtonWidth = dismissButton.getPaint().measureText(dismissButton.getText().toString()) + btnPadding * 2;
         TextView banButton = new TextView(getContext());
-        banButton.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 4));
+        banButton.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_text_RedRegular, 4));
         banButton.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         banButton.setMaxLines(1);
         banButton.setPadding(btnPadding, 0, btnPadding, 0);
-        banButton.setText(LocaleController.getString("KickFromGroup", R.string.KickFromGroup));
+        banButton.setText(LocaleController.getString(R.string.Ban));
         banButton.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
         banButton.setTextSize(14);
         banButton.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
@@ -104,10 +103,10 @@ public class MemberRequestCell extends FrameLayout {
                 clickListener.onBanClicked(importer);
             }
         });
-        FrameLayout.LayoutParams banLayoutParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, AndroidUtilities.dp(32), LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        FrameLayout.LayoutParams banLayoutParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, AndroidUtilities.dp(32), LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT);
         banLayoutParams.topMargin = AndroidUtilities.dp(62);
-        banLayoutParams.leftMargin = LocaleController.isRTL ? 0 : (int)(addButtonWidth + dismissButtonWidth + AndroidUtilities.dp(73 + 6));
-        banLayoutParams.rightMargin = LocaleController.isRTL ? (int)(addButtonWidth + dismissButtonWidth + AndroidUtilities.dp(73 + 6)) : 0;
+        banLayoutParams.leftMargin = LocaleController.isRTL ? AndroidUtilities.dp(24) : 0;
+        banLayoutParams.rightMargin = LocaleController.isRTL ? 0 : AndroidUtilities.dp(24);
         addView(banButton, banLayoutParams);
     }
 

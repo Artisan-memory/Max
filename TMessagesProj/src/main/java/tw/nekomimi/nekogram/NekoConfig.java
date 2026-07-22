@@ -17,7 +17,6 @@ import android.util.Pair;
 import com.radolyn.ayugram.utils.AyuGhostUtils;
 
 import org.telegram.messenger.ApplicationLoader;
-import org.telegram.messenger.UserConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
@@ -69,15 +68,12 @@ public class NekoConfig {
     }
 
     public static final Object sync = new Object();
-    public static final String channelAliasPrefix = "channelAliasPrefix_";
 
     private static boolean configLoaded = false;
     private static final ArrayList<ConfigItem> configs = new ArrayList<>();
     public static final ArrayList<DatacenterInfo> datacenterInfos = new ArrayList<>(5);
 
     // Configs
-    public static ConfigItem configMigrated = addConfig("ConfigMigrated", configTypeBool, false);
-    public static ConfigItem largeAvatarInDrawer = addConfig("AvatarAsBackground", configTypeInt, DRAWER_BACKGROUND_WALLPAPER);
     public static ConfigItem unreadBadgeOnBackButton = addConfig("unreadBadgeOnBackButton", configTypeBool, false);
     public static ConfigItem useCustomEmoji = addConfig("useCustomEmoji", configTypeBool, false);
     public static ConfigItem repeatConfirm = addConfig("repeatConfirm", configTypeBool, true);
@@ -93,9 +89,6 @@ public class NekoConfig {
     public static ConfigItem typeface = addConfig("TypefaceUseDefault", configTypeBool, false);
     public static ConfigItem nameOrder = addConfig("NameOrder", configTypeInt, 1);
     public static ConfigItem mapPreviewProvider = addConfig("MapPreviewProvider", configTypeInt, 0);
-    public static ConfigItem transparentStatusBar = addConfig("TransparentStatusBar", configTypeBool, true);
-    public static ConfigItem forceBlurInChat = addConfig("forceBlurInChat", configTypeBool, false);
-    public static ConfigItem chatBlueAlphaValue = addConfig("forceBlurInChatAlphaValue", configTypeInt, 127);
     public static ConfigItem showAddToSavedMessages = addConfig("showAddToSavedMessages", configTypeBool, true);
     public static ConfigItem showReport = addConfig("showReport", configTypeBool, false);
     public static ConfigItem showViewHistory = addConfig("showViewHistory", configTypeBool, true);
@@ -109,15 +102,11 @@ public class NekoConfig {
     public static ConfigItem showMessageHide = addConfig("showMessageHide", configTypeBool, false);
 
     public static ConfigItem actionBarDecoration = addConfig("ActionBarDecoration", configTypeInt, 0);
-    public static ConfigItem newYear = addConfig("ChristmasHat", configTypeBool, false);
     public static ConfigItem stickerSize = addConfig("stickerSize", configTypeFloat, 14.0f);
     public static ConfigItem unlimitedFavedStickers = addConfig("UnlimitedFavoredStickers", configTypeBool, false);
     public static ConfigItem unlimitedPinnedDialogs = addConfig("UnlimitedPinnedDialogs", configTypeBool, false);
-    public static ConfigItem disablePhotoSideAction = addConfig("DisablePhotoViewerSideAction", configTypeBool, false);
     public static ConfigItem openArchiveOnPull = addConfig("OpenArchiveOnPull", configTypeBool, false);
     public static ConfigItem hideKeyboardOnChatScroll = addConfig("HideKeyboardOnChatScroll", configTypeBool, false);
-    public static ConfigItem avatarBackgroundBlur = addConfig("BlurAvatarBackground", configTypeBool, false);
-    public static ConfigItem avatarBackgroundDarken = addConfig("DarkenAvatarBackground", configTypeBool, false);
     public static ConfigItem useSystemEmoji = addConfig("EmojiUseDefault", configTypeBool, false);
     public static ConfigItem rearVideoMessages = addConfig("RearVideoMessages", configTypeBool, false);
     public static ConfigItem hideAllTab = addConfig("HideAllTab", configTypeBool, false);
@@ -142,17 +131,14 @@ public class NekoConfig {
 
     public static ConfigItem disableNotificationBubbles = addConfig("disableNotificationBubbles", configTypeBool, false);
 
-    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_MIX);
+    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_TEXT);
     public static ConfigItem confirmAVMessage = addConfig("ConfirmAVMessage", configTypeBool, false);
     public static ConfigItem askBeforeCall = addConfig("AskBeforeCalling", configTypeBool, true);
     public static ConfigItem disableNumberRounding = addConfig("DisableNumberRounding", configTypeBool, false);
 
     public static ConfigItem dnsType = addConfig("DnsType", configTypeInt, DNS_TYPE_DEFAULT);
     public static ConfigItem customDoH = addConfig("CustomDoH", configTypeString, "");
-    public static ConfigItem hideProxyByDefault = addConfig("HideProxyByDefault", configTypeBool, true);
-    public static ConfigItem useProxyItem = addConfig("UseProxyItem", configTypeBool, true);
 
-    public static ConfigItem disableAppBarShadow = addConfig("DisableAppBarShadow", configTypeBool, false);
     public static ConfigItem mediaPreview = addConfig("MediaPreview", configTypeBool, true);
 
     public static ConfigItem disableVibration = addConfig("DisableVibration", configTypeBool, false);
@@ -175,13 +161,9 @@ public class NekoConfig {
     public static ConfigItem hideSendAsChannel = addConfig("hideSendAsChannel", configTypeBool, false);
     public static ConfigItem showSpoilersDirectly = addConfig("showSpoilersDirectly", configTypeBool, false);
 
-    public static ConfigItem labelChannelUser = addConfig("labelChannelUser", configTypeBool, true);
-    public static ConfigItem channelAlias = addConfig("channelAlias", configTypeBool, false);
-
     public static ConfigItem disableAutoDownloadingWin32Executable = addConfig("Win32ExecutableFiles", configTypeBool, true);
     public static ConfigItem disableAutoDownloadingArchive = addConfig("ArchiveFiles", configTypeBool, true);
 
-    public static ConfigItem useMediaStreamInVoip = addConfig("UseMediaStreamInVoip", configTypeBool, false);
     public static ConfigItem customAudioBitrate = addConfig("customAudioBitrate", configTypeInt, 32);
     public static ConfigItem enhancedFileLoader = addConfig("enhancedFileLoader", configTypeBool, false);
     public static ConfigItem uploadBoost = addConfig("uploadBoost", configTypeBool, false);
@@ -204,9 +186,6 @@ public class NekoConfig {
     public static ConfigItem markReadAfterSend = addConfig("markReadAfterSend", configTypeBool, true);
     public static ConfigItem showGhostInDrawer = addConfig("showGhostInDrawer", configTypeBool, false);
     public static ConfigItem showGhostModeStatus = addConfig("showGhostModeStatus", configTypeBool, false);
-    public static ConfigItem scheduleMessages = addAccountBoolConfig("ScheduleMessage", false);
-    public static ConfigItem showScheduleMessagesInDrawer = addConfig("ScheduleMessageInDrawer", configTypeBool, false);
-    public static ConfigItem colorfulInlineBotButtons = addConfig("ColorfulInlineBotButtons", configTypeBool, true);
 
     // --- Locked Status ---
     public static ConfigItem sendReadMessagePacketsLocked = addConfig("sendReadMessagePacketsLocked", configTypeBool, false);
@@ -222,19 +201,12 @@ public class NekoConfig {
 
     public static void init() {
         loadConfig(false);
-        checkMigration();
     }
 
     public static ConfigItem addConfig(String k, int t, Object d) {
         ConfigItem a = new ConfigItem(k, t, d);
         configs.add(a);
         return a;
-    }
-
-    private static ConfigItem addAccountBoolConfig(String key, boolean defaultValue) {
-        ConfigItem item = new AccountBoolConfigItem(key, defaultValue);
-        configs.add(item);
-        return item;
     }
 
     public static void loadConfig(boolean force) {
@@ -319,42 +291,8 @@ public class NekoConfig {
         return !useOSMDroidMap.Bool() && mapDriftingFixForGoogleMaps.Bool();
     }
 
-    public static void checkMigration() {
-        if (ApplicationLoader.applicationContext == null) {
-            return;
-        }
-        if (!configMigrated.Bool()) {
-            configMigrated.setConfigBool(true);
-
-            if (getPreferences().contains("DisableChatAction")) {
-                sendUploadProgress.setConfigBool(!getPreferences().getBoolean("DisableChatAction", true));
-            }
-            if (getPreferences().contains("DisableSendReadStories")) {
-                sendReadStoriesPackets.setConfigBool(!getPreferences().getBoolean("DisableSendReadStories", true));
-            }
-        }
-    }
-
     // --- Ghost Mode ---
     public static boolean isGhostModeActive() {
-        return isGhostModeActive(UserConfig.selectedAccount);
-    }
-
-    public static boolean isGhostModeActive(int account) {
-        String key = accountKey("ghostModeEnabled", account);
-        if (getPreferences().contains(key)) {
-            return getPreferences().getBoolean(key, false);
-        }
-        return isLegacyGhostModeActive();
-    }
-
-    public static boolean isScheduleMessagesEnabled(int account) {
-        return scheduleMessages instanceof AccountBoolConfigItem
-                ? ((AccountBoolConfigItem) scheduleMessages).Bool(account)
-                : scheduleMessages.Bool();
-    }
-
-    private static boolean isLegacyGhostModeActive() {
         for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
             ConfigItem item = pair.first;
             ConfigItem lockedItem = pair.second;
@@ -371,27 +309,22 @@ public class NekoConfig {
     }
 
     public static void setGhostMode(boolean enabled) {
-        setGhostMode(UserConfig.selectedAccount, enabled);
-    }
-
-    public static void setGhostMode(int account, boolean enabled) {
-        getPreferences().edit().putBoolean(accountKey("ghostModeEnabled", account), enabled).apply();
-        if (enabled) {
-            for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
-                ConfigItem item = pair.first;
-                ConfigItem lockedItem = pair.second;
-                if (!lockedItem.Bool()) {
-                    item.setConfigBool(item == sendOfflinePacketAfterOnline);
-                }
+        for (Pair<ConfigItem, ConfigItem> pair : ghostToggleItems) {
+            ConfigItem item = pair.first;
+            ConfigItem lockedItem = pair.second;
+            if (!lockedItem.Bool()) {
+                boolean targetValue = (item == sendOfflinePacketAfterOnline) == enabled;
+                item.setConfigBool(targetValue);
             }
         }
     }
 
     public static void toggleGhostMode() {
-        int account = UserConfig.selectedAccount;
-        boolean newState = !isGhostModeActive(account);
-        setGhostMode(account, newState);
-        AyuGhostUtils.performStatusRequest(newState, account);
+        boolean newState = !isGhostModeActive();
+        setGhostMode(newState);
+
+        boolean sendOnlineNow = !newState && !sendOfflinePacketAfterOnlineLocked.Bool() && sendOfflinePacketAfterOnline.Bool();
+        AyuGhostUtils.performStatusRequest(sendOnlineNow);
     }
 
     private static final List<Pair<ConfigItem, ConfigItem>> ghostToggleItems = Arrays.asList(
@@ -401,41 +334,6 @@ public class NekoConfig {
             new Pair<>(sendUploadProgress, sendUploadProgressLocked),
             new Pair<>(sendOfflinePacketAfterOnline, sendOfflinePacketAfterOnlineLocked)
     );
-
-    private static String accountKey(String key, int account) {
-        return key + "_" + account;
-    }
-
-    private static class AccountBoolConfigItem extends ConfigItem {
-        AccountBoolConfigItem(String key, boolean defaultValue) {
-            super(key, configTypeBool, defaultValue);
-        }
-
-        @Override
-        public boolean Bool() {
-            return Bool(UserConfig.selectedAccount);
-        }
-
-        public boolean Bool(int account) {
-            String scopedKey = accountKey(key, account);
-            SharedPreferences preferences = getPreferences();
-            return preferences.contains(scopedKey)
-                    ? preferences.getBoolean(scopedKey, (boolean) defaultValue)
-                    : preferences.getBoolean(key, (boolean) defaultValue);
-        }
-
-        @Override
-        public boolean toggleConfigBool() {
-            boolean value = !Bool();
-            setConfigBool(value);
-            return value;
-        }
-
-        @Override
-        public void setConfigBool(boolean value) {
-            getPreferences().edit().putBoolean(accountKey(key, UserConfig.selectedAccount), value).apply();
-        }
-    }
     // --- Ghost Mode ---
 
     public static Set<String> getAllKeys() {

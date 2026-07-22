@@ -1,1 +1,2 @@
-requests
+git+https://github.com/risin42/pyrogram
+PyroTgCrypto==1.2.7

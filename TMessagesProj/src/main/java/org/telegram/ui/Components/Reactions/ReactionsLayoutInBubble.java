@@ -49,6 +49,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ChatActionCell;
 import org.telegram.ui.Cells.ChatMessageCell;
+import org.telegram.ui.Cells.IMessageCell;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.AnimatedFileDrawable;
@@ -67,6 +68,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Objects;
 
+import tw.nekomimi.nekogram.filters.ReactionFilter;
 import xyz.nextalone.nagram.NaConfig;
 
 public class ReactionsLayoutInBubble {
@@ -185,19 +187,18 @@ public class ReactionsLayoutInBubble {
 
             comparator.dialogId = messageObject.getDialogId();
             if (messageObject.messageOwner.reactions != null && messageObject.messageOwner.reactions.results != null) {
-                int totalCount = 0;
-                for (int i = 0; i < messageObject.messageOwner.reactions.results.size(); i++) {
-                    totalCount += messageObject.messageOwner.reactions.results.get(i).count;
-                }
+                var result = ReactionFilter.getReactionCountResult(currentAccount, messageObject.getDialogId(), messageObject.messageOwner.reactions);
+                var visibleReactionCounts = result.counts();
+                int totalCount = result.totalCount();
                 boolean includeEmptyStarButton = false;
                 boolean includeEmptyLikeButton = forceLikeDislikeReactions;
                 boolean includeEmptyDislikeButton = forceLikeDislikeReactions;
 
                 final TLRPC.ChatFull chatInfo = MessagesController.getInstance(currentAccount).getChatFull(-messageObject.getDialogId());
-                if (!isSmall && !messageObject.messageOwner.reactions.results.isEmpty() && chatInfo != null && chatInfo.paid_reactions_available) {
+                if (!isSmall && !visibleReactionCounts.isEmpty() && chatInfo != null && chatInfo.paid_reactions_available) {
                     boolean hasPaidReaction = false;
-                    for (int i = 0; i < messageObject.messageOwner.reactions.results.size(); i++) {
-                        TLRPC.ReactionCount reactionCount = messageObject.messageOwner.reactions.results.get(i);
+                    for (int i = 0; i < visibleReactionCounts.size(); i++) {
+                        TLRPC.ReactionCount reactionCount = visibleReactionCounts.get(i);
                         if (reactionCount.reaction instanceof TLRPC.TL_reactionPaid) {
                             hasPaidReaction = true;
                         }
@@ -231,7 +232,7 @@ public class ReactionsLayoutInBubble {
                     forcedReactions.add(emoji);
                 }
 
-                for (int i = (-forcedReactions.size()); i < messageObject.messageOwner.reactions.results.size(); i++) {
+                for (int i = (-forcedReactions.size()); i < visibleReactionCounts.size(); i++) {
                     TLRPC.ReactionCount reactionCount;
                     if (i < 0) {
                         reactionCount = new TLRPC.TL_reactionCount();
@@ -239,7 +240,7 @@ public class ReactionsLayoutInBubble {
                         reactionCount.chosen = false;
                         reactionCount.count = 0;
                     } else {
-                        reactionCount = messageObject.messageOwner.reactions.results.get(i);
+                        reactionCount = visibleReactionCounts.get(i);
                     }
                     ReactionButton old = null;
                     if (!NaConfig.INSTANCE.getPremiumItemStarInReactions().Bool() && reactionCount.reaction instanceof TLRPC.TL_reactionPaid) {
@@ -289,6 +290,9 @@ public class ReactionsLayoutInBubble {
                         } else if (reactionCount.count <= 3 && totalCount <= 3) {
                             for (int j = 0; j < messageObject.messageOwner.reactions.recent_reactions.size(); j++) {
                                 TLRPC.MessagePeerReaction recent = messageObject.messageOwner.reactions.recent_reactions.get(j);
+                                if (recent != null && ReactionFilter.isBlockedPeer(currentAccount, messageObject.getDialogId(), MessageObject.getPeerId(recent.peer_id))) {
+                                    continue;
+                                }
                                 VisibleReaction visibleReactionPeer = VisibleReaction.fromTL(recent.reaction);
                                 VisibleReaction visibleReactionCount = VisibleReaction.fromTL(reactionCount.reaction);
                                 TLObject object = MessagesController.getInstance(currentAccount).getUserOrChat(MessageObject.getPeerId(recent.peer_id));
@@ -332,7 +336,7 @@ public class ReactionsLayoutInBubble {
                     reactionButtons.get(i).reactionCount.lastDrawnPosition = pointer++;
                 }
             }
-            hasUnreadReactions = MessageObject.hasUnreadReactions(messageObject.messageOwner);
+            hasUnreadReactions = ReactionFilter.hasUnreadReactions(currentAccount, messageObject.messageOwner);
         }
         for (int i = 0; i < oldButtons.size(); i++) {
             oldButtons.get(i).detach();
@@ -579,16 +583,8 @@ public class ReactionsLayoutInBubble {
     }
 
     private void didPressReaction(TLRPC.ReactionCount reaction, boolean longpress, float x, float y) {
-        if (parentView instanceof ChatMessageCell) {
-            final ChatMessageCell cell = (ChatMessageCell) parentView;
-            final ChatMessageCell.ChatMessageCellDelegate delegate = cell.getDelegate();
-            if (delegate == null) return;
-            delegate.didPressReaction(cell, reaction, longpress, x, y);
-        } else if (parentView instanceof ChatActionCell) {
-            final ChatActionCell cell = (ChatActionCell) parentView;
-            final ChatActionCell.ChatActionCellDelegate delegate = cell.getDelegate();
-            if (delegate == null) return;
-            delegate.didPressReaction(cell, reaction, longpress, x, y);
+        if (parentView instanceof IMessageCell) {
+            ((IMessageCell) parentView).didPressReactionFromLayout(reaction, longpress, x, y);
         }
     }
 
@@ -812,6 +808,7 @@ public class ReactionsLayoutInBubble {
         public boolean wasDrawn;
         public String key;
         public boolean choosen;
+        public boolean drawBgOnlyIfChosen;
 
         public String countText;
         public TLRPC.Reaction reaction;
@@ -882,6 +879,7 @@ public class ReactionsLayoutInBubble {
             }
             if (textDrawable == null) {
                 textDrawable = new AnimatedTextView.AnimatedTextDrawable(true, true, true);
+                textDrawable.ignoreRTL = true;
                 textDrawable.setAnimationProperties(.4f, 0, 320, CubicBezierInterpolator.EASE_OUT_QUINT);
                 textDrawable.setTextSize(dp(13));
                 textDrawable.setCallback(supercallback);
@@ -1012,9 +1010,6 @@ public class ReactionsLayoutInBubble {
             particles.bounds.inset(-dp(4), -dp(4));
             particles.setBounds(particles.bounds);
             final boolean needsPostInvalidate = particles.process();
-            if (parentView != null) {
-                parentView.invalidate();
-            }
             particles.draw(canvas, ColorUtils.blendARGB(ColorUtils.setAlphaComponent(backgroundColor, 0xFF), ColorUtils.blendARGB(serviceTextColor, ColorUtils.setAlphaComponent(backgroundColor, 0xFF), .4f), getDrawServiceShaderBackground()));
 
             if (isSelected) {
@@ -1073,6 +1068,12 @@ public class ReactionsLayoutInBubble {
                     serviceBackgroundColor = Color.TRANSPARENT;
                 }
             }
+
+            if (drawBgOnlyIfChosen) {
+                backgroundColor = 0;
+                serviceBackgroundColor = 0;
+            }
+
             updateColors(progress);
             textPaint.setColor(lastDrawnTextColor);
             if (textDrawable != null) {
@@ -1117,7 +1118,7 @@ public class ReactionsLayoutInBubble {
                 canvas.scale(bounceScale, bounceScale, x + w / 2f, y + height / 2f);
             }
             float rad = height / 2f;
-            if (getDrawServiceShaderBackground() > 0) {
+            if (getDrawServiceShaderBackground() > 0 && !drawBgOnlyIfChosen) {
                 Paint paint1 = Theme.getThemePaint(Theme.key_paint_chatActionBackground, resourcesProvider);
                 Paint paint2 = Theme.getThemePaint(Theme.key_paint_chatActionBackgroundDarken, resourcesProvider);
                 int oldAlpha = paint1.getAlpha();
@@ -1491,12 +1492,11 @@ public class ReactionsLayoutInBubble {
         }
         float eventX = event.getX();
         float eventY = event.getY();
-        if (parentView instanceof ChatMessageCell) {
+        if (parentView instanceof org.telegram.ui.Cells.IMessageCell) {
             eventY -= parentView.getPaddingTop();
-        } else if (parentView instanceof ChatActionCell) {
-            ChatActionCell actionCell = (ChatActionCell) parentView;
-            eventX -= actionCell.sideMenuWidth / 2f;
-            eventY -= parentView.getPaddingTop();
+            if (parentView instanceof ChatActionCell) {
+                eventX -= ((ChatActionCell) parentView).sideMenuWidth / 2f;
+            }
         }
         float x = eventX - this.x;
         float y = eventY - this.y;

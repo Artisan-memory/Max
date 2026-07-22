@@ -715,24 +715,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         return !recording;
     }
 
-    private String getInstantCameraDiagnosticInfo() {
-        return "account=" + currentAccount +
-                " guid=" + recordingGuid +
-                " recording=" + recording +
-                " ready=" + cameraReady +
-                " cancelled=" + cancelled +
-                " useCamera2=" + useCamera2 +
-                " both=" + bothCameras +
-                " front=" + isFrontface +
-                " initialFront=" + initialCameraFront +
-                " surface=" + surfaceIndex +
-                " recorded=" + recordedTime +
-                " file=" + (cameraFile != null ? cameraFile.getAbsolutePath() : "null") +
-                " preview=" + (previewSize[0] != null ? previewSize[0].getWidth() + "x" + previewSize[0].getHeight() : "null") +
-                " picture=" + (pictureSize != null ? pictureSize.getWidth() + "x" + pictureSize.getHeight() : "null") +
-                " selected=" + (selectedCamera != null ? selectedCamera.cameraId : "null");
-    }
-
     public void showCamera(boolean fromPaused) {
         if (textureView != null) {
             return;
@@ -809,7 +791,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("InstantCamera show round camera " + cameraFile.getAbsolutePath());
-            FileLog.d("NagramDiag instant.show fromPaused=" + fromPaused + " " + getInstantCameraDiagnosticInfo());
         }
 
         if (useCamera2) {
@@ -984,9 +965,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         zoomControlView.setTranslationY(zoomControlCenterY);
     }
 
-    public Rect getCameraRect() {
+    public RectOld getCameraRect() {
         cameraContainer.getLocationOnScreen(position);
-        return new Rect(position[0], position[1], cameraContainer.getWidth(), cameraContainer.getHeight());
+        return new RectOld(position[0], position[1], cameraContainer.getWidth(), cameraContainer.getHeight());
     }
 
     public void changeVideoPreviewState(int state, float progress) {
@@ -1095,14 +1076,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private void saveLastCameraBitmap() {
         Bitmap bitmap = textureView.getBitmap();
         if (bitmap != null && bitmap.getPixel(0, 0) != 0) {
-            Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 50, 50, true);
-            if (scaledBitmap != bitmap) {
-                bitmap.recycle();
-            }
-            if (lastBitmap != null && lastBitmap != scaledBitmap) {
-                lastBitmap.recycle();
-            }
-            lastBitmap = scaledBitmap;
+            lastBitmap = Bitmap.createScaledBitmap(textureView.getBitmap(), 50, 50, true);
             if (lastBitmap != null) {
                 Utilities.blurBitmap(lastBitmap, 7, 1, lastBitmap.getWidth(), lastBitmap.getHeight(), lastBitmap.getRowBytes());
                 try {
@@ -1114,8 +1088,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 }
             }
-        } else if (bitmap != null) {
-            bitmap.recycle();
         }
     }
 
@@ -1298,7 +1270,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("InstantCamera preview w = " + previewSize[0].mWidth + " h = " + previewSize[0].mHeight);
-            FileLog.d("NagramDiag instant.initCamera " + getInstantCameraDiagnosticInfo());
         }
         return true;
     }
@@ -1914,7 +1885,16 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             egl10.eglSwapBuffers(eglDisplay, eglSurface);
 
             if (captureFirstFrameThumb) {
-                recorder.captureFirstFrameThumb();
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (textureView == null) {
+                        return;
+                    }
+                    if (firstFrameThumb != null) {
+                        firstFrameThumb.recycle();
+                        firstFrameThumb = null;
+                    }
+                    firstFrameThumb = textureView.getBitmap();
+                });
             }
         }
 
@@ -2079,7 +2059,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     try {
                         if (BuildVars.LOGS_ENABLED) {
                             FileLog.e("InstantCamera start encoder");
-                            FileLog.d("NagramDiag instant.encoder message=start fromPause=" + (inputMessage.arg1 == 1) + " " + encoder.getRecorderDiagnosticInfo());
                         }
                         encoder.prepareEncoder(inputMessage.arg1 == 1);
                     } catch (Exception e) {
@@ -2092,7 +2071,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 case MSG_STOP_RECORDING: {
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.e("InstantCamera stop encoder");
-                        FileLog.d("NagramDiag instant.encoder message=stop send=" + inputMessage.arg1 + " " + encoder.getRecorderDiagnosticInfo());
                     }
                     encoder.handleStopRecording(inputMessage.arg1, (SendOptions) inputMessage.obj);
                     break;
@@ -2100,7 +2078,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 case MSG_PAUSE_RECORDING: {
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.e("InstantCamera pause encoder");
-                        FileLog.d("NagramDiag instant.encoder message=pause " + encoder.getRecorderDiagnosticInfo());
                     }
                     encoder.handlePauseRecording();
                     break;
@@ -2108,13 +2085,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 case MSG_RESUME_RECORDING: {
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.e("InstantCamera resume encoder");
-                        FileLog.d("NagramDiag instant.encoder message=resume " + encoder.getRecorderDiagnosticInfo());
                     }
                     encoder.handleResumeRecording();
                     break;
                 }
                 case MSG_VIDEOFRAME_AVAILABLE: {
-                    encoder.handlePendingVideoFrame();
+                    long timestamp = (((long) inputMessage.arg1) << 32) | (((long) inputMessage.arg2) & 0xffffffffL);
+                    Integer cameraId = (Integer) inputMessage.obj;
+                    encoder.handleVideoFrameAvailable(timestamp, cameraId);
                     break;
                 }
                 case MSG_AUDIOFRAME_AVAILABLE: {
@@ -2249,42 +2227,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private ArrayList<Bitmap> keyframeThumbs = new ArrayList<>();
         private DispatchQueue generateKeyframeThumbsQueue;
         private int frameCount;
-        private final Object pendingVideoFrameLock = new Object();
-        private boolean pendingVideoFrameMessage;
-        private long pendingVideoFrameTimestamp;
-        private Integer pendingVideoFrameCameraId;
-        private long receivedVideoFrames;
-        private long coalescedVideoFrames;
 
         DispatchQueue fileWriteQueue;
 
         private volatile boolean pauseRecorder;
-
-        private String getRecorderDiagnosticInfo() {
-            return "running=" + running +
-                    " ready=" + ready +
-                    " paused=" + pauseRecorder +
-                    " started=" + started +
-                    " send=" + sendWhenDone +
-                    " file=" + (videoFile != null ? videoFile.getAbsolutePath() : "null") +
-                    " writeFile=" + (fileToWrite != null ? fileToWrite.getAbsolutePath() : "null") +
-                    " differentFile=" + writingToDifferentFile +
-                    " size=" + videoWidth + "x" + videoHeight +
-                    " bitrate=" + videoBitrate +
-                    " frames=" + frameCount +
-                    " receivedFrames=" + receivedVideoFrames +
-                    " coalescedFrames=" + coalescedVideoFrames +
-                    " videoFirst=" + videoFirst +
-                    " videoLast=" + videoLast +
-                    " audioFirst=" + audioFirst +
-                    " audioLast=" + audioLast +
-                    " buffersToWrite=" + buffersToWrite.size() +
-                    " freeBuffers=" + buffers.size() +
-                    " zeroTs=" + zeroTimeStamps +
-                    " lastCameraId=" + lastCameraId +
-                    " outer={" + getInstantCameraDiagnosticInfo() + "}";
-        }
-
         private Runnable recorderRunnable = new Runnable() {
 
             @RequiresApi(api = Build.VERSION_CODES.N)
@@ -2416,10 +2362,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             videoBitrate = bitrate;
             sharedEglContext = sharedContext;
 
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("NagramDiag instant.recorder.start output=" + (outputFile != null ? outputFile.getAbsolutePath() : "null") + " resolution=" + resolution + " bitrate=" + bitrate + " " + getRecorderDiagnosticInfo());
-            }
-
             synchronized (sync) {
                 if (running) {
                     return;
@@ -2444,11 +2386,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
             keyframeThumbs.clear();
             frameCount = 0;
-            synchronized (pendingVideoFrameLock) {
-                pendingVideoFrameMessage = false;
-                receivedVideoFrames = 0;
-                coalescedVideoFrames = 0;
-            }
             DispatchQueue queue = generateKeyframeThumbsQueue;
             if (queue != null) {
                 queue.cleanupQueue();
@@ -2459,9 +2396,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
 
         public void stopRecording(int send, SendOptions options) {
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("NagramDiag instant.recorder.stop send=" + send + " options=" + (options != null ? ("ttl=" + options.ttl + " schedule=" + options.scheduleDate + " notify=" + options.notify) : "null") + " " + getRecorderDiagnosticInfo());
-            }
             handler.sendMessage(handler.obtainMessage(MSG_STOP_RECORDING, send, 0, options));
             AndroidUtilities.runOnUIThread(() -> {
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.stopAllHeavyOperations, 512);
@@ -2499,58 +2433,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 zeroTimeStamps = 0;
             }
             prevTimestamp = timestamp;
-            synchronized (pendingVideoFrameLock) {
-                receivedVideoFrames++;
-                pendingVideoFrameTimestamp = timestamp;
-                pendingVideoFrameCameraId = cameraId;
-                if (pendingVideoFrameMessage) {
-                    coalescedVideoFrames++;
-                    return;
-                }
-                pendingVideoFrameMessage = true;
-            }
-            handler.sendEmptyMessage(MSG_VIDEOFRAME_AVAILABLE);
-        }
-
-        private void handlePendingVideoFrame() {
-            final long timestamp;
-            final Integer cameraId;
-            synchronized (pendingVideoFrameLock) {
-                timestamp = pendingVideoFrameTimestamp;
-                cameraId = pendingVideoFrameCameraId;
-                pendingVideoFrameMessage = false;
-            }
-            handleVideoFrameAvailable(timestamp, cameraId);
-        }
-
-        private void captureFirstFrameThumb() {
-            final DispatchQueue queue = generateKeyframeThumbsQueue;
-            final TextureView currentTextureView = InstantCameraView.this.textureView;
-            if (queue == null || currentTextureView == null) {
-                return;
-            }
-            queue.postRunnable(() -> {
-                final int width = currentTextureView.getWidth();
-                final int height = currentTextureView.getHeight();
-                if (width <= 0 || height <= 0) {
-                    return;
-                }
-                final int thumbSize = Math.min(dp(320), Math.min(width, height));
-                final Bitmap bitmap = currentTextureView.getBitmap(thumbSize, thumbSize);
-                if (bitmap == null) {
-                    return;
-                }
-                AndroidUtilities.runOnUIThread(() -> {
-                    if (InstantCameraView.this.videoEncoder != this) {
-                        bitmap.recycle();
-                        return;
-                    }
-                    if (firstFrameThumb != null) {
-                        firstFrameThumb.recycle();
-                    }
-                    firstFrameThumb = bitmap;
-                });
-            });
+            handler.sendMessage(handler.obtainMessage(MSG_VIDEOFRAME_AVAILABLE, (int) (timestamp >> 32), (int) timestamp, cameraId));
         }
 
         @Override
@@ -3074,9 +2957,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             } else {
                 runDone = true;
             }
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("NagramDiag instant.stop.begin send=" + send + " runDone=" + runDone + " options=" + (sendOptions != null ? ("ttl=" + sendOptions.ttl + " schedule=" + sendOptions.scheduleDate + " notify=" + sendOptions.notify) : "null") + " " + getRecorderDiagnosticInfo());
-            }
             if (running && !pauseRecorder) {
                 FileLog.d("InstantCamera handleStopRecording running=false");
                 sendWhenDone = send;
@@ -3149,9 +3029,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     }
                     if (!fileToWrite.renameTo(videoFile)) {
                         FileLog.e("InstantCamera unable to rename file, try move file");
-                        if (BuildVars.LOGS_ENABLED) {
-                            FileLog.e("NagramDiag instant.stop.rename_fail from=" + fileToWrite + " to=" + videoFile + " fromExists=" + (fileToWrite != null && fileToWrite.exists()) + " toExists=" + (videoFile != null && videoFile.exists()) + " " + getRecorderDiagnosticInfo());
-                        }
                         try {
                             AndroidUtilities.copyFile(fileToWrite, videoFile);
                             fileToWrite.delete();
@@ -3171,9 +3048,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 }
             }
             FileLog.d("InstantCamera handleStopRecording send " + send);
-            if (BuildVars.LOGS_ENABLED) {
-                FileLog.d("NagramDiag instant.stop.finish send=" + send + " runDone=" + runDone + " " + getRecorderDiagnosticInfo());
-            }
             if (send == ENCODER_SEND_CANCEL) {
                 FileLoader.getInstance(currentAccount).cancelFileUpload(videoFile.getAbsolutePath(), false);
                 try {
@@ -3320,22 +3194,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             setBluetoothScoOn(true);
 
             try {
-                long prepareStartNs = System.nanoTime();
-                long stepStartNs = prepareStartNs;
-                long minBufferMs;
-                long audioRecordMs;
-                long audioThreadMs;
-                long audioCreateMs;
-                long audioConfigureMs;
-                long audioStartMs;
-                long videoCreateMs;
-                long videoConfigureMs;
-                long surfaceMs;
-                long videoStartMs;
-                long muxerMs = 0;
-                String audioCodecName = null;
-                String videoCodecName = null;
-
                 int recordBufferSize = AudioRecord.getMinBufferSize(audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
                 if (recordBufferSize <= 0) {
                     recordBufferSize = 3584;
@@ -3344,8 +3202,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 if (bufferSize < recordBufferSize) {
                     bufferSize = ((recordBufferSize / 2048) + 1) * 2048 * 2;
                 }
-                minBufferMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
                 buffers.clear();
                 for (int a = 0; a < 3; a++) {
                     buffers.add(new AudioBufferInfo());
@@ -3374,8 +3230,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
                 audioRecorder.startRecording();
-                audioRecordMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("InstantCamera initied audio record with channels " + audioRecorder.getChannelCount() + " sample rate = " + audioRecorder.getSampleRate() + " bufferSize = " + bufferSize);
                 }
@@ -3383,8 +3237,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 Thread thread = new Thread(recorderRunnable);
                 thread.setPriority(Thread.MAX_PRIORITY);
                 thread.start();
-                audioThreadMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
 
                 audioBufferInfo = new MediaCodec.BufferInfo();
                 videoBufferInfo = new MediaCodec.BufferInfo();
@@ -3397,26 +3249,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 2048 * AudioBufferInfo.MAX_SAMPLES);
 
                 audioEncoder = MediaCodec.createEncoderByType(AUDIO_MIME_TYPE);
-                audioCreateMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
-                try {
-                    audioCodecName = audioEncoder.getName();
-                } catch (Exception ignore) {
-                }
                 audioEncoder.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-                audioConfigureMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
                 audioEncoder.start();
-                audioStartMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
 
                 videoEncoder = MediaCodec.createEncoderByType(VIDEO_MIME_TYPE);
-                videoCreateMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
-                try {
-                    videoCodecName = videoEncoder.getName();
-                } catch (Exception ignore) {
-                }
                 firstEncode = true;
 
                 MediaFormat format = MediaFormat.createVideoFormat(VIDEO_MIME_TYPE, videoWidth, videoHeight);
@@ -3427,14 +3263,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
 
                 videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-                videoConfigureMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
                 surface = videoEncoder.createInputSurface();
-                surfaceMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
                 videoEncoder.start();
-                videoStartMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                stepStartNs = System.nanoTime();
 
                 if (!fromPause) {
                     boolean isSdCard = ImageLoader.isSdCardPath(videoFile);
@@ -3458,27 +3288,6 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     movie.setSize(videoWidth, videoHeight);
                     mediaMuxer = new MP4Builder().createMovie(movie, isSecretChat, false);
                     mediaMuxer.setAllowSyncFiles(allowSendingWhileRecording = SharedConfig.deviceIsHigh());
-                    muxerMs = (System.nanoTime() - stepStartNs) / 1_000_000L;
-                }
-                if (BuildVars.LOGS_ENABLED) {
-                    FileLog.d("NagramDiag instant.encoder.timings fromPause=" + fromPause
-                            + " audioSampleRate=" + audioSampleRate
-                            + " minBuffer=" + recordBufferSize
-                            + " buffer=" + bufferSize
-                            + " audioCodec=" + audioCodecName
-                            + " videoCodec=" + videoCodecName
-                            + " minBufferMs=" + minBufferMs
-                            + " audioRecordMs=" + audioRecordMs
-                            + " audioThreadMs=" + audioThreadMs
-                            + " audioCreateMs=" + audioCreateMs
-                            + " audioConfigureMs=" + audioConfigureMs
-                            + " audioStartMs=" + audioStartMs
-                            + " videoCreateMs=" + videoCreateMs
-                            + " videoConfigureMs=" + videoConfigureMs
-                            + " surfaceMs=" + surfaceMs
-                            + " videoStartMs=" + videoStartMs
-                            + " muxerMs=" + muxerMs
-                            + " totalMs=" + ((System.nanoTime() - prepareStartNs) / 1_000_000L));
                 }
 
                 AndroidUtilities.runOnUIThread(() -> {
@@ -3895,10 +3704,11 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
         return "#extension GL_OES_EGL_image_external : require\n" +
                 "precision highp float;\n" +
-                "varying vec2 vTextureCoord;\n" +
-                "uniform vec2 resolution;\n" +
-                "uniform vec2 preview;\n" +
+                "varying vec2 vTextureCoord;\n" + //uv
+                "uniform vec2 resolution;\n" + //rendering texture
+                "uniform vec2 preview;\n" + //original texture size
                 "uniform float alpha;\n" +
+
                 "uniform samplerExternalOES sTexture;\n" +
                 "void main() {\n" +
                 "   vec2 c_textureSize = preview;\n" +

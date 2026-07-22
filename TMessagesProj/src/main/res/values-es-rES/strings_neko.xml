@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-Ajustes</string>
+    <string name="NekoSettings">N-Ajustes</string>
     <string name="IPv6">IPv6 preferido</string>
     <string name="MessageMenu">Menú de mensaje</string>
     <string name="HidePhone">Ocultar número de teléfono</string>
@@ -20,8 +20,6 @@
     <string name="Repeat">Volver a publicar</string>
     <string name="AddToSavedMessages">Guardar</string>
     <string name="CreateMention">Crear mención</string>
-    <string name="TransparentStatusBar">Barra de estado transparente</string>
-    <string name="ChristmasHat">Mostrar Sombrero de Santa cada día</string>
     <string name="ActionBarDecoration">Decoración de la barra de título</string>
     <string name="DependsOnDate">Depende de la fecha</string>
     <string name="Christmas">Navidad</string>
@@ -51,7 +49,6 @@
     <string name="TranslateApiUnsupported">El proveedor escogido no soporta tu idioma.</string>
     <string name="ProviderLingocloud">Traducción de LingoCloud</string>
     <string name="UndoTranslate">Ocultar traducción</string>
-    <string name="DisablePhotoViewerSideAction">Desactivar toque lateral para cambiar fotos</string>
     <string name="BotToken">Token</string>
     <string name="UnlimitedPinnedDialogs">Chats anclados ilimitados</string>
     <string name="UnlimitedPinnedDialogsAbout">Ancla chats de forma ilimitada, pero se desactiva su sincronización.</string>
@@ -73,26 +70,21 @@
     <string name="CallTo">¿Llamar a **%1$s**?</string>
     <string name="DisableNumberRounding">Desactivar redondeo numérico</string>
     <string name="Categories">Categorías</string>
-    <string name="OfficialChannel">Canal de Max</string>
+    <string name="OfficialChannel">Canal de Nagram</string>
     <string name="About">Acerca de</string>
     <string name="IgnoreBlockedAbout">Ya no verás mensajes de usuarios bloqueados en grupos.</string>
     <string name="SourceCode">Código Fuente</string>
     <string name="ResetStickerSize">Restablecer tamaño del sticker</string>
     <string name="RestartAppToTakeEffect">Reinicie la aplicación para aplicar los cambios.</string>
-    <string name="DisableAppBarShadow">Desactivar sombra de barra de título</string>
     <string name="MediaPreview">Vista previa de medios en la lista de chat</string>
     <string name="AutoPauseVideo">Auto pausa de vídeo</string>
     <string name="AutoPauseVideoAbout">Cuando se bloquea la pantalla/cambia al fondo.</string>
     <string name="DisableProximityEvents">Desactivar eventos de proximidad</string>
     <string name="SelectBetween">Seleccionar rango</string>
-    <string name="AvatarAsBackground">Tipo de Fondo</string>
-    <string name="BlurAvatarBackground">Desenfocar fondo</string>
-    <string name="DarkenAvatarBackground">Fondo oscuro</string>
     <string name="ProviderDeepLTranslate">Traductor de DeepL</string>
     <string name="ProviderMicrosoftTranslator">Traductor de Bing</string>
     <string name="DontSendGreetingSticker">No enviar Sticker de Saludos</string>
     <string name="TakeGIFasVideo">Tomar GIF como vídeo</string>
-    <string name="UseMediaStreamInVoip">Usar flujo de medios en VoIP</string>
     <string name="HideTimeForSticker">Ocultar la hora en los stickers</string>
     <string name="hideGroupSticker">Ocultar Sticker de Grupo</string>
     <string name="customGroupVoipAudioBitrate">Tasa de bits de audio VoIP del grupo</string>
@@ -111,8 +103,6 @@
     <string name="customSavePath">Ruta de almacenamiento personalizada</string>
     <string name="customSavePathHint">Dejar en blanco para guardar directamente</string>
     <string name="channelLabel">canal</string>
-    <string name="forceBlurInChat">Forzar activación de Desenfoque de Chat</string>
-    <string name="ChatBlurAlphaValue">Desenfoque de Chat Alfa</string>
     <string name="MutualContact">Contacto en común</string>
     <string name="MutualContactDescription">Este contacto es un contacto mutuo.</string>
     <string name="DatacenterStatusAbout">Compruebe el estado de los **datacenters** de Telegram.</string>
@@ -162,7 +152,7 @@
     <string name="ClearRecentChatAlert">¿Quieres borrar tus chats recientes?</string>
     <string name="CloudConfig">Ajustes de la nube</string>
     <string name="CloudConfigDesc">Guarda tus N-ajustes en la nube de Telegram.</string>
-    <string name="CloudConfigSyncDate">Última sincronización: %1$s, nube: %2$s</string>
+    <string name="CloudConfigSyncDate">Última sincronización: %s, nube: %s</string>
     <string name="CloudConfigSyncDateNever">nunca</string>
     <string name="CloudConfigSync">Sincronizar a la nube</string>
     <string name="CloudConfigSyncShort">Sincronizar</string>
@@ -204,8 +194,6 @@
     <string name="DisableSystemAccount">Desactivar cuenta del sistema</string>
     <string name="FilterMenu">Menú de filtros de diálogos</string>
     <string name="DisableProxyWhenVpnEnabled">Desactivar proxy cuando la VPN está habilitada</string>
-    <string name="UseProxyItem">Mostrar proxy en el marcador</string>
-    <string name="HideProxyByDefault">Ocultar proxy cuando está inactivo</string>
     <string name="SkipOpenLinkConfirm">Omitir confirmación de Abrir Enlace</string>
     <string name="DeleteAllInChatAlert">¡Advertencia! Esto **eliminará todos los mensajes** en este chat para **todos** los participantes.</string>
     <string name="UnblockAll">Desbloquear todo</string>
@@ -214,7 +202,6 @@
     <string name="AddProxySocks5">Añadir Proxy Socks5</string>
     <string name="AddProxyTelegram">Añadir Proxy MTProto</string>
     <string name="RetestPing">Vuelva a probar el ping para todos los servidores</string>
-    <string name="ImportProxyList">Importar servidores proxy</string>
     <string name="ExportStickers">Exportar Stickers</string>
     <string name="ImportStickersX">Importar stickers desde archivo</string>
     <string name="ImportStickersList">Importar stickers</string>
@@ -259,14 +246,10 @@
     <string name="useCustomEmojiInvalid">No es un paquete de emoji válido.</string>
     <string name="repeatConfirm">Preguntar antes del reenvío</string>
     <string name="repeatConfirmText">¿Estás seguro de que quieres volver a publicar?</string>
-    <string name="valuesLargeAvatarInDrawer">Predeterminado\nAvatar\nAvatar grande\nFondo de pantalla</string>
     <string name="rememberAllBackMessages">Recordar todas las respuestas pulsadas</string>
     <string name="DisableInstantCamera">Deshabilitar cámara instantánea</string>
     <string name="showSeconds">Mostrar los segundos en la marca de tiempo</string>
     <string name="Name">Nombre</string>
-    <string name="channelAlias">Alias del canal</string>
-    <string name="ChannelAliasDetails">Etiqueta a los usuarios del canal con un nombre personalizado. Activar para establecer alias en el menú del perfil del canal.</string>
-    <string name="setChannelAliasName">Establecer alias</string>
     <string name="StickerSettings">Stickers</string>
     <string name="ConfirmSettings">Confirmaciones</string>
     <string name="InteractionSettings">Interacciones</string>

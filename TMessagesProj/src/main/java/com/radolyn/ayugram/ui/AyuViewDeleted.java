@@ -74,15 +74,16 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 import kotlin.Unit;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
+import tw.nekomimi.nekogram.llm.LlmConfig;
 import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.ui.MessageDetailsActivity;
-import xyz.nextalone.nagram.NaConfig;
+import tw.nekomimi.nekogram.ui.NekoDelegateFragment;
+import tw.nekomimi.nekogram.ui.cells.NekoMessageCell;
 
-public class AyuViewDeleted extends AyuMessageDelegateFragment {
+public class AyuViewDeleted extends NekoDelegateFragment {
     private static final int OPTION_SHOW_IN_CHAT = 1;
     private static final int OPTION_DELETE_FROM_DATABASE = 2;
     private static final int OPTION_COPY = 3;
@@ -111,6 +112,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
     private ActionBarPopupWindow scrimPopupWindow;
     private ChatActionCell floatingDateView;
     private TextView emptyView;
+    private Runnable showEmptyViewRunnable;
     private ActionBarMenuItem searchItem;
     private String searchQuery = "";
     private AnimatorSet floatingDateAnimation;
@@ -125,7 +127,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
     private void checkInsets() {
         if (listView != null) {
-            listView.setPadding(0, 0, 0, windowInsetsStateHolder.getCurrentNavigationBarInset() + dp(8));
+            applyMessageListNavigationBarInset(listView, windowInsetsStateHolder.getCurrentNavigationBarInset());
         }
         updatePagedownButtonPosition();
     }
@@ -270,7 +272,8 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         });
 
         ActionBarMenu menu = actionBar.createMenu();
-        searchItem = menu.addItem(0, R.drawable.ic_ab_search).setIsSearchField(true);
+        searchItem = menu.addItem(0, R.drawable.outline_header_search).setIsSearchField(true);
+        searchItem.setSearchPaddingStart(12);
         searchItem.setSearchFieldHint(getString(R.string.Search));
         searchItem.setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
             @Override
@@ -301,7 +304,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             }
         });
 
-        SizeNotifierFrameLayout frameLayout = new SizeNotifierFrameLayout(context) {
+        SizeNotifierFrameLayout frameLayout = new ScrimFrameLayout(context) {
             @Override
             protected boolean isActionBarVisible() {
                 return false;
@@ -325,29 +328,25 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             windowInsetsStateHolder.setInsets(insets);
             return WindowInsetsCompat.CONSUMED;
         });
+        int actionBarOffset = getGlassActionBarOffset();
 
         listView = new RecyclerListView(context);
-        listView.setItemAnimator(null);
         listView.setLayoutAnimation(null);
 
-        layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false) {
-            @Override
-            public boolean supportsPredictiveItemAnimations() {
-                return false;
-            }
-        };
+        layoutManager = new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false);
         layoutManager.setStackFromEnd(true);
 
         listView.setLayoutManager(layoutManager);
         listView.setVerticalScrollBarEnabled(true);
         listView.setAdapter(new ListAdapter(context, UserConfig.selectedAccount));
+        setupMessageListItemAnimator(listView);
         listView.setSelectorType(9);
         listView.setSelectorDrawableColor(0);
-        listView.setClipToPadding(false);
-        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        applyGlassMessageListPadding(listView, 0);
+        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
         listView.setOnItemClickListener((view, position, x, y) -> {
-            if (view instanceof AyuMessageCell) {
+            if (view instanceof NekoMessageCell) {
                 createMenu(view, x, y, position);
             }
         });
@@ -363,7 +362,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         floatingDateView.setAlpha(0.0f);
         floatingDateView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         floatingDateView.setInvalidateColors(true);
-        frameLayout.addView(floatingDateView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 4, 0, 0));
+        frameLayout.addView(floatingDateView, LayoutHelper.createFrameMarginPx(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, actionBarOffset + dp(4), 0, 0));
 
         emptyView = new AppCompatTextView(context) {
             @Override
@@ -402,8 +401,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         listView.post(updateFloatingDateRunnable);
 
-        updateEmptyView();
-
         updateDeleted(() -> {
             if (rowCount > 0 && listView != null) {
                 listView.scrollToPosition(rowCount - 1);
@@ -412,6 +409,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
             updatePagedownButtonVisibility(false);
         });
 
+        setupGlassActionBar(frameLayout, listView);
         return fragmentView;
     }
 
@@ -502,8 +500,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, AyuConstants.MESSAGES_DELETED_NOTIFICATION);
         NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, AyuConstants.DELETED_MEDIA_LOADED_NOTIFICATION);
         NotificationCenter.getInstance(UserConfig.selectedAccount).removeObserver(this, NotificationCenter.voiceTranscriptionUpdate);
-        Bulletin.removeDelegate(this);
-
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
             scrimPopupWindow = null;
@@ -512,6 +508,11 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         if (floatingDateAnimation != null) {
             floatingDateAnimation.cancel();
             floatingDateAnimation = null;
+        }
+
+        if (showEmptyViewRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(showEmptyViewRunnable);
+            showEmptyViewRunnable = null;
         }
 
         AndroidUtilities.cancelRunOnUIThread(updateFloatingDateRunnable);
@@ -535,13 +536,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         if (fragmentView instanceof SizeNotifierFrameLayout) {
             ((SizeNotifierFrameLayout) fragmentView).onResume();
         }
-
-        Bulletin.addDelegate(this, new Bulletin.Delegate() {
-            @Override
-            public int getBottomOffset(int tag) {
-                return windowInsetsStateHolder.getCurrentNavigationBarInset();
-            }
-        });
     }
 
     @Override
@@ -551,8 +545,6 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         if (fragmentView instanceof SizeNotifierFrameLayout) {
             ((SizeNotifierFrameLayout) fragmentView).onPause();
         }
-
-        Bulletin.removeDelegate(this);
 
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
@@ -640,7 +632,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         if (!TextUtils.isEmpty(textToTranslate) || msg.isPoll()) {
             boolean translated = msg.messageOwner != null && (msg.messageOwner.translated || msg.messageOwner.translatedPoll != null);
             items.add(getString(translated ? R.string.HideTranslation : R.string.Translate));
-            icons.add(NaConfig.INSTANCE.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
+            icons.add(LlmConfig.llmIsDefaultProvider() ? R.drawable.magic_stick_solar : R.drawable.ic_translate);
             options.add(OPTION_TRANSLATE);
         }
 
@@ -652,7 +644,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         icons.add(R.drawable.msg_info);
         options.add(OPTION_DETAILS);
 
-        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, getResourceProvider(), 0);
+        ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert4, getResourceProvider(), 0);
         popupLayout.setMinimumWidth(dp(200));
         popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
 
@@ -688,10 +680,33 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
                     int messageId = msg.getId();
                     Utilities.globalQueue.postRunnable(() -> AyuMessagesController.getInstance().delete(userId, dialogId, messageId));
                     if (pos >= 0 && pos < filteredMessages.size()) {
-                        DeletedMessageFull toRemove = filteredMessages.get(pos);
+                        DeletedMessageFull toRemove = filteredMessages.remove(pos);
+                        int removedMessageId = toRemove != null && toRemove.message != null ? toRemove.message.messageId : 0;
+                        if (pos < messageObjects.size()) {
+                            messageObjects.remove(pos);
+                        }
                         deletedMessages.remove(toRemove);
-                        messageIdMap.remove(toRemove.message.messageId);
-                        applySearchFilter();
+                        if (toRemove != null && toRemove.message != null) {
+                            messageIdMap.remove(toRemove.message.messageId);
+                        }
+                        rowCount = filteredMessages.size();
+                        if (!deletedMessages.isEmpty() && deletedMessages.get(0).message != null) {
+                            oldestId = deletedMessages.get(0).message.messageId;
+                        } else {
+                            oldestId = Integer.MAX_VALUE;
+                        }
+                        notifyMessageListItemRemoved(listView, pos);
+                        invalidateCachedReplyReferences(removedMessageId);
+                        updateActionBarCount();
+                        updateEmptyView(rowCount == 0);
+                        if (listView != null) {
+                            listView.post(() -> {
+                                updatePagedownButtonVisibility(false);
+                                updateVisibleMessageCells();
+                            });
+                        } else {
+                            updatePagedownButtonVisibility(false);
+                        }
                     } else {
                         updateDeleted();
                         notifyAdapterDataChanged();
@@ -806,6 +821,7 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
                 }
                 Bulletin.hideVisible();
                 scrimPopupWindow = null;
+                dimBehindView(false);
             }
         };
         scrimPopupWindow.setPauseNotifications(true);
@@ -832,21 +848,22 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         int height = scrimPopupContainerLayout.getMeasuredHeight();
         int totalHeight = fragmentView.getHeight();
+        int popupTopBound = getGlassActionBarBottomInWindow() + dp(8);
         int popupY;
         if (height < totalHeight) {
             popupY = listLocation[1] + v.getTop() + (int) y - height - dp(8);
-            if (popupY < dp(24)) {
-                popupY = dp(24);
+            if (popupY < popupTopBound) {
+                popupY = popupTopBound;
             } else if (popupY > totalHeight - height - dp(8)) {
                 popupY = totalHeight - height - dp(8);
             }
         } else {
-            popupY = AndroidUtilities.getStatusBarHeight(getContext());
+            popupY = popupTopBound;
         }
 
         scrimPopupContainerLayout.setMaxHeight(totalHeight - popupY);
         scrimPopupWindow.showAtLocation(listView, Gravity.LEFT | Gravity.TOP, popupX, popupY);
-        scrimPopupWindow.dimBehind();
+        dimBehindView(v, true);
     }
 
     private void updateActionBarCount() {
@@ -963,23 +980,49 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         }
     }
 
+    private void invalidateCachedReplyReferences(int removedMessageId) {
+        if (removedMessageId == 0 || messageObjects.isEmpty()) {
+            return;
+        }
+        RecyclerView.Adapter<?> adapter = listView == null ? null : listView.getAdapter();
+        for (int i = 0; i < messageObjects.size(); i++) {
+            MessageObject messageObject = messageObjects.get(i);
+            if (messageObject == null || messageObject.replyMessageObject == null || messageObject.replyMessageObject == messageObject) {
+                continue;
+            }
+            if (messageObject.replyMessageObject.getId() != removedMessageId) {
+                continue;
+            }
+            messageObject.replyMessageObject = null;
+            if (messageObject.messageOwner != null) {
+                messageObject.messageOwner.replyMessage = null;
+                if (messageObject.messageOwner.reply_to != null && messageObject.messageOwner.reply_to.reply_to_msg_id == removedMessageId) {
+                    messageObject.messageOwner.reply_to = null;
+                }
+            }
+            if (adapter != null && i < adapter.getItemCount()) {
+                adapter.notifyItemChanged(i);
+            }
+        }
+    }
+
     private void applySearchFilter() {
         filteredMessages.clear();
         if (TextUtils.isEmpty(searchQuery)) {
             filteredMessages.addAll(deletedMessages);
         } else {
-            String q = searchQuery.toLowerCase(Locale.getDefault());
+            String q = searchQuery.toLowerCase();
             for (DeletedMessageFull full : deletedMessages) {
                 String text = full.message != null ? full.message.text : null;
-                if (!TextUtils.isEmpty(text) && text.toLowerCase(Locale.getDefault()).contains(q)) {
+                if (!TextUtils.isEmpty(text) && text.toLowerCase().contains(q)) {
                     filteredMessages.add(full);
                     continue;
                 }
-                if (full.message != null && full.message.mediaPath != null && full.message.mediaPath.toLowerCase(Locale.getDefault()).contains(q)) {
+                if (full.message != null && full.message.mediaPath != null && full.message.mediaPath.toLowerCase().contains(q)) {
                     filteredMessages.add(full);
                     continue;
                 }
-                if (full.message != null && full.message.fwdName != null && full.message.fwdName.toLowerCase(Locale.getDefault()).contains(q)) {
+                if (full.message != null && full.message.fwdName != null && full.message.fwdName.toLowerCase().contains(q)) {
                     filteredMessages.add(full);
                 }
             }
@@ -1000,16 +1043,11 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
     }
 
     private void updateEmptyView() {
-        if (emptyView == null || listView == null) {
-            return;
-        }
-        if (rowCount == 0) {
-            emptyView.setVisibility(View.VISIBLE);
-            listView.setVisibility(View.GONE);
-        } else {
-            emptyView.setVisibility(View.GONE);
-            listView.setVisibility(View.VISIBLE);
-        }
+        updateEmptyView(false);
+    }
+
+    private void updateEmptyView(boolean delayIfEmpty) {
+        showEmptyViewRunnable = updateListEmptyView(() -> emptyView, () -> listView, rowCount == 0, delayIfEmpty, showEmptyViewRunnable, () -> showEmptyViewRunnable = null);
     }
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
@@ -1023,8 +1061,8 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
 
         @Override
         public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-            if (holder.itemView instanceof AyuMessageCell) {
-                ((AyuMessageCell) holder.itemView).setAyuDelegate(null);
+            if (holder.itemView instanceof NekoMessageCell) {
+                ((NekoMessageCell) holder.itemView).setAyuDelegate(null);
             }
         }
 
@@ -1041,13 +1079,13 @@ public class AyuViewDeleted extends AyuMessageDelegateFragment {
         @NonNull
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new RecyclerListView.Holder(new AyuMessageCell(context, currentAccount));
+            return new RecyclerListView.Holder(new NekoMessageCell(context, currentAccount));
         }
 
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             if (holder.getItemViewType() == 1) {
-                var cell = (AyuMessageCell) holder.itemView;
+                var cell = (NekoMessageCell) holder.itemView;
                 var deleted = filteredMessages.get(position);
                 MessageObject msg;
                 if (position >= 0 && position < messageObjects.size()) {

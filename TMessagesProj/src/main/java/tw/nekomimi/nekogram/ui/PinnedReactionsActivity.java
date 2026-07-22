@@ -206,7 +206,7 @@ public class PinnedReactionsActivity extends BaseFragment {
 
         backButton = new ImageView(context);
         backButton.setScaleType(ImageView.ScaleType.CENTER);
-        backButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_actionBarWhiteSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
+        backButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
         backButton.setImageResource(R.drawable.ic_ab_back);
         backButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarDefaultIcon), PorterDuff.Mode.SRC_IN));
         backButton.setOnClickListener(v -> {
@@ -432,7 +432,7 @@ public class PinnedReactionsActivity extends BaseFragment {
             contentLayout.addView(switchLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             switchLayout.addView(headerCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-            editText = new CustomReactionEditText(context, getResourceProvider(), 150) {
+            editText = new CustomReactionEditText(context, getResourceProvider(), 150, true) {
                 @Override
                 protected void onLineCountChanged(int oldLineCount, int newLineCount) {
                     if (newLineCount > oldLineCount) {

@@ -19,8 +19,6 @@ import android.text.style.ClickableSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
-import android.view.ViewGroup;
-import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -66,6 +64,7 @@ import tw.nekomimi.nekogram.NekoConfig;
 public final class BulletinFactory {
 
     public static BulletinFactory of(BaseFragment fragment) {
+        if (fragment == null) return global();
         return new BulletinFactory(fragment);
     }
 
@@ -109,7 +108,7 @@ public final class BulletinFactory {
             Bulletin b = createErrorBulletin(LocaleController.formatString(R.string.UnknownError));
             b.hideAfterBottomSheet = false;
             b.show(top);
-        } else {
+        } else if (error.code != 406) {
             Bulletin b = createErrorBulletin(LocaleController.formatString(R.string.UnknownErrorCode, error.text));
             b.hideAfterBottomSheet = false;
             b.show(top);
@@ -133,6 +132,7 @@ public final class BulletinFactory {
 
     public static void showError(TLRPC.TL_error error) {
         if (!LaunchActivity.isActive) return;
+        if (error != null && error.code == 406) return;
         global().createErrorBulletin(LocaleController.formatString(R.string.UnknownErrorCode, error.text)).show();
     }
 
@@ -143,6 +143,9 @@ public final class BulletinFactory {
 
         VIDEO("VideoSavedHint", R.string.VideoSavedHint, Icon.SAVED_TO_GALLERY),
         VIDEOS("VideosSavedHint", Icon.SAVED_TO_GALLERY),
+
+        LIVEPHOTO("LivePhotoSavedHint", R.string.LivePhotoSavedHint, Icon.SAVED_TO_GALLERY),
+        LIVEPHOTOS("LivePhotosSavedHint", Icon.SAVED_TO_GALLERY),
 
         MEDIA("MediaSavedHint", Icon.SAVED_TO_GALLERY),
 
@@ -430,6 +433,10 @@ public final class BulletinFactory {
     }
 
     public Bulletin createSimpleBulletin(int iconRawId, CharSequence text, CharSequence button, int duration, Runnable onButtonClick) {
+        return createSimpleBulletin(iconRawId, text, button, duration, false, onButtonClick);
+    }
+
+    public Bulletin createSimpleBulletin(int iconRawId, CharSequence text, CharSequence button, int duration, boolean icon, Runnable onButtonClick) {
         final Bulletin.LottieLayout layout = new Bulletin.LottieLayout(getContext(), resourcesProvider);
         if (iconRawId != 0) {
             layout.setAnimation(iconRawId, 36, 36);
@@ -442,7 +449,7 @@ public final class BulletinFactory {
         layout.textView.setSingleLine(false);
         layout.textView.setMaxLines(3);
         layout.textView.setText(text);
-        layout.setButton(new Bulletin.UndoButton(getContext(), true, resourcesProvider).setText(button).setUndoAction(onButtonClick));
+        layout.setButton(new Bulletin.UndoButton(getContext(), true, icon, resourcesProvider).setText(button).setUndoAction(onButtonClick));
         return create(layout, duration);
     }
 
@@ -529,7 +536,7 @@ public final class BulletinFactory {
             layout = singleLineLayout;
         }
         layout.setTimer();
-        layout.setButton(new Bulletin.UndoButton(getContext(), true, textAndIcon, resourcesProvider).setText(LocaleController.getString(R.string.Undo)).setUndoAction(onUndo).setDelayedAction(onAction));
+        layout.setButton(new Bulletin.UndoButton(getContext(), true, textAndIcon, resourcesProvider).setText(LocaleController.getString(R.string.UndoNoCaps)).setUndoAction(onUndo).setDelayedAction(onAction));
         return create(layout, Bulletin.DURATION_PROLONG);
     }
 
@@ -611,7 +618,7 @@ public final class BulletinFactory {
         }
 
         if (undoObject != null) {
-            layout.setButton(new Bulletin.UndoButton(getContext(), true, resourcesProvider).setText(LocaleController.getString(R.string.Undo)).setUndoAction(undoObject.onUndo).setDelayedAction(undoObject.onAction));
+            layout.setButton(new Bulletin.UndoButton(getContext(), true, resourcesProvider).setText(LocaleController.getString(R.string.UndoNoCaps)).setUndoAction(undoObject.onUndo).setDelayedAction(undoObject.onAction));
         }
 
         return create(layout, Bulletin.DURATION_PROLONG);
@@ -694,6 +701,15 @@ public final class BulletinFactory {
             }
         }
         return createUsersBulletin(users, text);
+    }
+
+    public Bulletin createEmojiBulletin(long emoji_id, String text, String subtext) {
+        final Bulletin.TwoLineBackupLayout layout = new Bulletin.TwoLineBackupLayout(getContext(), resourcesProvider);
+        layout.imageView.setAnimatedEmojiDrawable(new AnimatedEmojiDrawable(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES_LARGE, UserConfig.selectedAccount, emoji_id));
+        layout.imageView.setEmojiColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider), PorterDuff.Mode.SRC_IN));
+        layout.titleTextView.setText(text);
+        layout.subtitleTextView.setText(subtext);
+        return create(layout, Bulletin.DURATION_LONG);
     }
 
     public Bulletin createEmojiBulletin(String emoji, String text) {
@@ -1190,6 +1206,11 @@ public final class BulletinFactory {
     }
 
     @CheckResult
+    public static Bulletin createSaveToGalleryBulletin(BaseFragment fragment, boolean video, boolean livePhoto, Theme.ResourcesProvider resourcesProvider) {
+        return of(fragment).createDownloadBulletin(livePhoto ? FileType.LIVEPHOTO : (video ? FileType.VIDEO : FileType.PHOTO), resourcesProvider);
+    }
+
+    @CheckResult
     public static Bulletin createSaveToGalleryBulletin(FrameLayout containerLayout, boolean video, Theme.ResourcesProvider resourcesProvider) {
         return of(containerLayout, resourcesProvider).createDownloadBulletin(video ? FileType.VIDEO : FileType.PHOTO, resourcesProvider);
     }
@@ -1200,8 +1221,42 @@ public final class BulletinFactory {
     }
 
     @CheckResult
+    public static Bulletin createSaveToGalleryBulletin(FrameLayout containerLayout, boolean video, boolean livePhoto, int backgroundColor, int textColor) {
+        return of(containerLayout, null).createDownloadBulletin(livePhoto ? FileType.LIVEPHOTO : (video ? FileType.VIDEO : FileType.PHOTO), 1, backgroundColor, textColor);
+    }
+
+    @CheckResult
     public static Bulletin createSaveToGalleryBulletin(FrameLayout containerLayout, int amount, boolean video, int backgroundColor, int textColor) {
         return of(containerLayout, null).createDownloadBulletin(video ? (amount > 1 ? FileType.VIDEOS : FileType.VIDEO) : (amount > 1 ? FileType.PHOTOS : FileType.PHOTO), amount, backgroundColor, textColor);
+    }
+
+    @CheckResult
+    public static Bulletin createSaveToGalleryBulletin(FrameLayout containerLayout, int amount, boolean video, boolean livePhoto, int backgroundColor, int textColor) {
+        final FileType ft;
+        if (livePhoto) {
+            ft = amount > 1 ? FileType.LIVEPHOTOS : FileType.LIVEPHOTO;
+        } else if (video) {
+            ft = amount > 1 ? FileType.VIDEOS : FileType.VIDEO;
+        } else {
+            ft = amount > 1 ? FileType.PHOTOS : FileType.PHOTO;
+        }
+        return of(containerLayout, null).createDownloadBulletin(ft, amount, backgroundColor, textColor);
+    }
+
+    @CheckResult
+    public static Bulletin createSaveMediaToGalleryBulletin(FrameLayout containerLayout, int amount, boolean hasVideo, boolean hasPhoto, boolean hasLivePhoto, int backgroundColor, int textColor) {
+        final int kinds = (hasVideo ? 1 : 0) + (hasPhoto ? 1 : 0) + (hasLivePhoto ? 1 : 0);
+        final FileType ft;
+        if (kinds > 1) {
+            ft = FileType.MEDIA;
+        } else if (hasLivePhoto) {
+            ft = amount > 1 ? FileType.LIVEPHOTOS : FileType.LIVEPHOTO;
+        } else if (hasVideo) {
+            ft = amount > 1 ? FileType.VIDEOS : FileType.VIDEO;
+        } else {
+            ft = amount > 1 ? FileType.PHOTOS : FileType.PHOTO;
+        }
+        return of(containerLayout, null).createDownloadBulletin(ft, amount, backgroundColor, textColor);
     }
 
     @CheckResult
@@ -1265,7 +1320,7 @@ public final class BulletinFactory {
     }
 
     public boolean showForwardedBulletinWithTag(long did, int messagesCount) {
-        if (!UserConfig.getInstance(UserConfig.selectedAccount).isPremium()) {
+        if (!UserConfig.getInstance(UserConfig.selectedAccount).isPremium() || fragment == null) {
             return false;
         }
         final Bulletin.LottieLayoutWithReactions layout = new Bulletin.LottieLayoutWithReactions(fragment, messagesCount);
@@ -1301,7 +1356,11 @@ public final class BulletinFactory {
     }
 
     public static Bulletin createForwardedBulletin(Context context, BaseFragment fragment, FrameLayout containerLayout, int dialogsCount, long did, int messagesCount, int backgroundColor, int textColor, int duration, Runnable undoAction, Runnable delayedAction) {
-        final Bulletin.LottieLayout layout = UserConfig.getInstance(UserConfig.selectedAccount).isPremium() && fragment != null && dialogsCount <= 1 && did == UserConfig.getInstance(UserConfig.selectedAccount).clientUserId ?
+        return createForwardedBulletin(context, fragment, containerLayout, dialogsCount, did, messagesCount, backgroundColor, textColor, duration, false, undoAction, delayedAction);
+    }
+
+    public static Bulletin createForwardedBulletin(Context context, BaseFragment fragment, FrameLayout containerLayout, int dialogsCount, long did, int messagesCount, int backgroundColor, int textColor, int duration, boolean isSavedReminders, Runnable undoAction, Runnable delayedAction) {
+        final Bulletin.LottieLayout layout = UserConfig.getInstance(UserConfig.selectedAccount).isPremium() && fragment != null && dialogsCount <= 1 && did == UserConfig.getInstance(UserConfig.selectedAccount).clientUserId && !isSavedReminders ?
             new Bulletin.LottieLayoutWithReactions(fragment, messagesCount) :
             new Bulletin.LottieLayout(context, fragment != null ? fragment.getResourceProvider() : null, backgroundColor, textColor);
         final CharSequence text;
@@ -1318,7 +1377,7 @@ public final class BulletinFactory {
         if (dialogsCount <= 1) {
             if (did == UserConfig.getInstance(UserConfig.selectedAccount).clientUserId) {
                 if (messagesCount <= 1) {
-                    text = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.FwdMessageToSavedMessages), -1, AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD, SavedMessagesController::openSavedMessages);
+                    text = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.FwdMessageToSavedMessages), -1, AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD, isSavedReminders ? SavedMessagesController::openSavedMessagesReminders : SavedMessagesController::openSavedMessages);
                 } else {
                     text = AndroidUtilities.replaceSingleTag(LocaleController.getString(R.string.FwdMessagesToSavedMessages), -1, AndroidUtilities.REPLACING_TAG_TYPE_LINKBOLD, SavedMessagesController::openSavedMessages);
                 }
@@ -1443,18 +1502,23 @@ public final class BulletinFactory {
     }
 
     @CheckResult
-    public static Bulletin createBanChannelBulletin(BaseFragment fragment, boolean banned) {
+    public static Bulletin createDissableSharingBulletin(BaseFragment fragment, String pendingUsername, boolean sharingDisabled) {
         final Bulletin.LottieLayout layout = new Bulletin.LottieLayout(fragment.getParentActivity(), fragment.getResourceProvider());
         final String text;
-        if (banned) {
-            layout.setAnimation(R.raw.ic_ban, "Hand");
-            text = LocaleController.getString(R.string.ChannelBlocked);
+        if (pendingUsername != null) {
+            text = LocaleController.formatString(sharingDisabled ?
+                R.string.DisableSharingToastDisabledPending :
+                R.string.DisableSharingToastEnabledPending, pendingUsername);
         } else {
-            layout.setAnimation(R.raw.ic_unban, "Main", "Finger 1", "Finger 2", "Finger 3", "Finger 4");
-            text = LocaleController.getString(R.string.ChannelUnblocked);
+            text = LocaleController.getString(sharingDisabled ?
+                R.string.DisableSharingToastDisabled :
+                R.string.DisableSharingToastEnabled);
         }
+
         layout.textView.setText(AndroidUtilities.replaceTags(text));
-        return Bulletin.make(fragment, layout, Bulletin.DURATION_SHORT);
+        layout.setAnimation(sharingDisabled || pendingUsername != null ? R.raw.e_hand_2 : R.raw.contact_check);
+
+        return Bulletin.make(fragment, layout, Bulletin.DURATION_PROLONG);
     }
 
     @CheckResult

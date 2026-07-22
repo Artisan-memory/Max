@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-設定</string>
+    <string name="NekoSettings">N-設定</string>
     <string name="IPv6">IPv6 を優先</string>
     <string name="MessageMenu">メッセージメニュー</string>
     <string name="HidePhone">電話番号を非表示</string>
@@ -20,8 +20,6 @@
     <string name="Repeat">リポスト</string>
     <string name="AddToSavedMessages">保存</string>
     <string name="CreateMention">\@メンションを作成</string>
-    <string name="TransparentStatusBar">完全に透明なステータスバーを使用</string>
-    <string name="ChristmasHat">常にサンタ帽子を表示</string>
     <string name="ActionBarDecoration">タイトルデコレーション</string>
     <string name="DependsOnDate">日付に基づく</string>
     <string name="Christmas">クリスマス</string>
@@ -51,7 +49,6 @@
     <string name="TranslateApiUnsupported">選択した翻訳プロバイダは、あなたの言語をサポートしていません。</string>
     <string name="ProviderLingocloud">彩雲小訳</string>
     <string name="UndoTranslate">翻訳を元に戻す</string>
-    <string name="DisablePhotoViewerSideAction">サイドタップによる写真切り替えを無効化</string>
     <string name="BotToken">トークン</string>
     <string name="UnlimitedPinnedDialogs">無制限のピン留め</string>
     <string name="UnlimitedPinnedDialogsAbout">同期をオフにして無制限のチャットをピン留めします。</string>
@@ -73,26 +70,21 @@
     <string name="CallTo">**%1$s** に電話をかけますか？</string>
     <string name="DisableNumberRounding">数値の丸めを無効化</string>
     <string name="Categories">カテゴリ</string>
-    <string name="OfficialChannel">Max チャンネル</string>
+    <string name="OfficialChannel">Nagram チャンネル</string>
     <string name="About">アプリについて</string>
     <string name="IgnoreBlockedAbout">当ユーザーからのグループメッセージは表示されなくなります。</string>
     <string name="SourceCode">ソースコード</string>
     <string name="ResetStickerSize">ステッカーサイズをリセット</string>
     <string name="RestartAppToTakeEffect">変更適用にはアプリを再起動。</string>
-    <string name="DisableAppBarShadow">トップパネルの区切り線を非表示</string>
     <string name="MediaPreview">チャットリストのメディアプレビュー</string>
     <string name="AutoPauseVideo">ビデオの自動一時停止</string>
     <string name="AutoPauseVideoAbout">画面ロック時/バックグラウンドに移動時。</string>
     <string name="DisableProximityEvents">近接イベントを無効化</string>
     <string name="SelectBetween">範囲内のメッセージを選択</string>
-    <string name="AvatarAsBackground">背景の種類</string>
-    <string name="BlurAvatarBackground">アバターをぼかす</string>
-    <string name="DarkenAvatarBackground">アバターを暗くする</string>
     <string name="ProviderDeepLTranslate">DeepL 翻訳</string>
     <string name="ProviderMicrosoftTranslator">Bing 翻訳</string>
     <string name="DontSendGreetingSticker">挨拶ステッカーを送信しない</string>
     <string name="TakeGIFasVideo">GIF をビデオとして表示</string>
-    <string name="UseMediaStreamInVoip">通話でメディアストリームを使用</string>
     <string name="HideTimeForSticker">ステッカーの送信時間を非表示</string>
     <string name="hideGroupSticker">グループステッカーを非表示</string>
     <string name="customGroupVoipAudioBitrate">グループ通話の音声ビットレート</string>
@@ -111,8 +103,6 @@
     <string name="customSavePath">カスタム保存パス</string>
     <string name="customSavePathHint">空白のままにすると直接保存されます</string>
     <string name="channelLabel">チャンネル</string>
-    <string name="forceBlurInChat">チャットタイトルのぼかしを有効化</string>
-    <string name="ChatBlurAlphaValue">ぼかしの不透明度</string>
     <string name="MutualContact">相互の連絡先</string>
     <string name="MutualContactDescription">この連絡先は相互の連絡先です。</string>
     <string name="DatacenterStatusAbout">Telegram の**データセンター**の状態を確認します。</string>
@@ -204,8 +194,6 @@
     <string name="DisableSystemAccount">システムアカウントを無効化</string>
     <string name="FilterMenu">ダイアログフィルターメニュー</string>
     <string name="DisableProxyWhenVpnEnabled">VPN が有効な場合プロキシを無効化</string>
-    <string name="UseProxyItem">ドロワーメニューにプロキシを表示</string>
-    <string name="HideProxyByDefault">無効時にプロキシを非表示</string>
     <string name="SkipOpenLinkConfirm">リンクを開くときの確認をスキップする</string>
     <string name="DeleteAllInChatAlert">警告！このチャットの全てのメッセージは**削除**されます。</string>
     <string name="UnblockAll">すべてのブロックを解除</string>
@@ -214,7 +202,6 @@
     <string name="AddProxySocks5">SOCKS5 プロキシを追加</string>
     <string name="AddProxyTelegram">MTProto プロキシを追加</string>
     <string name="RetestPing">すべてのサーバーの ping を再テストする</string>
-    <string name="ImportProxyList">プロキシサーバをインポート</string>
     <string name="ExportStickers">ステッカーをエクスポート</string>
     <string name="ImportStickersX">ファイルからステッカーをインポート</string>
     <string name="ImportStickersList">ステッカーをインポート</string>
@@ -259,14 +246,10 @@
     <string name="useCustomEmojiInvalid">有効な絵文字パックではありません</string>
     <string name="repeatConfirm">リポストに確認</string>
     <string name="repeatConfirmText">本当にリポストしますか？</string>
-    <string name="valuesLargeAvatarInDrawer">デフォルト\nアバター\n大きなアバター\nチャット背景</string>
     <string name="rememberAllBackMessages">全てのクリックされた返信を記憶</string>
     <string name="DisableInstantCamera">インスタントカメラを無効化</string>
     <string name="showSeconds">タイムスタンプを秒単位で表示</string>
     <string name="Name">名前</string>
-    <string name="channelAlias">チャンネルエイリアス</string>
-    <string name="ChannelAliasDetails">チャンネルユーザーにカスタム名でラベル付けします。有効にすると、チャンネルプロファイルメニューでエイリアスを設定できます。</string>
-    <string name="setChannelAliasName">エイリアスを設定</string>
     <string name="StickerSettings">ステッカー</string>
     <string name="ConfirmSettings">確認</string>
     <string name="InteractionSettings">インタラクション</string>

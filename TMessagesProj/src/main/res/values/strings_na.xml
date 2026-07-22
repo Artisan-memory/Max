@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">Max-Config</string>
-    <string name="ForceCopy">Force Copy</string>
+    <string name="N_Config">N-Config</string>
     <string name="CombineMessage">Combine Messages</string>
     <string name="TextStyle">Text Style</string>
     <string name="NoiseSuppressAndVoiceEnhance">Voice Enhancements</string>
@@ -10,7 +9,7 @@
     <string name="SendReactions">Send Reactions</string>
     <string name="ShowReactions">Show Reactions</string>
     <string name="CustomTitle">Custom Title</string>
-    <string name="CustomTitleHint">Leave blank to use Max</string>
+    <string name="CustomTitleHint">Leave blank to use Nagram X</string>
     <string name="CreateMono">Create Monospace</string>
     <string name="CreateMonoLanguage">Code Language</string>
     <string name="CopyPhoto">Copy Photo</string>
@@ -20,9 +19,6 @@
     <string name="ShowMessageID">Show Message ID</string>
     <string name="ShowRPCError">Toast RPC Errors</string>
     <string name="ShowPremiumStickersAnimation">Show Premium Stickers Animation</string>
-    <string name="AlwaysSaveChatOffset">Always Save Chat Offset</string>
-    <string name="DisableTopicTitleCache">Do not cache topic titles</string>
-    <string name="DisableTopicTitleCacheNotice">Forum topic titles will be refreshed from Telegram instead of reused from the local database.</string>
     <string name="AppIconGoogle" translatable="false">Google</string>
     <string name="AppIconColorful">Colorful</string>
     <string name="AppIconDarkGreen">Dark Green</string>
@@ -35,19 +31,15 @@
     <string name="ToTheMessage">Go To</string>
     <string name="ZalgoFilter">Filter \"Zalgo\" Symbols</string>
     <string name="ZalgoFilterNotice">All \"Z̷͍͌ā̸̜l̸̞̂g̷̝͘o̶̩̓\" symbols in nicknames or messages will be removed.</string>
-    <string name="labelChannelUser">Label Channel Users</string>
-    <string name="CustomChannelLabel">Custom Channel Label</string>
     <string name="AlwaysShowDownloadIcon">Always Show Download Icon</string>
     <string name="HideTitle">Hide Title</string>
     <string name="IgnoreUnreadCount">Hide Unread Counter</string>
     <string name="SendWithoutMarkdown">Send without markdown</string>
     <string name="SendAsEmoji">Send as emoji</string>
-    <string name="CustomArtworkApi">Custom Artwork API</string>
     <string name="CustomEditedMessage">Custom Edited Mark</string>
-    <string name="IconDecoration">Icon Decoration</string>
     <string name="NotificationIcon">Notification Icon</string>
     <string name="Official">Official</string>
-    <string name="Nagram" translatable="false">Max</string>
+    <string name="Nagram" translatable="false">Nagram</string>
     <string name="HalloWeen">HalloWeen</string>
     <string name="ShowOnlineStatus">Show Online Status</string>
     <string name="ShowOnlineStatusNotice">Show the online status of other people next to their profile photo in groups.</string>
@@ -59,7 +51,7 @@
     <string name="CheckAllForum">Add forum</string>
     <string name="DecorationNone">None</string>
     <string name="ChatDecoration">Chat Decoration</string>
-    <string name="NeedChangeNekoSettings">You need to change Max-Settings</string>
+    <string name="NeedChangeNekoSettings">You need to change N-Settings</string>
     <string name="DoNotUnarchiveBySwipe">Disable Swipe to Unarchive</string>
     <string name="DefaultDeleteMenu">Default Delete Menu</string>
     <string name="DisableStories">Disable Stories</string>
@@ -71,13 +63,12 @@
     <string name="ShowSmallGIF">Show Small GIF</string>
     <string name="DisableClickCommandToSend">Ask Before Sending Bot Command</string>
     <string name="DisableDialogsFloatingButton">Hide Floating Button</string>
-    <string name="DisableFlagSecure">Disable FLAG_SECURE</string>
     <string name="CenterActionBarTitleType">Use Centered Title</string>
     <string name="ShowQuickReplyInBotCommands">Show Quick Reply in Bot Commands</string>
     <string name="PushServiceType">Push Service Type</string>
     <string name="PushServiceTypeInApp">In-App</string>
     <string name="PushServiceTypeFCM" translatable="false">Google FCM</string>
-    <string name="PushServiceTypeUnified" translatable="false">Unified Push</string>
+    <string name="PushServiceTypeUnified" translatable="false">UnifiedPush</string>
     <string name="PushServiceTypeMicroG" translatable="false">microG</string>
     <string name="PushServiceTypeInAppDialog">Show Resident Notifications</string>
     <string name="PushServiceTypeUnifiedGateway">Unified Push Gateway</string>
@@ -87,7 +78,6 @@
     <string name="DisableChannelMuteButton">Hide Bottom Bar in Channels</string>
     <string name="DisablePreviewVideoSoundShortcut">Disable Unmute Videos with Volume Buttons</string>
     <string name="DisablePreviewVideoSoundShortcutNotice">Prevent volume key from enabling preview video sound.</string>
-    <string name="DisableAutoWebLogin">Disable Auto Web Login</string>
     <string name="PreviewSendPhoto">Send Photo</string>
     <string name="PreviewSendVideo">Send Video</string>
     <string name="PreviewSendFile">Send File</string>
@@ -121,17 +111,4 @@
     <string name="VideoPlayerDecoderPreferSW">Prefer SW</string>
     <string name="VideoPlayerDecoderHardware">HW Only</string>
     <string name="VideoPlayerDecoderPreferHW">Prefer HW</string>
-    <string name="ExternalStickerCache">Local Sticker and Emoji Cache</string>
-    <string name="ExternalStickerCacheHint">Choose a folder for cached stickers and emoji</string>
-    <string name="ExternalStickerCacheUsage">Persistent sticker and emoji cache usage</string>
-    <string name="ExternalStickerCacheRefreshAll">Cache All Account Stickers</string>
-    <string name="ExternalEmojiCacheRefreshAll">Cache All Account Emoji</string>
-    <string name="ExternalStickerCacheDeleteAll">Clear Local Sticker and Emoji Cache</string>
-    <string name="ExternalStickerCacheFolderRequired">Choose a cache folder first</string>
-    <string name="ExternalStickerCacheFolderReady">Sticker cache folder is ready</string>
-    <string name="ExternalStickerCacheFolderError">Cannot use this sticker cache folder</string>
-    <string name="ExternalStickerCacheSyncStarted">Sticker caching started in the background</string>
-    <string name="ExternalEmojiCacheSyncStarted">Emoji caching started in the background</string>
-    <string name="ExternalStickerCacheSyncQueued">Sticker downloads queued. Cache usage will update as files finish.</string>
-    <string name="ExternalEmojiCacheSyncQueued">Emoji downloads queued. Cache usage will update as files finish.</string>
 </resources>

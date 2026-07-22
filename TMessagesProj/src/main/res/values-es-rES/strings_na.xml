@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="N_Config">Max-Configuración</string>
-    <string name="ForceCopy">Forzar copia</string>
+    <string name="N_Config">N-Configuración</string>
     <string name="CombineMessage">Combinar mensajes</string>
     <string name="TextStyle">Estilo de texto</string>
     <string name="NoiseSuppressAndVoiceEnhance">Mejoras de voz</string>
@@ -20,7 +19,6 @@
     <string name="ShowMessageID">Mostrar ID del mensaje</string>
     <string name="ShowRPCError">Errores RPC Toast</string>
     <string name="ShowPremiumStickersAnimation">Mostrar Animación de Stickers Premium</string>
-    <string name="AlwaysSaveChatOffset">Guardar siempre el Desplazamiento de Chat</string>
     <string name="AppIconColorful">Colorido</string>
     <string name="AppIconDarkGreen">Verde Obscuro</string>
     <string name="AppIconNeon">Neón</string>
@@ -32,16 +30,12 @@
     <string name="ToTheMessage">Ir a</string>
     <string name="ZalgoFilter">Filtrar símbolos \"Zalgo\"</string>
     <string name="ZalgoFilterNotice">Se eliminarán todos los símbolos \"Zsimultánea\" en los apodos o mensajes.</string>
-    <string name="labelChannelUser">Etiquetar al usuario del canal</string>
-    <string name="CustomChannelLabel">Etiqueta de canal personalizada</string>
     <string name="AlwaysShowDownloadIcon">Mostrar siempre el icono de descarga</string>
     <string name="HideTitle">Ocultar título</string>
     <string name="IgnoreUnreadCount">Ocultar contador de no leídos en carpetas</string>
     <string name="SendWithoutMarkdown">Enviar sin rebajar</string>
     <string name="SendAsEmoji">Enviar como emoji</string>
-    <string name="CustomArtworkApi">API de Artwork personalizada</string>
     <string name="CustomEditedMessage">Marca personalizada editada</string>
-    <string name="IconDecoration">Decoración de icono</string>
     <string name="NotificationIcon">Icono de la notificación</string>
     <string name="Official">Oficial</string>
     <string name="HalloWeen">HalloWeen</string>
@@ -67,7 +61,6 @@
     <string name="ShowSmallGIF">Mostrar GIF pequeño</string>
     <string name="DisableClickCommandToSend">Preguntar antes de enviar un comando al bot</string>
     <string name="DisableDialogsFloatingButton">Ocultar botón flotante</string>
-    <string name="DisableFlagSecure">Desactivar FLAG_SECURE</string>
     <string name="CenterActionBarTitleType">Usar título centrado</string>
     <string name="ShowQuickReplyInBotCommands">Mostrar respuesta rápida en los comandos del bot</string>
     <string name="PushServiceType">Tipo de servicio Push</string>
@@ -79,14 +72,16 @@
     <string name="DisableChannelMuteButton">Ocultar la barra inferior en los canales</string>
     <string name="DisablePreviewVideoSoundShortcut">Desactivar el silencio de los vídeos con los botones de volumen</string>
     <string name="DisablePreviewVideoSoundShortcutNotice">Evita que la tecla de volumen active el sonido del vídeo de previsualización.</string>
-    <string name="DisableAutoWebLogin">Desactivar inicio de sesión web automático</string>
     <string name="PreviewSendPhoto">Enviar foto</string>
     <string name="PreviewSendVideo">Enviar vídeo</string>
     <string name="PreviewSendFile">Enviar archivo</string>
     <string name="UnblockDeleted">Desbloquear usuarios eliminados</string>
     <string name="UnblockDeletedWarn">¿Estás seguro de que quieres desbloquear a **todos los usuarios eliminados**?</string>
-    <string name="RegexFilters">Filtros de mensajes Regex</string>
+    <string name="RegexFilters">Filtros de mensajes</string>
     <string name="RegexFiltersHeader">Filtros</string>
+    <string name="RegexFiltersSharedHeader">Filtros compartidos</string>
+    <string name="RegexFiltersSubMenuDescription">Puedes elegir excluir los filtros compartidos para este chat.</string>
+    <string name="RegexFiltersChatHeader">Filtros de chat</string>
     <string name="RegexFiltersEnableInChats">Activar filtros en los chats privados</string>
     <string name="RegexFiltersCaseInsensitive">Expresiones que no distinguen mayúsculas de minúsculas</string>
     <string name="RegexFiltersAdd">Añadir filtro</string>

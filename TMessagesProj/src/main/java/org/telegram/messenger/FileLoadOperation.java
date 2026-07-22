@@ -771,54 +771,6 @@ public class FileLoadOperation {
         return fileName;
     }
 
-    private String getDiagnosticInfo() {
-        try {
-            return "file=" + fileName +
-                    " dc=" + datacenterId +
-                    " type=" + currentType +
-                    " total=" + totalBytesCount +
-                    " stream=" + isStream +
-                    " preload=" + isPreloadVideoOperation +
-                    " loc=" + getLocationDiagnosticInfo() +
-                    " parent=" + getParentDiagnosticInfo(parentObject);
-        } catch (Throwable e) {
-            return "diagnostic_error=" + e.getClass().getSimpleName();
-        }
-    }
-
-    private String getLocationDiagnosticInfo() {
-        if (location instanceof TLRPC.TL_inputPeerPhotoFileLocation) {
-            TLRPC.TL_inputPeerPhotoFileLocation peerLocation = (TLRPC.TL_inputPeerPhotoFileLocation) location;
-            long dialogId = peerLocation.peer != null ? DialogObject.getPeerDialogId(peerLocation.peer) : 0;
-            return "peerPhoto did=" + dialogId + " photo=" + peerLocation.photo_id + " big=" + peerLocation.big;
-        } else if (location != null) {
-            return location.getClass().getSimpleName() + " id=" + location.id + " local=" + location.local_id + " volume=" + location.volume_id;
-        } else if (webLocation != null) {
-            return webLocation.getClass().getSimpleName();
-        }
-        return "null";
-    }
-
-    private static String getParentDiagnosticInfo(Object parent) {
-        if (parent instanceof MessageObject) {
-            MessageObject messageObject = (MessageObject) parent;
-            return "message dialog=" + messageObject.getDialogId() + " id=" + messageObject.getId() + " type=" + messageObject.type;
-        } else if (parent instanceof TLRPC.Message) {
-            TLRPC.Message message = (TLRPC.Message) parent;
-            return "tlMessage dialog=" + message.dialog_id + " id=" + message.id;
-        } else if (parent instanceof TLRPC.User) {
-            return "user " + ((TLRPC.User) parent).id;
-        } else if (parent instanceof TLRPC.Chat) {
-            return "chat " + ((TLRPC.Chat) parent).id;
-        } else if (parent instanceof TL_stories.TL_storyItem) {
-            TL_stories.TL_storyItem storyItem = (TL_stories.TL_storyItem) parent;
-            return "story id=" + storyItem.id;
-        } else if (parent != null) {
-            return parent.getClass().getSimpleName();
-        }
-        return "null";
-    }
-
     public long getDocumentId() {
         return documentId;
     }
@@ -1252,7 +1204,6 @@ public class FileLoadOperation {
                 } else {
                     FileLog.d("start loading file to temp = " + cacheFileTemp + " final = " + cacheFileFinal + " priority" + priority);
                 }
-                FileLog.d("NagramDiag file.start " + getDiagnosticInfo() + " temp=" + cacheFileTemp + " final=" + cacheFileFinal + " priority=" + priority);
             }
 
             if (fileNameIv != null) {
@@ -1680,26 +1631,19 @@ public class FileLoadOperation {
                                 FileLog.e(e);
                             }
                         }
-                        if (!renameResult && renameRetryCount >= 2) {
+                        if (!renameResult && renameRetryCount == 3) {
                             try {
                                 renameResult = AndroidUtilities.copyFile(cacheFileTempLocal, cacheFileFinal);
                                 if (renameResult) {
-                                    cacheFileTempLocal.delete();
+                                    cacheFileFinal.delete();
                                 }
                             } catch (Throwable e) {
                                 FileLog.e(e);
                             }
                         }
-                        if (!renameResult && cacheFileFinal != null && cacheFileFinal.exists() && (cacheFileTempLocal == null || !cacheFileTempLocal.exists())) {
-                            renameResult = true;
-                            if (BuildVars.LOGS_ENABLED) {
-                                FileLog.d("NagramDiag file.rename_race finalExists=true tempExists=false " + getDiagnosticInfo());
-                            }
-                        }
                         if (!renameResult) {
                             if (BuildVars.LOGS_ENABLED) {
                                 FileLog.e("unable to rename temp = " + cacheFileTempLocal + " to final = " + cacheFileFinal + " retry = " + renameRetryCount);
-                                FileLog.e("NagramDiag file.rename_fail retry=" + renameRetryCount + " tempExists=" + (cacheFileTempLocal != null && cacheFileTempLocal.exists()) + " finalExists=" + (cacheFileFinal != null && cacheFileFinal.exists()) + " " + getDiagnosticInfo());
                             }
                             renameRetryCount++;
                             if (renameRetryCount < 3) {
@@ -1731,7 +1675,6 @@ public class FileLoadOperation {
                 Utilities.stageQueue.postRunnable(() -> {
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.d("finished downloading file to " + cacheFileFinal + " time = " + (System.currentTimeMillis() - startTime) + " dc = " + datacenterId + " size = " + AndroidUtilities.formatFileSize(totalBytesCount));
-                        FileLog.d("NagramDiag file.finish state=success time=" + (System.currentTimeMillis() - startTime) + " final=" + cacheFileFinal + " " + getDiagnosticInfo());
                     }
                     if (increment) {
                         if (currentType == ConnectionsManager.FileTypeAudio) {
@@ -2161,9 +2104,8 @@ public class FileLoadOperation {
                     } else if (webLocation != null) {
                         FileLog.e(error.text + " " + webLocation + " id = " + fileName);
                     }
-                    FileLog.e("NagramDiag file.request_error error=" + error.text + " offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestToken + " " + getDiagnosticInfo());
                 }
-                onFail(false, error.text.contains("FILE_ID_INVALID") && location instanceof TLRPC.TL_inputPeerPhotoFileLocation ? 3 : 0);
+                onFail(false, 0);
             }
         }
         return false;
@@ -2184,7 +2126,6 @@ public class FileLoadOperation {
                 } else {
                     FileLog.d("failed downloading file to " + cacheFileFinal + " reason = " + reason + " time = " + time + " dc = " + datacenterId + " size = " + AndroidUtilities.formatFileSize(totalBytesCount));
                 }
-                FileLog.d("NagramDiag file.finish state=" + (reason == 1 ? "cancel" : "fail") + " reason=" + reason + " time=" + time + " final=" + cacheFileFinal + " " + getDiagnosticInfo());
             }
         }
         if (thread) {
@@ -2275,9 +2216,6 @@ public class FileLoadOperation {
 
     private void requestReference(RequestInfo requestInfo) {
         if (requestingReference) {
-            if (BuildVars.LOGS_ENABLED && requestInfo != null) {
-                FileLog.w("NagramDiag file.reference_already_pending offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken + " " + getDiagnosticInfo());
-            }
             return;
         }
         clearOperation(null, false, false);
@@ -2291,10 +2229,6 @@ public class FileLoadOperation {
             }
         }
         if (BuildVars.LOGS_ENABLED) {
-            FileLog.w("NagramDiag file.reference_expired offset=" + (requestInfo != null ? requestInfo.offset : -1) +
-                    " chunk=" + (requestInfo != null ? requestInfo.chunkSize : -1) +
-                    " token=" + (requestInfo != null ? requestInfo.requestToken : 0) +
-                    " " + getDiagnosticInfo());
             FileLog.d("debug_loading: " + cacheFileFinal.getName() + " file reference expired ");
         }
         FileRefController.getInstance(currentAccount).requestReference(parentObject, location, this, requestInfo);
@@ -2518,15 +2452,11 @@ public class FileLoadOperation {
             int datacenterId = isCdn ? cdnDatacenterId : this.datacenterId;
             final int requestToken = requestInfo.requestToken = ConnectionsManager.getInstance(currentAccount).sendRequestSync(request, (response, error) -> {
                 if (requestInfo.cancelled) {
-                    if (BuildVars.DEBUG_PRIVATE_VERSION) {
-                        FileLog.d("received chunk but definitely cancelled offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
-                    }
+                    FileLog.e("received chunk but definitely cancelled offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
                     return;
                 }
                 if (requestInfo.cancelling) {
-                    if (BuildVars.DEBUG_PRIVATE_VERSION) {
-                        FileLog.d("received cancelled chunk after cancelRequests! offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
-                    }
+                    FileLog.e("received cancelled chunk after cancelRequests! offset=" + requestInfo.offset + " size=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken);
                 }
                 if (!requestInfos.contains(requestInfo)) {
                     if (!cancelledRequestInfos.contains(requestInfo)) {
@@ -2570,19 +2500,7 @@ public class FileLoadOperation {
                     if (requestInfo.whenCancelled != null) {
                         requestInfo.whenCancelled.run();
                     }
-                    if (error.code == ConnectionsManager.ErrorCodeRpcAnswerDroppedRunning) {
-                        boolean wasCancelling = requestInfo.cancelling || cancelledRequestInfos.contains(requestInfo);
-                        requestInfos.remove(requestInfo);
-                        requestedBytesCount -= requestInfo.chunkSize;
-                        removePart(notRequestedBytesRanges, requestInfo.offset, requestInfo.offset + requestInfo.chunkSize);
-                        if (BuildVars.LOGS_ENABLED) {
-                            FileLog.d("NagramDiag file.dropped_running offset=" + requestInfo.offset + " chunk=" + requestInfo.chunkSize + " token=" + requestInfo.requestToken + " cancelling=" + wasCancelling + " " + getDiagnosticInfo());
-                        }
-                        if (!wasCancelling && state == stateDownloading) {
-                            startDownloadRequest(requestInfo.connectionType);
-                        }
-                        return;
-                    } else if (error.code == -2000) {
+                    if (error.code == -2000) {
                         requestInfos.remove(requestInfo);
                         requestedBytesCount -= requestInfo.chunkSize;
                         removePart(notRequestedBytesRanges, requestInfo.offset, requestInfo.offset + requestInfo.chunkSize);

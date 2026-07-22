@@ -5,8 +5,10 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -50,7 +52,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
     public NestedSizeNotifierLayout nestedSizeNotifierLayout;
 
     public float topPadding = 0.4f;
-    boolean showShadow = true;
+    protected boolean showShadow = true;
     private float shadowAlpha = 1f;
 
     private boolean showHandle = false;
@@ -101,7 +103,12 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
 
     @SuppressLint("AppCompatCustomView")
     public BottomSheetWithRecyclerListView(Context context, BaseFragment fragment, boolean needFocus, boolean hasFixedSize, boolean useNested, boolean stackFromEnd, ActionBarType actionBarType, Theme.ResourcesProvider resourcesProvider) {
-        super(context, needFocus, resourcesProvider);
+        this(context, fragment, needFocus, false, hasFixedSize, useNested, stackFromEnd, actionBarType, resourcesProvider);
+    }
+
+    @SuppressLint("AppCompatCustomView")
+    public BottomSheetWithRecyclerListView(Context context, BaseFragment fragment, boolean needFocus, boolean edgeToEdge, boolean hasFixedSize, boolean useNested, boolean stackFromEnd, ActionBarType actionBarType, Theme.ResourcesProvider resourcesProvider) {
+        super(context, needFocus, edgeToEdge, resourcesProvider);
         this.baseFragment = fragment;
         this.hasFixedSize = hasFixedSize;
         this.stackFromEnd = stackFromEnd;
@@ -148,7 +155,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
                 }
             };
         } else {
-             containerView = new SizeNotifierFrameLayout(context) {
+            containerView = new SizeNotifierFrameLayout(context) {
                  private boolean ignoreLayout = false;
 
                  @Override
@@ -453,6 +460,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
 
         public PaddingView(Context context) {
             super(context);
+            setTag(RecyclerListView.TAG_NOT_SECTION);
         }
 
         @Override
@@ -573,7 +581,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
             }
             wasDrawn = true;
         } else if (actionBarType == ActionBarType.SLIDING) {
-            if ((int) (255 * shadowAlpha) != 0) {
+            if ((int) (255 * shadowAlpha) != 0 && showShadow) {
                 headerShadowDrawable.setBounds(backgroundPaddingLeft, actionBar.getBottom() + (int) actionBar.getTranslationY(), parentView.getMeasuredWidth() - backgroundPaddingLeft, actionBar.getBottom() + (int) actionBar.getTranslationY() + headerShadowDrawable.getIntrinsicHeight());
                 headerShadowDrawable.setAlpha((int) (255 * shadowAlpha));
                 headerShadowDrawable.draw(canvas);
@@ -609,7 +617,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
                 final RecyclerView.ViewHolder holder = recyclerListView.findViewHolderForAdapterPosition(0);
                 top = -dp(16);
                 if (holder != null) {
-                    top = holder.itemView.getBottom() - AndroidUtilities.dp(16);
+                    top = holder.itemView.getBottom() - dp(16);
                     if (takeTranslationIntoAccount) {
                         top += (int) holder.itemView.getTranslationY();
                     }
@@ -620,6 +628,8 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
             if (showHandle && handleOffset) {
                 top -= dp(actionBarType == ActionBarType.SLIDING ? 8 : 16);
             }
+            lastTop = top;
+            onSheetTop(top);
 
             float handleAlpha = 1.0f;
             float progressToFullView = 0.0f;
@@ -642,6 +652,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
                 shadowAlpha = t;
                 handleAlpha = AndroidUtilities.lerp(1.0f, 0.5f, t);
                 actionBar.backButtonImageView.setAlpha(t);
+                onActionBarAlpha(t);
                 actionBar.backButtonImageView.setScaleX(t);
                 actionBar.backButtonImageView.setPivotY(actionBar.backButtonImageView.getMeasuredHeight() / 2f);
                 actionBar.backButtonImageView.setScaleY(t);
@@ -673,6 +684,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
                 } else {
                     shadowDrawable.setBounds(-AndroidUtilities.dp(6), top, parent.getMeasuredWidth() + AndroidUtilities.dp(6), parent.getMeasuredHeight());
                 }
+                checkBackDrawableInsets();
                 shadowDrawable.draw(canvas);
 
                 if (showHandle && handleAlpha > 0) {
@@ -688,6 +700,32 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
 
             onPreDraw(canvas, top, progressToFullView);
         }
+    }
+
+    private void checkBackDrawableInsets() {
+        if (backDrawable == null || containerView == null || shadowDrawable == null || !shouldDrawBackground() || hasFixedSize) {
+            return;
+        }
+
+        final Rect sBounds = shadowDrawable.getBounds();
+        if (containerView.getMeasuredWidth() >= container.getMeasuredWidth()) {
+            backDrawable.setBackgroundInsets(0, 0, 0, containerView.getMeasuredHeight() - sBounds.top - dp(30) - (int) containerView.getTranslationY());
+        } else {
+            backDrawable.setBackgroundInsets(0, 0, 0, 0);
+        }
+    }
+
+    protected void onActionBarAlpha(float alpha) {}
+
+    @Override
+    protected void onContainerViewTranslation() {
+        onSheetTop(lastTop);
+        checkBackDrawableInsets();
+    }
+
+    private float lastTop;
+    public void onSheetTop(float top) {
+
     }
 
     protected boolean shouldDrawBackground() {
@@ -762,7 +800,15 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
     }
 
     public void updateTitleAnimated() {
+        updateTitleAnimated(true);
+    }
+
+    public void updateTitleAnimated(boolean checkEquals) {
         if (actionBar != null) {
+            CharSequence title = getTitle();
+            if (checkEquals && TextUtils.equals(title, actionBar.getTitle())) {
+                return;
+            }
             actionBar.setTitleAnimated(getTitle(), false, 350, CubicBezierInterpolator.EASE_OUT_QUINT);
         }
     }
@@ -787,7 +833,7 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
             for (int i = 0; i < recyclerListView.getChildCount(); i++) {
                 View child = recyclerListView.getChildAt(i);
                 int childPosition = recyclerListView.getChildAdapterPosition(child);
-                if (childPosition > 0 && child.getTop() < top) {
+                if (childPosition >= 0 && child.getTop() < top) {
                     view = child;
                     position = childPosition;
                     top = child.getTop();
@@ -808,11 +854,11 @@ public abstract class BottomSheetWithRecyclerListView extends BottomSheet {
     public void applyScrolledPosition(boolean ignorePaddingView) {
         if (recyclerListView != null && recyclerListView.getLayoutManager() != null && savedScrollPosition >= 0) {
             int offset = savedScrollOffset - containerView.getTop() - recyclerListView.getPaddingTop();
-            RecyclerView.ViewHolder paddingViewHolder = recyclerListView.findViewHolderForAdapterPosition(0);
-            if (ignorePaddingView && paddingViewHolder != null) {
-                View view = paddingViewHolder.itemView;
-                offset -= Math.max(view.getBottom() - recyclerListView.getPaddingTop(), 0);
-            }
+//            RecyclerView.ViewHolder paddingViewHolder = recyclerListView.findViewHolderForAdapterPosition(0);
+//            if (ignorePaddingView && paddingViewHolder != null) {
+//                View view = paddingViewHolder.itemView;
+//                offset -= Math.max(view.getBottom() - recyclerListView.getPaddingTop(), 0);
+//            }
             if (recyclerListView.getLayoutManager() instanceof LinearLayoutManager) {
                 ((LinearLayoutManager) recyclerListView.getLayoutManager()).scrollToPositionWithOffset(savedScrollPosition, offset);
             }

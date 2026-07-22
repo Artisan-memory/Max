@@ -3,7 +3,6 @@ package org.telegram.messenger.video;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.util.Log;
 import android.view.View;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -11,8 +10,7 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
-import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Components.AnimatedFileDrawable;
+import org.telegram.ui.Components.AnimatedFileNative;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -71,7 +69,7 @@ public class VideoFramesRewinder {
             return;
         }
         stop.set(false);
-        ptr = AnimatedFileDrawable.createDecoder(file.getAbsolutePath(), meta, UserConfig.selectedAccount, 0, null, true);
+        ptr = AnimatedFileNative.createDecoder(file.getAbsolutePath(), meta, UserConfig.selectedAccount, 0, null, true);
     }
 
     private final ArrayList<Frame> freeFrames = new ArrayList<>();
@@ -99,14 +97,37 @@ public class VideoFramesRewinder {
         final long start = System.currentTimeMillis();
 
         final int fps = meta[4];
-        int w = Math.min(this.w / 4, meta[0]), h = Math.min(this.h / 4, meta[1]);
+        int w, h;
+        if (this.w > 0 && this.h > 0) {
+            int viewW = this.w / 4;
+            int viewH = this.h / 4;
+            if (viewW <= 0) viewW = 1;
+            if (viewH <= 0) viewH = 1;
+            w = Math.min(viewW, meta[0]);
+            h = Math.min(viewH, meta[1]);
+        } else {
+            w = meta[0];
+            h = meta[1];
+        }
+        if (w <= 0 || h <= 0) {
+            FileLog.d("[VideoFramesRewinder] can't prepare frames: view=" + this.w + "x" + this.h + " video=" + meta[0] + "x" + meta[1]);
+            AndroidUtilities.runOnUIThread(() -> {
+                isPreparing = false;
+                if (destroyAfterPrepare) {
+                    release();
+                    stop.set(false);
+                }
+            });
+            return;
+        }
         if (w > maxFrameSide || h > maxFrameSide) {
             final float scale = (float) maxFrameSide / Math.max(w, h);
             w = (int) (w * scale);
             h = (int) (h * scale);
         }
+
         final long toMs = prepareToMs;
-        AnimatedFileDrawable.seekToMs(ptr, toMs - (long) (350 * prepareWithSpeed), meta, false);
+        AnimatedFileNative.seekToMs(ptr, toMs - (long) (350 * prepareWithSpeed), meta, false);
         long ms = meta[3];
         int triesCount = 0;
         for (int i = 0; meta[3] <= until.get() && i < maxFramesCount && !stop.get(); ++i) {
@@ -121,15 +142,18 @@ public class VideoFramesRewinder {
                 AndroidUtilities.recycleBitmap(frame.bitmap);
                 try {
                     frame.bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                } catch (IllegalArgumentException e) {
+                    FileLog.e(e);
+                    break;
                 } catch (OutOfMemoryError e) {
                     FileLog.d("[VideoFramesRewinder] failed to create bitmap: out of memory");
                     break;
                 }
             }
             while (meta[3] + (long) Math.ceil(1000.0f / fps) < nextms) {
-                AnimatedFileDrawable.getVideoFrame(ptr, null, meta, 0, true, 0, meta[4], false);
+                AnimatedFileNative.getVideoFrame(ptr, null, meta, true, 0, meta[4], false);
             }
-            if (0 == AnimatedFileDrawable.getVideoFrame(ptr, frame.bitmap, meta, frame.bitmap.getRowBytes(), true, 0, meta[4], false)) {
+            if (0 == AnimatedFileNative.getVideoFrame(ptr, frame.bitmap, meta, true, 0, meta[4], false)) {
                 triesCount++;
                 if (triesCount > 6) break;
                 continue;
@@ -237,7 +261,7 @@ public class VideoFramesRewinder {
             destroyAfterPrepare = true;
             return;
         }
-        AnimatedFileDrawable.destroyDecoder(ptr);
+        AnimatedFileNative.destroyDecoder(ptr);
         ptr = 0;
         destroyAfterPrepare = false;
         clearCurrent();
