@@ -1379,6 +1379,16 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    // When enabled, the app boots the classic drawer navigation instead of the
+    // 12.4+ MainTabs redesign: root fragment is a plain DialogsActivity with the
+    // side menu, not MainTabsActivity. Consumed by LaunchActivity/LoginActivity
+    // root creation and DialogsActivity side-menu wiring.
+    val classicNavigation =
+        addConfig(
+            "ClassicNavigation",
+            ConfigItem.configTypeBool,
+            false
+        )
     val hideDialogsSearchField =
         addConfig(
             "HideDialogsSearchField",
