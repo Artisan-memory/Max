@@ -2,8 +2,10 @@ package xyz.nextalone.nagram
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import android.util.Base64
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.BuildVars
@@ -1386,6 +1388,109 @@ object NaConfig {
     val classicNavigation =
         addConfig(
             "ClassicNavigation",
+            ConfigItem.configTypeBool,
+            false
+        )
+    // Max-owned config members that survived the upstream merge only inside our
+    // helper/adapter files; re-added here because the merged NaConfig came from
+    // NagramX and dropped them. Referenced by ExternalStickerCacheHelper and
+    // DrawerLayoutAdapter (and, later, the classic sidebar port).
+    val externalStickerCache =
+        addConfig(
+            "ExternalStickerCache",
+            ConfigItem.configTypeString,
+            ""
+        )
+    var externalStickerCacheUri: Uri?
+        get() = externalStickerCache.String().let { if (it.isBlank()) null else it.toUri() }
+        set(value) = externalStickerCache.setConfigString(value?.toString() ?: "")
+    val iconDecoration =
+        addConfig(
+            "IconDecoration",
+            ConfigItem.configTypeInt,
+            0
+        )
+    val drawerItemMyProfile =
+        addConfig(
+            "DrawerItemMyProfile",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemSetEmojiStatus =
+        addConfig(
+            "DrawerItemSetEmojiStatus",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemNewGroup =
+        addConfig(
+            "DrawerItemNewGroup",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemNewChannel =
+        addConfig(
+            "DrawerItemNewChannel",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val drawerItemContacts =
+        addConfig(
+            "DrawerItemContacts",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemCalls =
+        addConfig(
+            "DrawerItemCalls",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemSaved =
+        addConfig(
+            "DrawerItemSaved",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemSettings =
+        addConfig(
+            "DrawerItemSettings",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemNSettings =
+        addConfig(
+            "DrawerItemNSettings",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val drawerItemQrLogin =
+        addConfig(
+            "DrawerItemQrLogin",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val drawerItemArchivedChats =
+        addConfig(
+            "DrawerItemArchivedChats",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val drawerItemRestartApp =
+        addConfig(
+            "DrawerItemRestartApp",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val drawerItemBrowser =
+        addConfig(
+            "DrawerItemBrowser",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val drawerItemSessions =
+        addConfig(
+            "DrawerItemSessions",
             ConfigItem.configTypeBool,
             false
         )
