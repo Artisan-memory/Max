@@ -3660,6 +3660,9 @@ public class MessageObject {
     }
 
     public boolean translated = false;
+    // Max: transient "translation in progress" flag read by AyuGram's message
+    // delegate UI. Dropped by the upstream merge; re-added.
+    public boolean translating = false;
     public boolean summarized = false;
     public boolean updateTranslation(boolean force) {
         boolean replyUpdated = replyMessageObject != null && replyMessageObject != this && replyMessageObject.updateTranslation(force);

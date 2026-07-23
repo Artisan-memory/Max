@@ -9920,6 +9920,37 @@ public class MessagesController extends BaseController implements NotificationCe
         deleteDialog(did, 1, onlyHistory, 0, revoke, null, 0);
     }
 
+    // Max: helpers used by BulkDialogActionController, dropped by the upstream
+    // merge. deleteDialogLocally maps to the protected 7-arg deleteDialog (the
+    // fork's extra trailing local-only flag no longer exists upstream).
+    public void deleteDialogLocally(final long did) {
+        deleteDialog(did, 2, 0, 0, false, null, 0);
+    }
+
+    public void markPeerBlocked(long id) {
+        final TLRPC.User user = id > 0 ? getUser(id) : null;
+        markPeerBlockedInternal(id, user);
+    }
+
+    private boolean markPeerBlockedInternal(long id, TLRPC.User user) {
+        if (blockePeers.indexOfKey(id) >= 0) {
+            return false;
+        }
+        blockePeers.put(id, 1);
+        if (user != null) {
+            if (user.bot) {
+                getMediaDataController().removeInline(id);
+            } else {
+                getMediaDataController().removePeer(id);
+            }
+        }
+        if (totalBlockedCount >= 0) {
+            totalBlockedCount++;
+        }
+        getNotificationCenter().postNotificationName(NotificationCenter.blockedUsersDidLoad);
+        return true;
+    }
+
     public void setDialogHistoryTTL(long did, int ttl) {
         TLRPC.TL_messages_setHistoryTTL req = new TLRPC.TL_messages_setHistoryTTL();
         req.peer = getInputPeer(did);

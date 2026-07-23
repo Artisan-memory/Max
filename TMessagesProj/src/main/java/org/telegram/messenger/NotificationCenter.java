@@ -70,6 +70,7 @@ public class NotificationCenter {
     public static final int removeAllMessagesFromDialog = totalEvents++;
     public static final int notificationsSettingsUpdated = totalEvents++;
     public static final int blockedUsersDidLoad = totalEvents++;
+    public static final int bulkDialogActionFinished = totalEvents++;
     public static final int openedChatChanged = totalEvents++;
     public static final int didCreatedNewDeleteTask = totalEvents++;
     public static final int mainUserInfoChanged = totalEvents++;
