@@ -429,6 +429,14 @@ public class DrawerLayoutContainer extends FrameLayout {
 
     public boolean onTouchEvent(MotionEvent ev) {
         if (drawerLayout != null && !parentActionBarLayout.checkTransitionAnimation()) {
+            if (BuildVars.LOGS_ENABLED && ev != null && ev.getAction() == MotionEvent.ACTION_DOWN) {
+                FileLog.d("DEBUG_HUNT drawer touchDown allowOpenDrawer=" + allowOpenDrawer
+                        + " allowOpenDrawerBySwipe=" + allowOpenDrawerBySwipe
+                        + " drawerOpened=" + drawerOpened
+                        + " stackSize=" + parentActionBarLayout.getFragmentStack().size()
+                        + " allowSwipe=" + parentActionBarLayout.allowSwipe()
+                        + " x=" + (int) ev.getX());
+            }
             if (drawerOpened && ev != null && ev.getX() > drawerPosition && !startedTracking) {
                 if (ev.getAction() == MotionEvent.ACTION_UP) {
                     closeDrawer(false);

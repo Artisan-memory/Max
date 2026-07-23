@@ -6888,12 +6888,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     // folders a right-swipe moves to the previous folder instead.
     private void updateDrawerSwipeEnabled() {
         if (getParentLayout() == null || getParentLayout().getDrawerLayoutContainer() == null) {
+            if (BuildVars.LOGS_ENABLED) FileLog.d("DEBUG_HUNT drawer updateSwipe skip: parentLayout/container null");
             return;
         }
-        boolean onDefaultTab = filterTabsView == null
-                || filterTabsView.getVisibility() != View.VISIBLE
-                || filterTabsView.getCurrentTabId() == filterTabsView.getDefaultTabId();
-        getParentLayout().getDrawerLayoutContainer().setAllowOpenDrawerBySwipe(onDefaultTab && !searchIsShowed);
+        boolean tabsVisible = filterTabsView != null && filterTabsView.getVisibility() == View.VISIBLE;
+        // Leftmost tab = nowhere further to swipe left, so the drawer may open.
+        boolean onFirstTab = !tabsVisible || filterTabsView.getCurrentTabId() == filterTabsView.getFirstTabId();
+        boolean allow = onFirstTab && !searchIsShowed;
+        getParentLayout().getDrawerLayoutContainer().setAllowOpenDrawerBySwipe(allow);
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("DEBUG_HUNT drawer updateSwipe allow=" + allow
+                    + " tabsVisible=" + tabsVisible
+                    + " currentTab=" + (filterTabsView != null ? filterTabsView.getCurrentTabId() : "null")
+                    + " firstTab=" + (filterTabsView != null ? filterTabsView.getFirstTabId() : "null")
+                    + " defaultTab=" + (filterTabsView != null ? filterTabsView.getDefaultTabId() : "null")
+                    + " searchIsShowed=" + searchIsShowed
+                    + " classicNav=" + NaConfig.INSTANCE.getClassicNavigation().Bool());
+        }
     }
 
     private void updateFilterTabs(boolean force, boolean animated) {
