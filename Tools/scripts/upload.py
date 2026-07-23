@@ -1,15 +1,33 @@
 import os
-import json
 import time
 from pathlib import Path
 from sys import argv
-import requests
+
+from pyrogram import Client
+from pyrogram.enums import ParseMode
+from pyrogram.types import InputMediaDocument, InputMediaPhoto
 
 artifacts_path = Path("artifacts")
 test_version = argv[3] == "test" if len(argv) > 2 else None
 metadata_chat_id = argv[4] if len(argv) > 3 else None
 bot_token = argv[1]
 target_chat_id = argv[2]
+
+# MTProto credentials. The Bot API caps bot uploads at 50 MB, which our APKs
+# exceed, so we send over MTProto (Pyrogram) instead — that lifts the limit to
+# 2 GB. api_id/api_hash are read from the environment first so they can be
+# overridden by a CI secret; the defaults are the public TDesktop pair.
+api_id = int(os.environ.get("APP_CONFIG_API_ID") or 2040)
+api_hash = os.environ.get("APP_CONFIG_API_HASH") or "b18441a1ff607e10a989891a5462e627"
+
+
+def _chat(value):
+    # Pyrogram wants an int for numeric ids, str for @usernames.
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
 
 def find_apks(abi_list: list) -> list[Path]:
     found_files = []
@@ -23,6 +41,7 @@ def find_apks(abi_list: list) -> list[Path]:
                         found_files.append(apk)
     return found_files
 
+
 def get_commit_info():
     commit_id_raw = os.environ.get("COMMIT_ID") or "unknown"
     commit_id = commit_id_raw[:7]
@@ -30,20 +49,22 @@ def get_commit_info():
     commit_message = os.environ.get("COMMIT_MESSAGE") or "unknown"
     return commit_id, commit_url, commit_message
 
+
 def get_caption() -> str:
     commit_id, commit_url, commit_message = get_commit_info()
     pre = "Test version." if test_version else "Release version."
     caption = f"{pre}\n\n"
     caption += f"Commit Message:\n<blockquote expandable>{commit_message}</blockquote>\n\n"
     caption += f"See commit details <a href='{commit_url}'>{commit_id}</a>"
-    
+
     ai_summary = os.environ.get("AI_SUMMARY", "")
     if ai_summary:
         summary_text = f"\n\n<blockquote expandable>{ai_summary.replace(r'\n', '\n')}</blockquote>"
         if len(caption + summary_text) <= 1024:
             caption += summary_text
-            
+
     return caption
+
 
 def get_metadata_text():
     commit_id = "<code>" + (os.environ.get("COMMIT_ID") or "unknown")[:7] + "</code>"
@@ -51,79 +72,64 @@ def get_metadata_text():
     build_timestamp = "<code>" + (os.environ.get("BUILD_TIMESTAMP") or "-1") + "</code>"
     return build_timestamp + " " + commit_id + "\n" + commit_message
 
-def send_request_with_retry(method, data, files=None):
-    url = f"https://api.telegram.org/bot{bot_token}/{method}"
-    for i in range(3):
+
+def _with_retry(action, attempts=3):
+    for i in range(attempts):
         try:
-            response = requests.post(url, data=data, files=files)
-            response.raise_for_status()
-            return response.json()
+            return action()
         except Exception as e:
-            print(f"Attempt {i+1} failed: {e}")
-            if response is not None:
-                print(response.text)
+            print(f"Attempt {i + 1} failed: {e}")
             time.sleep(2)
     return None
 
+
 def main():
     files_to_send = find_apks(["arm64-v8a"])
-    
+
     if not files_to_send:
         fallback_img = Path("TMessagesProj/src/main/ic_launcher_max-playstore.png")
         if fallback_img.exists():
             files_to_send = [fallback_img]
-    
+
     if not files_to_send:
         print("No files to upload.")
         return
 
-
-    media_group = []
-    opened_files = {}
-    
     caption = get_caption()
-    
-    try:
-        for idx, file_path in enumerate(files_to_send):
-            # Ключ для files dict и attach:// uri
-            file_key = f"file{idx}"
-            opened_files[file_key] = open(file_path, "rb")
-            
-            media_type = "photo" if file_path.suffix == ".png" else "document"
-            
-            media_item = {
-                "type": media_type,
-                "media": f"attach://{file_key}"
-            }
-            
-            # Добавляем подпись только к последнему файлу в группе
-            if idx == len(files_to_send) - 1:
-                media_item["caption"] = caption
-                media_item["parse_mode"] = "HTML"
-                
-            media_group.append(media_item)
+    chat = _chat(target_chat_id)
 
-        # Отправка файлов в канал
-        payload = {
-            "chat_id": target_chat_id,
-            "media": json.dumps(media_group)
-        }
-        
-        print(f"Sending {len(files_to_send)} files to {target_chat_id}...")
-        send_request_with_retry("sendMediaGroup", payload, opened_files)
-        
-    finally:
-        for f in opened_files.values():
-            f.close()
+    # in_memory keeps no session file on the CI runner.
+    app = Client(
+        "uploader",
+        api_id=api_id,
+        api_hash=api_hash,
+        bot_token=bot_token,
+        in_memory=True,
+        parse_mode=ParseMode.HTML,
+    )
 
-    if metadata_chat_id:
-        print(f"Sending metadata to {metadata_chat_id}...")
-        meta_payload = {
-            "chat_id": metadata_chat_id,
-            "text": get_metadata_text(),
-            "parse_mode": "HTML"
-        }
-        send_request_with_retry("sendMessage", meta_payload)
+    with app:
+        print(f"Sending {len(files_to_send)} file(s) to {target_chat_id} over MTProto...")
+        if len(files_to_send) == 1:
+            file_path = files_to_send[0]
+            if file_path.suffix == ".png":
+                _with_retry(lambda: app.send_photo(chat, str(file_path), caption=caption))
+            else:
+                _with_retry(lambda: app.send_document(chat, str(file_path), caption=caption, force_document=True))
+        else:
+            media_group = []
+            for idx, file_path in enumerate(files_to_send):
+                item_caption = caption if idx == len(files_to_send) - 1 else None
+                if file_path.suffix == ".png":
+                    media_group.append(InputMediaPhoto(str(file_path), caption=item_caption))
+                else:
+                    media_group.append(InputMediaDocument(str(file_path), caption=item_caption))
+            _with_retry(lambda: app.send_media_group(chat, media_group))
+
+        if metadata_chat_id:
+            print(f"Sending metadata to {metadata_chat_id}...")
+            _with_retry(lambda: app.send_message(_chat(metadata_chat_id), get_metadata_text()))
+
 
 if __name__ == "__main__":
     main()
