@@ -250,6 +250,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
         // Cells: Set OnSettingChanged Callbacks
         cellGroup.callBackSettingsChanged = (key, newValue) -> {
             if (key.equals(NaConfig.INSTANCE.getClassicNavigation().getKey())) {
+                if (!(boolean) newValue) {
+                    // Turning Old UI off: make sure the bottom tab bar comes back
+                    // (it may have been hidden by an earlier Old UI build).
+                    NaConfig.INSTANCE.getHideBottomNavigationBar().setConfigBool(false);
+                }
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             } else if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
                 checkSaveDeletedRows();
