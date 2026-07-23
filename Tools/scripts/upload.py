@@ -50,12 +50,32 @@ def get_commit_info():
     return commit_id, commit_url, commit_message
 
 
-def get_caption() -> str:
+def human_size(path: Path) -> str:
+    try:
+        mb = path.stat().st_size / (1024 * 1024)
+        return f"{mb:.1f} MB"
+    except OSError:
+        return "?"
+
+
+def abi_of(path: Path) -> str:
+    for abi in ("arm64-v8a", "armeabi-v7a", "x86_64", "x86", "universal"):
+        if abi in path.name:
+            return abi
+    return ""
+
+
+def get_caption(primary: Path | None = None) -> str:
     commit_id, commit_url, commit_message = get_commit_info()
-    pre = "Test version." if test_version else "Release version."
-    caption = f"{pre}\n\n"
-    caption += f"Commit Message:\n<blockquote expandable>{commit_message}</blockquote>\n\n"
-    caption += f"See commit details <a href='{commit_url}'>{commit_id}</a>"
+    kind = "Test build" if test_version else "Release build"
+
+    caption = f"<b>Max</b> · {kind}\n"
+    caption += f"Commit <a href='{commit_url}'>{commit_id}</a>\n"
+    caption += f"<blockquote expandable>{commit_message}</blockquote>"
+
+    if primary is not None:
+        info = " · ".join(x for x in (human_size(primary), abi_of(primary)) if x)
+        caption += f"\n<code>{primary.name}</code>\n{info}"
 
     ai_summary = os.environ.get("AI_SUMMARY", "")
     if ai_summary:
@@ -95,7 +115,8 @@ def main():
         print("No files to upload.")
         return
 
-    caption = get_caption()
+    primary = next((f for f in files_to_send if f.suffix == ".apk"), files_to_send[0])
+    caption = get_caption(primary)
     chat = _chat(target_chat_id)
 
     # in_memory keeps no session file on the CI runner.
