@@ -44,8 +44,12 @@ jobs:
           fi
           cat gradle.properties
       - name: Debug Build
+        env:
+          COMMIT_ID: ${{ github.sha }}
         run: |
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
+          # Bump versionCode each run so the device treats it as an update.
+          export MAX_VERSION_CODE_OVERRIDE=$(( 1253 + ${{ github.run_number }} ))
           ./gradlew TMessagesProj:assembleDebug
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')

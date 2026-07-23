@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="NagramX" translatable="false">Max</string>
-    <string name="ClassicNavigation">Classic navigation (side menu)</string>
-    <string name="ClassicNavigationNotice">Use the old drawer side menu instead of the bottom tabs. The app restarts to apply.</string>
+    <string name="ClassicNavigation">Old UI (12.3.1)</string>
+    <string name="ClassicNavigationNotice">Restore the pre-redesign 12.3.1 interface: side menu instead of bottom tabs. Tap the restart button to apply.</string>
     <string name="OldUISettings">Old UI</string>
-    <string name="OldUISettingsHeader">Restore 12.3.1 interface</string>
-    <string name="OldUISettingsInfo">Toggles to bring back the pre-redesign UI. Changing navigation restarts the app.</string>
+    <string name="OldUISettingsHeader">Old UI</string>
+    <string name="OldUISettingsInfo">Bring back the pre-redesign 12.3.1 interface.</string>
     <string name="XChannel">Nagram X Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
