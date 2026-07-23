@@ -670,6 +670,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private DialogsActivityDelegate delegate;
 
+    // Max: the classic drawer's side menu, handed in by LaunchActivity when
+    // NaConfig.classicNavigation is enabled.
+    private RecyclerView sideMenu;
+
     private ArrayList<MediaController.PhotoEntry> sharedMediaEntries;
     private String sharedLink;
     private CharSequence sharedTextSeed;
@@ -2808,6 +2812,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private NotificationCenter.ObserversGroup observersGroup;
     private NotificationCenter.ObserversGroup globalObserversGroup;
+
+    // Max: receive the classic drawer's side menu from LaunchActivity.
+    public void setSideMenu(RecyclerView recyclerView) {
+        sideMenu = recyclerView;
+        if (sideMenu == null) {
+            return;
+        }
+        sideMenu.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
+        sideMenu.setGlowColor(Theme.getColor(Theme.key_chats_menuBackground));
+    }
 
     @Override
     public boolean onFragmentCreate() {
