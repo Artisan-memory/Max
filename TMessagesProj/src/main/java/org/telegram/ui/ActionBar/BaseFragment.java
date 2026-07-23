@@ -974,6 +974,12 @@ public abstract class BaseFragment {
 
     }
 
+    // Max: hook for the classic drawer slide progress. No-op by default; the
+    // classic navigation (DrawerLayoutContainer) calls it while dragging.
+    public void setProgressToDrawerOpened(float v) {
+
+    }
+
     public INavigationLayout[] showAsSheet(BaseFragment fragment) {
         return showAsSheet(fragment, null);
     }

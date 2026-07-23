@@ -69,6 +69,7 @@ import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AvatarDrawable;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EmojiTextView;
@@ -342,7 +343,9 @@ public class DrawerProfileCell extends FrameLayout implements NotificationCenter
 
             if (drawerLayoutContainer != null ) {
                 FrameLayout layout = drawerLayoutContainer.getParent() instanceof FrameLayout ? (FrameLayout) drawerLayoutContainer.getParent() : null;
-                Theme.turnOffAutoNight(layout, () -> {
+                // 12.8.1: turnOffAutoNight takes a BulletinFactory, not a raw
+                // container (mirrors DialogsActivity). Build one from the root.
+                Theme.turnOffAutoNight(layout != null ? BulletinFactory.of(layout, null) : null, () -> {
                     drawerLayoutContainer.closeDrawer(false);
                     drawerLayoutContainer.presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_NIGHT));
                 });
