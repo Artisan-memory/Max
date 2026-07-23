@@ -181,6 +181,9 @@ import android.graphics.Point;
 import tw.nekomimi.nekogram.helpers.AppRestartHelper;
 import tw.nekomimi.nekogram.ui.BookmarkManagerActivity;
 import tw.nekomimi.nekogram.utils.BrowserUtils;
+import org.telegram.ui.Components.MediaActivity;
+import org.telegram.ui.Components.SharedMediaLayout;
+import android.content.pm.PackageManager;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ChatMessageCell;
@@ -1070,12 +1073,12 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             botRequest.write_allowed = true;
                             ConnectionsManager.getInstance(currentAccount).sendRequest(botRequest, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
                                 attachMenuBot.inactive = attachMenuBot.side_menu_disclaimer_needed = false;
-                                showAttachMenuBot(attachMenuBot, null, true);
+                                showAttachMenuBot(this, currentAccount, attachMenuBot, null, true);
                                 MediaDataController.getInstance(currentAccount).updateAttachMenuBotsInCache();
                             }), ConnectionsManager.RequestFlagInvokeAfter | ConnectionsManager.RequestFlagFailOnServerErrors);
                         }, null, null);
                     } else {
-                        showAttachMenuBot(attachMenuBot, null, true);
+                        showAttachMenuBot(this, currentAccount, attachMenuBot, null, true);
                     }
                     return;
                 }
@@ -1224,7 +1227,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 } else if (id == DrawerLayoutAdapter.nkbtnRestartApp) {
                     AppRestartHelper.triggerRebirth(ApplicationLoader.applicationContext, new Intent(ApplicationLoader.applicationContext, LaunchActivity.class));
                 } else if (id == DrawerLayoutAdapter.nkbtnBrowser) {
-                    BrowserUtils.openBrowserHome(() -> drawerLayoutContainer.closeDrawer(true));
+                    BrowserUtils.openBrowserHome(currentAccount, () -> drawerLayoutContainer.closeDrawer(true), true);
                 } else if (id == DrawerLayoutAdapter.nkbtnGhostMode) {
                     var msg = NekoConfig.isGhostModeActive()
                             ? LocaleController.getString(R.string.GhostModeDisabled)
