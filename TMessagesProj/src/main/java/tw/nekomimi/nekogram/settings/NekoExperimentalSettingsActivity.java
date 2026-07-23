@@ -194,6 +194,12 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell enablePanguOnSendingRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnablePanguOnSending(), getString(R.string.PanguInfo)));
     private final AbstractConfigCell dividerPangu = cellGroup.appendCell(new ConfigCellDivider());
 
+    // Old UI (restore 12.3.1 interface). Toggles here need an app restart.
+    private final AbstractConfigCell headerOldUI = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.OldUISettingsHeader)));
+    private final AbstractConfigCell classicNavigationRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getClassicNavigation(), getString(R.string.ClassicNavigationNotice)));
+    private final AbstractConfigCell hideBottomNavigationBarRow2 = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideBottomNavigationBar()));
+    private final AbstractConfigCell dividerOldUI = cellGroup.appendCell(new ConfigCellDivider());
+
     public NekoExperimentalSettingsActivity() {
         if (NaConfig.INSTANCE.getUseDeletedIcon().Bool()) {
             cellGroup.rows.remove(customDeletedMarkRow);
@@ -244,7 +250,10 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
 
         // Cells: Set OnSettingChanged Callbacks
         cellGroup.callBackSettingsChanged = (key, newValue) -> {
-            if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
+            if (key.equals(NaConfig.INSTANCE.getClassicNavigation().getKey())
+                    || key.equals(NaConfig.INSTANCE.getHideBottomNavigationBar().getKey())) {
+                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
+            } else if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
                 checkSaveDeletedRows();
             } else if (key.equals(NaConfig.INSTANCE.getDisableStories().getKey())) {
                 checkStoriesRows();

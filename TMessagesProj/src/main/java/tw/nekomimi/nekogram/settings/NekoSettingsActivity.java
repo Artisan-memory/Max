@@ -74,7 +74,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
     private int chatRow;
     private int passcodeRow;
     private int experimentRow;
-    private int oldUIRow;
     private int categoriesEndRow;
 
     private int importSettingsRow;
@@ -99,7 +98,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             passcodeRow = -1;
         }
         experimentRow = addRow();
-        oldUIRow = addRow();
         categoriesEndRow = addRow();
 
         importSettingsRow = addRow();
@@ -341,8 +339,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new NekoPasscodeSettingsActivity());
         } else if (position == experimentRow) {
             presentFragment(new NekoExperimentalSettingsActivity());
-        } else if (position == oldUIRow) {
-            presentFragment(new OldUISettingsActivity());
         } else if (position == translatorRow) {
             presentFragment(new NekoTranslatorSettingsActivity());
         } else if (position == aboutRow) {
@@ -406,8 +402,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                         textCell.setTextAndIcon(getString(R.string.PasscodeNeko), R.drawable.msg_permissions, true);
                     } else if (position == experimentRow) {
                         textCell.setTextAndIcon(getString(R.string.Experimental), R.drawable.msg_fave, true);
-                    } else if (position == oldUIRow) {
-                        textCell.setTextAndIcon(getString(R.string.OldUISettings), R.drawable.msg_customize, true);
                     } else if (position == importSettingsRow) {
                         textCell.setTextAndIcon(getString(R.string.ImportSettings), R.drawable.msg_photo_settings_solar, true);
                     } else if (position == exportSettingsRow) {
