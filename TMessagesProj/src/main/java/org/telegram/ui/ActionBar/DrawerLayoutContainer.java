@@ -448,6 +448,9 @@ public class DrawerLayoutContainer extends FrameLayout {
                 if (ev != null && (ev.getAction() == MotionEvent.ACTION_DOWN || ev.getAction() == MotionEvent.ACTION_MOVE) && !startedTracking && !maybeStartTracking) {
                    View scrollingChild = findScrollingChild(this, ev.getX(),ev.getY());
                    if (scrollingChild != null) {
+                       if (BuildVars.LOGS_ENABLED && ev.getAction() == MotionEvent.ACTION_DOWN) {
+                           FileLog.d("DEBUG_HUNT drawer blocked by scrollingChild=" + scrollingChild.getClass().getName() + " x=" + (int) ev.getX() + " y=" + (int) ev.getY());
+                       }
                        return false;
                    }
                     parentActionBarLayout.getView().getHitRect(rect);
@@ -460,6 +463,9 @@ public class DrawerLayoutContainer extends FrameLayout {
                         if (velocityTracker != null) {
                             velocityTracker.clear();
                         }
+                        if (BuildVars.LOGS_ENABLED && ev.getAction() == MotionEvent.ACTION_DOWN) {
+                            FileLog.d("DEBUG_HUNT drawer maybeStartTracking set x=" + startedTrackingX);
+                        }
                     }
                 } else if (ev != null && ev.getAction() == MotionEvent.ACTION_MOVE && ev.getPointerId(0) == startedTrackingPointerId) {
                     if (velocityTracker == null) {
@@ -469,6 +475,9 @@ public class DrawerLayoutContainer extends FrameLayout {
                     float dy = Math.abs((int) ev.getY() - startedTrackingY);
                     velocityTracker.addMovement(ev);
                     if (maybeStartTracking && !startedTracking && (dx > 0 && dx / 3.0f > Math.abs(dy) && Math.abs(dx) >= AndroidUtilities.getPixelsInCM(0.2f, true) || drawerOpened && dx < 0 && Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) >= AndroidUtilities.getPixelsInCM(0.4f, true))) {
+                        if (BuildVars.LOGS_ENABLED) {
+                            FileLog.d("DEBUG_HUNT drawer startedTracking dx=" + (int) dx + " dy=" + (int) dy);
+                        }
                         prepareForDrawerOpen(ev);
                         startedTrackingX = (int) ev.getX();
                         requestDisallowInterceptTouchEvent(true);
