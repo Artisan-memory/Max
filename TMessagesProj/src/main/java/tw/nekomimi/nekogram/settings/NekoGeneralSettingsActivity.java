@@ -240,7 +240,6 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
     private final AbstractConfigCell hideTitlesRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getMainTabsHideTitles()));
     private final AbstractConfigCell hideContactsRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getMainTabsHideContacts()));
     private final AbstractConfigCell hideBottomNavigationBarRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideBottomNavigationBar()));
-    private final AbstractConfigCell classicNavigationRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getClassicNavigation(), getString(R.string.ClassicNavigationNotice)));
     private final AbstractConfigCell dividerMainTabs = cellGroup.appendCell(new ConfigCellDivider());
 
     // Privacy
@@ -390,10 +389,6 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
             } else if (key.equals(NaConfig.INSTANCE.getHideBottomNavigationBar().getKey())) {
                 checkMainTabsRows();
                 parentLayout.rebuildAllFragmentViews(false, false);
-            } else if (key.equals(NaConfig.INSTANCE.getClassicNavigation().getKey())) {
-                // Root navigation (drawer vs MainTabs) is decided in
-                // LaunchActivity.onCreate, so a full restart is required.
-                AppRestartHelper.triggerRebirth(ApplicationLoader.applicationContext, new Intent(ApplicationLoader.applicationContext, LaunchActivity.class));
             } else if (key.equals(NaConfig.INSTANCE.getHideDialogsSearchField().getKey())) {
                 parentLayout.rebuildAllFragmentViews(false, false);
             }
