@@ -65,6 +65,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -78,7 +80,9 @@ jobs:
           COMMIT_ID: ${{ github.event.head_commit.id }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMPARE_URL: ${{ github.event.compare }}
           BUILD_TIMESTAMP: ${{ github.run_id }}
         run: |
+          export COMMIT_LIST="$(git log --pretty='• %s' ${{ github.event.before }}..${{ github.event.after }} 2>/dev/null | head -40)"
           python -m pip install -r Tools/scripts/requirements.txt
           python Tools/scripts/upload.py ${{ secrets.HELPER_BOT_TOKEN }} ${{ secrets.HELPER_BOT_CANARY_TARGET }} test ${{ secrets.HELPER_BOT_CANARY_TARGET }}

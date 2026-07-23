@@ -50,39 +50,29 @@ def get_commit_info():
     return commit_id, commit_url, commit_message
 
 
-def human_size(path: Path) -> str:
-    try:
-        mb = path.stat().st_size / (1024 * 1024)
-        return f"{mb:.1f} MB"
-    except OSError:
-        return "?"
-
-
-def abi_of(path: Path) -> str:
-    for abi in ("arm64-v8a", "armeabi-v7a", "x86_64", "x86", "universal"):
-        if abi in path.name:
-            return abi
-    return ""
-
-
-def get_caption(primary: Path | None = None) -> str:
+def get_caption() -> str:
     commit_id, commit_url, commit_message = get_commit_info()
-    kind = "Test build" if test_version else "Release build"
+    pre = "Test version." if test_version else "Release version."
 
-    caption = f"<b>Max</b> · {kind}\n"
-    caption += f"Commit <a href='{commit_url}'>{commit_id}</a>\n"
-    caption += f"<blockquote expandable>{commit_message}</blockquote>"
+    caption = f"{pre}\n\n"
+    caption += f"Commit Message:\n<blockquote expandable>{commit_message}</blockquote>\n\n"
+    caption += f"See commit details <a href='{commit_url}'>{commit_id}</a>"
 
-    if primary is not None:
-        info = " · ".join(x for x in (human_size(primary), abi_of(primary)) if x)
-        caption += f"\n<code>{primary.name}</code>\n{info}"
+    # Full commit list for this build as bullets, provided by the workflow.
+    commit_list = os.environ.get("COMMIT_LIST", "").strip()
+    if commit_list:
+        block = f"\n\n<blockquote expandable>{commit_list}</blockquote>"
+        if len(caption + block) <= 1024:
+            caption += block
 
-    ai_summary = os.environ.get("AI_SUMMARY", "")
-    if ai_summary:
-        summary_text = f"\n\n<blockquote expandable>{ai_summary.replace(r'\n', '\n')}</blockquote>"
-        if len(caption + summary_text) <= 1024:
-            caption += summary_text
+    compare_url = os.environ.get("COMPARE_URL", "").strip()
+    if compare_url:
+        link = f"\n\n<a href='{compare_url}'>Full changes</a>"
+        if len(caption + link) <= 1024:
+            caption += link
 
+    if len(caption) > 1024:
+        caption = caption[:1021] + "..."
     return caption
 
 
@@ -115,8 +105,7 @@ def main():
         print("No files to upload.")
         return
 
-    primary = next((f for f in files_to_send if f.suffix == ".apk"), files_to_send[0])
-    caption = get_caption(primary)
+    caption = get_caption()
     chat = _chat(target_chat_id)
 
     # in_memory keeps no session file on the CI runner.
