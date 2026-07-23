@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="NagramX" translatable="false">Max</string>
+    <string name="ClassicNavigation">Classic navigation (side menu)</string>
+    <string name="ClassicNavigationNotice">Use the old drawer side menu instead of the bottom tabs. The app restarts to apply.</string>
     <string name="XChannel">Nagram X Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
