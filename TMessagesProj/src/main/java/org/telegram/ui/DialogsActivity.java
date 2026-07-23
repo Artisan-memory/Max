@@ -2821,6 +2821,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         sideMenu.setBackgroundColor(Theme.getColor(Theme.key_chats_menuBackground));
         sideMenu.setGlowColor(Theme.getColor(Theme.key_chats_menuBackground));
+        updateDrawerSwipeEnabled();
     }
 
     @Override
@@ -3683,6 +3684,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     showScrollbars(false);
                     switchToCurrentSelectedMode(true);
                     animatingForward = forward;
+                    updateDrawerSwipeEnabled();
                 }
 
                 @Override
@@ -6881,6 +6883,19 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    // Max: classic drawer opens by swipe only when there is nowhere further to
+    // swipe — i.e. on the first (default) folder tab and not searching. On other
+    // folders a right-swipe moves to the previous folder instead.
+    private void updateDrawerSwipeEnabled() {
+        if (getParentLayout() == null || getParentLayout().getDrawerLayoutContainer() == null) {
+            return;
+        }
+        boolean onDefaultTab = filterTabsView == null
+                || filterTabsView.getVisibility() != View.VISIBLE
+                || filterTabsView.getCurrentTabId() == filterTabsView.getDefaultTabId();
+        getParentLayout().getDrawerLayoutContainer().setAllowOpenDrawerBySwipe(onDefaultTab && !searchIsShowed);
+    }
+
     private void updateFilterTabs(boolean force, boolean animated) {
         if (filterTabsView == null || inPreviewMode || searchIsShowed || (rightSlidingDialogContainer != null && rightSlidingDialogContainer.hasFragment())) {
             return;
@@ -7066,6 +7081,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
+        updateDrawerSwipeEnabled();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }

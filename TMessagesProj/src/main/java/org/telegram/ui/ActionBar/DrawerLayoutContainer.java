@@ -445,11 +445,7 @@ public class DrawerLayoutContainer extends FrameLayout {
                     parentActionBarLayout.getView().getHitRect(rect);
                     startedTrackingX = (int) ev.getX();
                     startedTrackingY = (int) ev.getY();
-                    // Only start opening the drawer from the left edge, otherwise
-                    // any right-swipe anywhere on the screen would open it. When
-                    // the drawer is already open, allow tracking anywhere to close.
-                    boolean fromLeftEdge = startedTrackingX <= AndroidUtilities.dp(28);
-                    if (rect.contains(startedTrackingX, startedTrackingY) && (drawerOpened || fromLeftEdge)) {
+                    if (rect.contains(startedTrackingX, startedTrackingY)) {
                         startedTrackingPointerId = ev.getPointerId(0);
                         maybeStartTracking = true;
                         cancelCurrentAnimation();
