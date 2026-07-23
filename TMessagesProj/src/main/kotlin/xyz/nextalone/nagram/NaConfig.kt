@@ -1391,6 +1391,14 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    // When enabled, forum topics with empty cached titles are skipped and
+    // re-fetched fresh, so topic names actually load instead of showing blank.
+    val disableTopicTitleCache =
+        addConfig(
+            "DisableTopicTitleCache",
+            ConfigItem.configTypeBool,
+            true
+        )
     // Max-owned config members that survived the upstream merge only inside our
     // helper/adapter files; re-added here because the merged NaConfig came from
     // NagramX and dropped them. Referenced by ExternalStickerCacheHelper and
