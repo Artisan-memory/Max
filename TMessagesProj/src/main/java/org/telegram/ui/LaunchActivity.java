@@ -1583,8 +1583,20 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         } else {
             actionBarLayout.removeFragmentFromStack(0);
         }
-        MainTabsActivity mainTabsActivity = dialogsActivityProvider.provide(null);
-        actionBarLayout.addFragmentToStack(mainTabsActivity, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
+        if (NaConfig.INSTANCE.getClassicNavigation().Bool() && sideMenu != null) {
+            // Classic drawer: rebuild the plain DialogsActivity root with the side
+            // menu re-attached and refresh the drawer so it shows the new account.
+            DialogsActivity dialogsActivity = new DialogsActivity(null);
+            dialogsActivity.setSideMenu(sideMenu);
+            actionBarLayout.addFragmentToStack(dialogsActivity, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
+            drawerLayoutContainer.setAllowOpenDrawer(true, false);
+            if (drawerLayoutAdapter != null) {
+                drawerLayoutAdapter.notifyDataSetChanged();
+            }
+        } else {
+            MainTabsActivity mainTabsActivity = dialogsActivityProvider.provide(null);
+            actionBarLayout.addFragmentToStack(mainTabsActivity, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
+        }
         actionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
         if (AndroidUtilities.isTablet()) {
             layersActionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
