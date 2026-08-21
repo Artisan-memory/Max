@@ -343,6 +343,11 @@ public class BookmarksActivity extends NekoDelegateFragment {
     }
 
     @Override
+    protected RecyclerListView getMessageListView() {
+        return listView;
+    }
+
+    @Override
     public View createView(Context context) {
         var peer = getMessagesController().getUserOrChat(dialogId);
         String name = switch (peer) {

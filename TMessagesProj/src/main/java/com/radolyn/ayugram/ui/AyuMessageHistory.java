@@ -130,6 +130,11 @@ public class AyuMessageHistory extends NekoDelegateFragment {
     }
 
     @Override
+    protected RecyclerListView getMessageListView() {
+        return listView;
+    }
+
+    @Override
     public View createView(Context context) {
         long dialogId = messageObject.messageOwner.dialog_id;
         var peer = getMessagesController().getUserOrChat(dialogId);

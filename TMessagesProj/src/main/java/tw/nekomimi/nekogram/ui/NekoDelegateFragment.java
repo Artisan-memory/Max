@@ -35,6 +35,7 @@ import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LiteMode;
+import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
@@ -70,6 +71,7 @@ import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.chat.WallpaperBitmapProvider;
 import org.telegram.ui.Components.chat.layouts.ChatActivityFadeView;
 import org.telegram.ui.ContactAddActivity;
+import org.telegram.ui.PhotoViewer;
 import org.telegram.ui.ProfileActivity;
 
 import java.util.ArrayList;
@@ -375,19 +377,81 @@ public abstract class NekoDelegateFragment extends BaseFragment implements Notif
         BulletinFactory.of(this).createCopyBulletin(getString(R.string.MessageCopied)).show();
     }
 
+    /**
+     * List holding the message cells, so photos and videos can be handed to {@link PhotoViewer}
+     * instead of an external viewer. Subclasses that show messages should return their list.
+     */
+    @Nullable
+    protected RecyclerListView getMessageListView() {
+        return null;
+    }
+
+    private final PhotoViewer.PhotoViewerProvider photoViewerProvider = new PhotoViewer.EmptyPhotoViewerProvider() {
+        @Override
+        public PhotoViewer.PlaceProviderObject getPlaceForPhoto(MessageObject messageObject, TLRPC.FileLocation fileLocation, int index, boolean needPreview, boolean closing) {
+            RecyclerListView listView = getMessageListView();
+            if (listView == null || messageObject == null) {
+                return null;
+            }
+            for (int a = 0; a < listView.getChildCount(); a++) {
+                View view = listView.getChildAt(a);
+                if (!(view instanceof ChatMessageCell)) {
+                    continue;
+                }
+                ChatMessageCell cell = (ChatMessageCell) view;
+                MessageObject message = cell.getMessageObject();
+                if (message == null || message.getId() != messageObject.getId()) {
+                    continue;
+                }
+                ImageReceiver imageReceiver = cell.getPhotoImage();
+                int[] coords = new int[2];
+                view.getLocationInWindow(coords);
+                PhotoViewer.PlaceProviderObject object = new PhotoViewer.PlaceProviderObject();
+                object.viewX = coords[0];
+                object.viewY = coords[1];
+                object.parentView = listView;
+                object.imageReceiver = imageReceiver;
+                object.thumb = imageReceiver.getBitmapSafe();
+                object.radius = imageReceiver.getRoundRadius(true);
+                object.isEvent = true;
+                return object;
+            }
+            return null;
+        }
+    };
+
     @Override
     public void onImagePressed(ChatMessageCell cell) {
-        if (cell.getMessageObject() != null) {
-            MessageObject messageObject = cell.getMessageObject();
-            if (messageObject.isSticker() || messageObject.isAnimatedSticker()) {
-                var inputStickerSet = messageObject.getInputStickerSet();
-                if (inputStickerSet != null) {
-                    showDialog(new StickersAlert(getParentActivity(), this, inputStickerSet, null, null, false));
-                }
-            } else {
-                AndroidUtil.openForView(messageObject, getParentActivity(), getResourceProvider());
-            }
+        MessageObject messageObject = cell.getMessageObject();
+        if (messageObject == null || getParentActivity() == null) {
+            return;
         }
+        if (messageObject.isSticker() || messageObject.isAnimatedSticker()) {
+            var inputStickerSet = messageObject.getInputStickerSet();
+            if (inputStickerSet != null) {
+                showDialog(new StickersAlert(getParentActivity(), this, inputStickerSet, null, null, false));
+            }
+            return;
+        }
+        if (openInPhotoViewer(messageObject)) {
+            return;
+        }
+        AndroidUtil.openForView(messageObject, getParentActivity(), getResourceProvider());
+    }
+
+    private boolean openInPhotoViewer(MessageObject messageObject) {
+        if (getMessageListView() == null) {
+            return false;
+        }
+        boolean viewable = messageObject.type == MessageObject.TYPE_PHOTO
+                || messageObject.isVideo()
+                || messageObject.isGif()
+                || messageObject.type == MessageObject.TYPE_TEXT && !messageObject.isWebpageDocument();
+        if (!viewable) {
+            return false;
+        }
+        PhotoViewer.getInstance().setParentActivity(this);
+        return PhotoViewer.getInstance().openPhoto(messageObject, null, 0, 0, 0, photoViewerProvider);
     }
 
     @Override
