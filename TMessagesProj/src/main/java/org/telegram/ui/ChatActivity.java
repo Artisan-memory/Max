@@ -13018,9 +13018,25 @@ public class ChatActivity extends BaseFragment implements
         updateSelectedMessageReactions();
     }
 
+    /** The messages a forward would carry, whether picked in the action mode or from one bubble. */
+    private ArrayList<MessageObject> getForwardingMessages() {
+        if (forwardingMessage == null) {
+            return getSelectedMessages1();
+        }
+        ArrayList<MessageObject> messages = new ArrayList<>();
+        if (forwardingMessageGroup != null) {
+            messages.addAll(forwardingMessageGroup.messages);
+        } else {
+            messages.add(forwardingMessage);
+        }
+        return messages;
+    }
+
     public void openForward(boolean fromActionBar) {
         boolean hasSelectedAyuDeletedMessage = hasSelectedAyuDeletedMessage();
-        if (isPeerNoForwards() || hasSelectedNoforwardsMessage() || hasSelectedAyuDeletedMessage) {
+        ArrayList<MessageObject> forwarding = getForwardingMessages();
+        boolean restricted = isPeerNoForwards() || hasSelectedNoforwardsMessage() || hasSelectedAyuDeletedMessage;
+        if (restricted && !getMessageHelper().canSendMessagesAsCopy(forwarding)) {
             // We should update text if user changed locale without re-opening chat activity
             String str;
             if (isPeerNoForwards()) {
@@ -13096,7 +13112,7 @@ public class ChatActivity extends BaseFragment implements
         Bundle args = new Bundle();
         args.putBoolean("onlySelect", true);
         args.putInt("dialogsType", DialogsActivity.DIALOGS_TYPE_FORWARD);
-        args.putInt("messagesCount", canForwardMessagesCount);
+        args.putInt("messagesCount", restricted ? forwarding.size() : canForwardMessagesCount);
         args.putInt("hasPoll", hasPoll);
         args.putBoolean("hasInvoice", hasInvoice);
         args.putBoolean("canSelectTopics", true);
