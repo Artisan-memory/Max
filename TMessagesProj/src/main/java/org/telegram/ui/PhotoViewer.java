@@ -15179,10 +15179,13 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             if (DialogObject.isEncryptedDialog(currentDialogId) && !isEmbedVideo || noforwards) {
                 setItemVisible(sendItem, false, false);
             }
-            if (isEmbedVideo || newMessageObject.messageOwner.ttl != 0 && newMessageObject.messageOwner.ttl < 60 * 60/* || noforwards*/) {
+            // one-time media cannot be shared back, but it can still be saved locally
+            final boolean oneTimeMedia = newMessageObject.messageOwner.ttl != 0 && newMessageObject.messageOwner.ttl < 60 * 60;
+            if (isEmbedVideo || oneTimeMedia) {
                 allowShare = false;
-                galleryButton.setVisibility(View.GONE);
-                galleryGap.setVisibility(View.GONE);
+                int saveVisibility = oneTimeMedia && !isEmbedVideo ? View.VISIBLE : View.GONE;
+                galleryButton.setVisibility(saveVisibility);
+                galleryGap.setVisibility(saveVisibility);
                 menuItem.hideSubItem(gallery_menu_send_forward);
                 menuItem.hideSubItem(gallery_menu_send_noquote);
                 menuItem.hideSubItem(gallery_menu_share);
