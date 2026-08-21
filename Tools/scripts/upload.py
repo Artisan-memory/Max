@@ -7,8 +7,10 @@ from sys import argv
 from pyrogram import Client
 from pyrogram.types import InputMediaDocument, LinkPreviewOptions
 
-api_id = os.environ.get("APP_ID")
-api_hash = os.environ.get("APP_HASH")
+# Fall back to the public TDesktop pair so the upload works with only the
+# HELPER_BOT_* secrets set; APP_ID/APP_HASH override it when present.
+api_id = int(os.environ.get("APP_ID") or 2040)
+api_hash = os.environ.get("APP_HASH") or "b18441a1ff607e10a989891a5462e627"
 artifacts_path = Path("artifacts")
 test_version = argv[3] == "test" if len(argv) > 2 else None
 metadata_chat_id = argv[4] if len(argv) > 3 else None
