@@ -17,6 +17,7 @@ import android.util.Pair;
 import com.radolyn.ayugram.utils.AyuGhostUtils;
 
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.FileLog;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
@@ -25,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import tw.nekomimi.nekogram.config.ConfigItem;
@@ -77,19 +79,6 @@ public class NekoConfig {
     public static ConfigItem unreadBadgeOnBackButton = addConfig("unreadBadgeOnBackButton", configTypeBool, false);
     public static ConfigItem useCustomEmoji = addConfig("useCustomEmoji", configTypeBool, false);
     public static ConfigItem repeatConfirm = addConfig("repeatConfirm", configTypeBool, true);
-    // Max-owned NekoConfig members dropped by the upstream merge but still
-    // referenced by the surviving drawer files (DrawerLayoutAdapter,
-    // DrawerProfileCell). Re-added for the classic sidebar. scheduleMessages was
-    // per-account (AccountBoolConfigItem) upstream in our fork; kept as a plain
-    // global bool here to avoid porting that whole subsystem — the drawer item
-    // only reads/toggles it.
-    public static ConfigItem largeAvatarInDrawer = addConfig("AvatarAsBackground", configTypeInt, DRAWER_BACKGROUND_WALLPAPER);
-    public static ConfigItem avatarBackgroundBlur = addConfig("BlurAvatarBackground", configTypeBool, false);
-    public static ConfigItem avatarBackgroundDarken = addConfig("DarkenAvatarBackground", configTypeBool, false);
-    public static ConfigItem hideProxyByDefault = addConfig("HideProxyByDefault", configTypeBool, true);
-    public static ConfigItem useProxyItem = addConfig("UseProxyItem", configTypeBool, true);
-    public static ConfigItem scheduleMessages = addConfig("ScheduleMessage", configTypeBool, false);
-    public static ConfigItem showScheduleMessagesInDrawer = addConfig("ScheduleMessageInDrawer", configTypeBool, false);
     public static ConfigItem disableInstantCamera = addConfig("DisableInstantCamera", configTypeBool, true);
     public static ConfigItem showSeconds = addConfig("showSeconds", configTypeBool, false);
 
@@ -168,6 +157,7 @@ public class NekoConfig {
     public static ConfigItem takeGIFasVideo = addConfig("TakeGIFasVideo", configTypeBool, false);
     public static ConfigItem maxRecentStickerCount = addConfig("maxRecentStickerCount", configTypeInt, 20);
     public static ConfigItem disableSwipeToNext = addConfig("disableSwipeToNextChannel", configTypeBool, false);
+    public static ConfigItem disableSwipeToNextTopic = addConfig("disableSwipeToNextTopic", configTypeBool, false);
     public static ConfigItem disableChoosingSticker = addConfig("disableChoosingSticker", configTypeBool, false);
     public static ConfigItem hideGroupSticker = addConfig("hideGroupSticker", configTypeBool, false);
     public static ConfigItem rememberAllBackMessages = addConfig("rememberAllBackMessages", configTypeBool, false);
@@ -233,47 +223,53 @@ public class NekoConfig {
             for (int i = 0; i < configs.size(); i++) {
                 ConfigItem o = configs.get(i);
 
-                if (o.type == configTypeBool) {
-                    o.value = getPreferences().getBoolean(o.key, (boolean) o.defaultValue);
-                }
-                if (o.type == configTypeInt) {
-                    o.value = getPreferences().getInt(o.key, (int) o.defaultValue);
-                }
-                if (o.type == configTypeLong) {
-                    o.value = getPreferences().getLong(o.key, (Long) o.defaultValue);
-                }
-                if (o.type == configTypeFloat) {
-                    o.value = getPreferences().getFloat(o.key, (Float) o.defaultValue);
-                }
-                if (o.type == configTypeString) {
-                    o.value = getPreferences().getString(o.key, (String) o.defaultValue);
-                }
-                if (o.type == configTypeSetInt) {
-                    Set<String> ss = getPreferences().getStringSet(o.key, new HashSet<>());
-                    HashSet<Integer> si = new HashSet<>();
-                    for (String s : ss) {
-                        si.add(Integer.parseInt(s));
+                try {
+                    if (o.type == configTypeBool) {
+                        o.value = getPreferences().getBoolean(o.key, (boolean) o.defaultValue);
                     }
-                    o.value = si;
-                }
-                if (o.type == configTypeMapIntInt) {
-                    String cv = getPreferences().getString(o.key, "");
-                    if (cv.isEmpty()) {
-                        o.value = new HashMap<Integer, Integer>();
-                    } else {
-                        try {
-                            byte[] data = Base64.decode(cv, Base64.DEFAULT);
-                            ObjectInputStream ois = new ObjectInputStream(
-                                    new ByteArrayInputStream(data));
-                            o.value = ois.readObject();
-                            if (o.value == null) {
+                    if (o.type == configTypeInt) {
+                        o.value = getPreferences().getInt(o.key, (int) o.defaultValue);
+                    }
+                    if (o.type == configTypeLong) {
+                        o.value = getPreferences().getLong(o.key, (Long) o.defaultValue);
+                    }
+                    if (o.type == configTypeFloat) {
+                        o.value = getPreferences().getFloat(o.key, (Float) o.defaultValue);
+                    }
+                    if (o.type == configTypeString) {
+                        o.value = getPreferences().getString(o.key, (String) o.defaultValue);
+                    }
+                    if (o.type == configTypeSetInt) {
+                        Set<String> ss = getPreferences().getStringSet(o.key, new HashSet<>());
+                        HashSet<Integer> si = new HashSet<>();
+                        for (String s : ss) {
+                            si.add(Integer.parseInt(s));
+                        }
+                        o.value = si;
+                    }
+                    if (o.type == configTypeMapIntInt) {
+                        String cv = getPreferences().getString(o.key, "");
+                        if (cv.isEmpty()) {
+                            o.value = new HashMap<Integer, Integer>();
+                        } else {
+                            try {
+                                byte[] data = Base64.decode(cv, Base64.DEFAULT);
+                                ObjectInputStream ois = new ObjectInputStream(
+                                        new ByteArrayInputStream(data));
+                                o.value = ois.readObject();
+                                if (o.value == null) {
+                                    o.value = new HashMap<Integer, Integer>();
+                                }
+                                ois.close();
+                            } catch (Exception e) {
                                 o.value = new HashMap<Integer, Integer>();
                             }
-                            ois.close();
-                        } catch (Exception e) {
-                            o.value = new HashMap<Integer, Integer>();
                         }
                     }
+                } catch (ClassCastException | NumberFormatException e) {
+                    FileLog.e("Invalid config value for " + o.key, e);
+                    o.value = o.defaultValue;
+                    getPreferences().edit().remove(o.key).apply();
                 }
             }
             if (!configLoaded)
@@ -349,13 +345,13 @@ public class NekoConfig {
     );
     // --- Ghost Mode ---
 
-    public static Set<String> getAllKeys() {
+    public static Map<String, Integer> getConfigTypes() {
         synchronized (sync) {
-            Set<String> keys = new HashSet<>();
+            Map<String, Integer> types = new HashMap<>();
             for (ConfigItem o : configs) {
-                keys.add(o.getKey());
+                types.put(o.getKey(), o.type);
             }
-            return keys;
+            return types;
         }
     }
 }

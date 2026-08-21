@@ -134,7 +134,7 @@ public class ReplyMessageLine {
             wasColorId = colorId;
             wasMessageId = msgId;
         }
-        if (colorId < 7) {
+        if (colorId >= 0 && colorId < 7) {
             color1 = color2 = color3 = Theme.getColor(Theme.keys_avatar_nameInMessage[colorId], resourcesProvider);
             hasColor2 = hasColor3 = false;
             return;
@@ -226,7 +226,7 @@ public class ReplyMessageLine {
 
     public int check(MessageObject messageObject, TLRPC.User currentUser, TLRPC.Chat currentChat, Theme.ResourcesProvider resourcesProvider, final int type) {
         final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
-        if (!(messageObject.isOutOwner() || type == TYPE_CODE) && messageObject.overrideLinkPeerColor != null) {
+        if (messageObject != null && !(messageObject.isOutOwner() || type == TYPE_CODE) && messageObject.overrideLinkPeerColor != null) {
             return resolveCollectionColor(messageObject, messageObject.overrideLinkPeerColor, resourcesProvider);
         }
 

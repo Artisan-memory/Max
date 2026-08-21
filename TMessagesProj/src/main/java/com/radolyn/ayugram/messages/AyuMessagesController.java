@@ -50,7 +50,7 @@ public class AyuMessagesController {
         refreshDaos();
     }
 
-    private void refreshDaos() {
+    public void refreshDaos() {
         editedMessageDao = AyuData.getEditedMessageDao();
         deletedMessageDao = AyuData.getDeletedMessageDao();
     }
@@ -282,6 +282,10 @@ public class AyuMessagesController {
 
     public DeletedMessageFull getMessage(long userId, long dialogId, int messageId) {
         return deletedMessageDao.getMessage(userId, dialogId, messageId);
+    }
+
+    public String getMediaPath(long userId, long dialogId, int messageId) {
+        return deletedMessageDao.getMediaPath(userId, dialogId, messageId);
     }
 
     public List<DeletedMessageFull> getMessages(long userId, long dialogId, long startId, long endId, int limit) {

@@ -138,7 +138,6 @@ public class ChatCustomReactionsEditActivity extends BaseFragment implements Not
                 checkMaxCustomReactions(false);
             }
         });
-        getNotificationCenter().addObserver(this, NotificationCenter.reactionsDidLoad);
         allAvailableReactions.addAll(getMediaDataController().getEnabledReactionsList());
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.stopAllHeavyOperations, 512);
         getNotificationCenter().addObserver(this, NotificationCenter.dialogDeleted);
@@ -892,6 +891,11 @@ public class ChatCustomReactionsEditActivity extends BaseFragment implements Not
                 public void onAnimationEnd(Animator animation) {
                     NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.startAllHeavyOperations, 512);
                     bottomDialogLayout.setVisibility(View.INVISIBLE);
+                    if (selectedType != SELECT_TYPE_NONE || paid) {
+                        actionButtonContainer.animate().setListener(null).cancel();
+                        actionButtonContainer.setVisibility(View.VISIBLE);
+                        actionButtonContainer.animate().alpha(1.0f).start();
+                    }
                     if (isClearFocusNotWorking()) {
                         switchLayout.setFocusableInTouchMode(false);
                     }

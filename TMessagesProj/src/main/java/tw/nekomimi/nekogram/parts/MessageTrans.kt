@@ -499,7 +499,7 @@ private suspend fun ChatActivity.finalizeTranslation(
         }
     } else {
         withContext(Dispatchers.Main) {
-            clearTranslated(msg, currentAccount, false)
+            clearTranslated(msg, currentAccount)
             messageHelper.resetMessageContent(dialogId, msg)
         }
     }
@@ -552,8 +552,7 @@ private fun ChatActivity.applyCachedTranslations(
             (msg.messageOwner.translatedText?.text?.isNotEmpty() == true) ||
             (
                 msg.messageOwner.summarizedOpen &&
-                    msg.messageOwner.translatedSummaryText?.text?.isNotEmpty() == true &&
-                    !MessageHelper.isLegacyTranslatedSummary(msg.messageOwner.summaryText, msg.messageOwner.translatedSummaryText)
+                msg.messageOwner.translatedSummaryText?.text?.isNotEmpty() == true
             )
     }
     if (!hasCachedTranslation) return
@@ -641,7 +640,6 @@ private fun MessageObject.needsSummaryTranslation(
 
     return !canReuseCache ||
             messageOwner.translatedSummaryText?.text.isNullOrEmpty() ||
-            MessageHelper.isLegacyTranslatedSummary(messageOwner.summaryText, messageOwner.translatedSummaryText) ||
             !messageOwner.translatedSummaryLanguage.equals(targetLanguage, ignoreCase = true)
 }
 
@@ -668,7 +666,6 @@ private fun MessageObject.needsOriginalTranslation(
 private fun MessageObject.matchesCachedLanguage(targetLanguage: String): Boolean {
     return if (messageOwner.summarizedOpen) {
         messageOwner.translatedSummaryText?.text?.isNotEmpty() == true &&
-                !MessageHelper.isLegacyTranslatedSummary(messageOwner.summaryText, messageOwner.translatedSummaryText) &&
                 messageOwner.translatedSummaryLanguage.equals(targetLanguage, ignoreCase = true)
     } else {
         messageOwner.translatedToLanguage.equals(targetLanguage, ignoreCase = true)
@@ -722,11 +719,7 @@ private fun handleTranslationError(
 private fun clearTranslated(
     messageObject: MessageObject,
     currentAccount: Int,
-    clearTranslatedText: Boolean
 ) {
-    if (clearTranslatedText) {
-        messageObject.messageOwner.translatedText = null
-    }
     messageObject.messageOwner.translatedPoll = null
     MessagesStorage.getInstance(currentAccount).updateMessageCustomParams(
         messageObject.dialogId, messageObject.messageOwner

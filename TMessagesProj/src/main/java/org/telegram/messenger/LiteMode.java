@@ -151,10 +151,6 @@ public class LiteMode {
             // always enabled for tablets
             return true;
         }
-        // Max: Old UI (12.3.1) has no liquid-glass chat header / action bar.
-        if (flag == FLAG_LIQUID_GLASS && xyz.nextalone.nagram.NaConfig.INSTANCE.getClassicNavigation().Bool()) {
-            return false;
-        }
         return (getValue() & preprocessFlag(flag)) > 0;
     }
 

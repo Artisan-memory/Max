@@ -70,7 +70,6 @@ public class NotificationCenter {
     public static final int removeAllMessagesFromDialog = totalEvents++;
     public static final int notificationsSettingsUpdated = totalEvents++;
     public static final int blockedUsersDidLoad = totalEvents++;
-    public static final int bulkDialogActionFinished = totalEvents++;
     public static final int openedChatChanged = totalEvents++;
     public static final int didCreatedNewDeleteTask = totalEvents++;
     public static final int mainUserInfoChanged = totalEvents++;
@@ -376,12 +375,13 @@ public class NotificationCenter {
     public static final int contactsPermissionBadgeCheck = totalEvents++;
     public static final int guardBotDecisionResult = totalEvents++;
     public static final int webBrowserSettingsUpdate = totalEvents++;
+    public static final int communityPendingRequestsUpdate = totalEvents++;
+    public static final int communitySwitchedCollapsed = totalEvents++;
 
     public static boolean alreadyLogged;
 
     // custom
     public static final int updateLoginToken = totalEvents++;
-    public static final int accountLogin = totalEvents++;
 
     private final SparseArray<ArrayList<NotificationCenterDelegate>> observers = new SparseArray<>();
     private final SparseArray<ArrayList<NotificationCenterDelegate>> removeAfterBroadcast = new SparseArray<>();
@@ -870,33 +870,6 @@ public class NotificationCenter {
         }
     }
 
-    public Runnable listenGlobal(View view, final int id, final Utilities.Callback<Object[]> callback) {
-        if (view == null || callback == null) {
-            return () -> {};
-        }
-        final NotificationCenterDelegate delegate = (_id, account, args) -> {
-            if (_id == id) {
-                callback.run(args);
-            }
-        };
-        final View.OnAttachStateChangeListener viewListener = new View.OnAttachStateChangeListener() {
-            @Override
-            public void onViewAttachedToWindow(View view) {
-                NotificationCenter.getGlobalInstance().addObserver(delegate, id);
-            }
-            @Override
-            public void onViewDetachedFromWindow(View view) {
-                NotificationCenter.getGlobalInstance().removeObserver(delegate, id);
-            }
-        };
-        view.addOnAttachStateChangeListener(viewListener);
-
-        return () -> {
-            view.removeOnAttachStateChangeListener(viewListener);
-            NotificationCenter.getGlobalInstance().removeObserver(delegate, id);
-        };
-    }
-
     public Runnable listen(View view, final int id, final Utilities.Callback<Object[]> callback) {
         if (view == null || callback == null) {
             return () -> {};
@@ -925,36 +898,7 @@ public class NotificationCenter {
     }
 
     public static void listenEmojiLoading(View view) {
-        getGlobalInstance().listenGlobal(view, NotificationCenter.emojiLoaded, args -> view.invalidate());
-    }
-
-    public void listenOnce(int id, Runnable callback) {
-        final NotificationCenterDelegate[] observer = new NotificationCenterDelegate[1];
-        observer[0] = (nid, account, args) -> {
-            if (nid == id && observer[0] != null) {
-                if (callback != null) {
-                    callback.run();
-                }
-                removeObserver(observer[0], id);
-                observer[0] = null;
-            }
-        };
-        addObserver(observer[0], id);
-    }
-
-    public void listenOnce(int id, Utilities.Callback3<Integer, Object[], Runnable> callback) {
-        final NotificationCenterDelegate[] observer = new NotificationCenterDelegate[1];
-        observer[0] = (nid, account, args) -> {
-            if (nid == id && observer[0] != null) {
-                if (callback != null) {
-                    callback.run(account, args, () -> {
-                        removeObserver(observer[0], id);
-                        observer[0] = null;
-                    });
-                }
-            }
-        };
-        addObserver(observer[0], id);
+        getGlobalInstance().listen(view, NotificationCenter.emojiLoaded, args -> view.invalidate());
     }
 
     private class UniqArrayList<T> extends ArrayList<T> {

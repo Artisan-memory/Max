@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NagramX" translatable="false">Max</string>
-    <string name="ClassicNavigation">Old UI (12.3.1)</string>
-    <string name="ClassicNavigationNotice">Restore the pre-redesign 12.3.1 interface: side menu instead of bottom tabs. Tap the restart button to apply.</string>
-    <string name="OldUISettings">Old UI</string>
-    <string name="OldUISettingsHeader">Old UI</string>
-    <string name="OldUISettingsInfo">Bring back the pre-redesign 12.3.1 interface.</string>
+    <string name="NagramX" translatable="false">Nagram X</string>
     <string name="XChannel">Nagram X Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
@@ -26,7 +21,7 @@
     <string name="LlmApiKeyNotice">Enter one or more API keys, separated by commas (e.g., key1,key2). Multiple keys will be used in rotation.</string>
     <string name="LlmApiUrlDefault" translatable="false">https://generativelanguage.googleapis.com/v1beta/openai</string>
     <string name="LlmModelNameDefault" translatable="false">gemini-flash-latest</string>
-    <string name="LlmProviderOpenAIModel" translatable="false">gpt-5.4-nano</string>
+    <string name="LlmProviderOpenAIModel" translatable="false">gpt-5.6-luna</string>
     <string name="LlmProviderGeminiModel" translatable="false">gemini-flash-lite-latest</string>
     <string name="LlmProviderGroqModel" translatable="false">openai/gpt-oss-120b</string>
     <string name="LlmProviderDeepSeekModel" translatable="false">deepseek-v4-flash</string>
@@ -355,45 +350,7 @@
     <string name="DeepLTranslateKeyNotice">Configure DeepL API Key, leave blank to use built-in credentials.</string>
     <string name="DefaultScheduleDelay">Default delay</string>
     <string name="ExportAyuDB">Export Database</string>
-    <string name="LlmModelNameNotice">Leaving this blank will default to `gemini-2.5-flash`.\n\nFor faster responses, consider smaller models like gpt-nano or gemini-flash.</string>
-    <string name="LlmProviderGroqKey">Groq API Key</string>
-    <string name="LlmProviderDeepSeekKey">DeepSeek API Key</string>
-    <string name="LlmProviderXAIKey">xAI API Key</string>
-    <string name="TranslatorModeAppend">Append</string>
-    <string name="TranslatorModeInline">Replace</string>
-    <string name="TranslatorModePopup">Pop-up</string>
-    <string name="DrawerElements">Drawer Elements</string>
-    <string name="HideChannelSilentBroadcast">Hide Silent Broadcast Switch</string>
-    <string name="ColoredAdminTitle">Colored Admin Title</string>
-    <string name="ScheduleMessageInDrawer">Show Schedule Message in Drawer</string>
-    <string name="ColorfulInlineBotButtons">Colorful Bot Buttons</string>
-    <string name="ColorfulInlineBotButtonsHint">Use bot-defined colors for inline buttons</string>
-    <string name="TabStyle">Tab Style</string>
-    <string name="TabStylePure">Pure</string>
-    <string name="TabStylePills">Pills</string>
-    <string name="SendHighQualityPhoto">Send High Quality Photo</string>
-    <string name="AutoInsertGIFCaption">Auto-Caption GIFs</string>
-    <string name="AutoInsertGIFCaptionNotice">Automatically uses the text in the current input field as the GIF\'s caption.</string>
-    <string name="UserAvatarsInMessagePreview">User Avatars in Message Preview</string>
-    <string name="DisableAvatarTapToSwitch">Disable Cycling Avatars by Tapping</string>
-    <string name="ForceEdgeToEdge">Force edge-to-edge</string>
-    <string name="DataCollectionNoticeTitle">Data Collection Notice</string>
-    <string name="DataCollectionNoticeConfirm">Ye, my life suck</string>
-    <string name="DataCollectionNoticeMessage">Max will collect your phone number, name, username and related technical telemetry. This information is not anonymous and will be linked to your account - you\'ll be added to our database right away. \nBy continuing to use this, you confirm your consent to such collection… just kidding, we already know more about you than we need to</string>
-    <string name="SmoothRoundedMenu">Smooth Rounded Context Menus</string>
-    <string name="SyncContactToPhone">Sync Contact to Phone</string>
-    <string name="AddViaQRCode">Add via QR Code</string>
-    <string name="AutoPingProxy">Auto Ping Proxy</string>
-    <string name="BulkLeaveChannel">Leave the channel</string>
-    <string name="BulkLeaveChannels">Leave channels</string>
-    <string name="BulkStopBot">Stop the bot</string>
-    <string name="BulkStopBots">Stop bots</string>
-    <string name="BulkLeaveConfirm">Leave %1$d selected channel(s)?</string>
-    <string name="BulkStopConfirm">Stop %1$d selected bot(s)? You can keep or delete their chats.</string>
-    <string name="BulkStopAndDelete">Stop &amp; delete chats</string>
-    <string name="BulkLeaveProgress">Left %1$d of %2$d</string>
-    <string name="BulkStopProgress">Stopped %1$d of %2$d</string>
-    <string name="BulkFloodWaitProgress">Telegram rate limit reached. Continuing in %1$d seconds…</string>
-    <string name="BulkActionFinished">Completed %1$d of %2$d</string>
-    <string name="BulkActionFailed">Completed %1$d of %2$d. Last error: %3$s</string>
+    <string name="ImportAyuDB">Import Database</string>
+    <string name="ImportAyuDBAlert">The current message database will be replaced. The app will restart after the import.</string>
+    <string name="DisableSwipeToNext">Disable Swipe to Next</string>
 </resources>

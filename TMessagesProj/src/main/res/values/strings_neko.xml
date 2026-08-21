@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-settings</string>
+    <string name="NekoSettings">N-Settings</string>
     <string name="IPv6">Prefer IPv6</string>
     <string name="MessageMenu">Message Menu</string>
     <string name="HidePhone">Hide Phone Number</string>
@@ -83,7 +83,7 @@
     <string name="SelectBetween">Select Range</string>
     <string name="ProviderDeepLTranslate">DeepL Translate</string>
     <string name="ProviderMicrosoftTranslator">Bing Translator</string>
-    <string name="DontSendGreetingSticker">Don\'t Send Greeting Sticker</string>
+    <string name="DontSendGreetingSticker">Disable Greeting Sticker</string>
     <string name="TakeGIFasVideo">Take GIF as Video</string>
     <string name="HideTimeForSticker">Hide Time on Stickers</string>
     <string name="hideGroupSticker">Hide Group Sticker</string>
@@ -271,21 +271,4 @@
     <string name="EmojiUseDefault">Use system emoji</string>
     <string name="Chat">Chats</string>
     <string name="Appearance">Appearance</string>
-    <string name="TransparentStatusBar">Transparent Status Bar</string>
-    <string name="ChristmasHat">Show Santa Hat Every Day</string>
-    <string name="DisablePhotoViewerSideAction">Disable Side-Tap to Switch Photos</string>
-    <string name="DisableAppBarShadow">Hide Top Panel Divider</string>
-    <string name="AvatarAsBackground">Background Type</string>
-    <string name="BlurAvatarBackground">Blur Background</string>
-    <string name="DarkenAvatarBackground">Darken Background</string>
-    <string name="UseMediaStreamInVoip">Use Media Stream in VoIP</string>
-    <string name="forceBlurInChat">Force Enable Chat Blur</string>
-    <string name="ChatBlurAlphaValue">Chat Blur Alpha</string>
-    <string name="UseProxyItem">Show Proxy in Drawer</string>
-    <string name="HideProxyByDefault">Hide Proxy When Inactive</string>
-    <string name="ImportProxyList">Import proxy servers</string>
-    <string name="valuesLargeAvatarInDrawer">Default\nAvatar\nBig Avatar\nWallpaper</string>
-    <string name="channelAlias">Channel Alias</string>
-    <string name="ChannelAliasDetails">Label channel users with a custom name. Enable to set alias in channel profile menu.</string>
-    <string name="setChannelAliasName">Set Alias</string>
 </resources>

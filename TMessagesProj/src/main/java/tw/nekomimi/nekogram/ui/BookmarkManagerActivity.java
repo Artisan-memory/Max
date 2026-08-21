@@ -298,7 +298,7 @@ public class BookmarkManagerActivity extends BaseFragment {
         ViewConfiguration configuration = ViewConfiguration.get(context);
         maximumVelocity = configuration.getScaledMaximumFlingVelocity();
         contentLayout = new ContentLayout(context);
-        contentLayout.setTag(0xFF112233, new Object());
+        contentLayout.setTag(R.id.sheet_attached_to_fragment_tag, new Object());
         contentLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
         tabsViewPositionWatcher = new ViewPositionWatcher(contentLayout);
         tabsBackgroundDrawableFactory.setSourceRootView(tabsViewPositionWatcher, contentLayout);
@@ -1117,7 +1117,7 @@ public class BookmarkManagerActivity extends BaseFragment {
                         float pageDelta = dx / getMeasuredWidth();
                         duration = (int) ((pageDelta + 1.0f) * 100.0f);
                     }
-                    duration = Math.max(150, Math.min(duration, 600));
+                    duration = Math.clamp(duration, 150, 600);
                     tabsAnimation.setDuration(duration);
                     tabsAnimation.addListener(new AnimatorListenerAdapter() {
                         @Override

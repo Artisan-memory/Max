@@ -7,7 +7,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.database.Cursor;
 import android.os.Build;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -194,11 +193,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell enablePanguOnSendingRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getEnablePanguOnSending(), getString(R.string.PanguInfo)));
     private final AbstractConfigCell dividerPangu = cellGroup.appendCell(new ConfigCellDivider());
 
-    // Old UI: single master switch that restores the 12.3.1 interface. Needs a restart.
-    private final AbstractConfigCell headerOldUI = cellGroup.appendCell(new ConfigCellHeader(getString(R.string.OldUISettingsHeader)));
-    private final AbstractConfigCell classicNavigationRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getClassicNavigation(), getString(R.string.ClassicNavigationNotice)));
-    private final AbstractConfigCell dividerOldUI = cellGroup.appendCell(new ConfigCellDivider());
-
     public NekoExperimentalSettingsActivity() {
         if (NaConfig.INSTANCE.getUseDeletedIcon().Bool()) {
             cellGroup.rows.remove(customDeletedMarkRow);
@@ -249,14 +243,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
 
         // Cells: Set OnSettingChanged Callbacks
         cellGroup.callBackSettingsChanged = (key, newValue) -> {
-            if (key.equals(NaConfig.INSTANCE.getClassicNavigation().getKey())) {
-                if (!(boolean) newValue) {
-                    // Turning Old UI off: make sure the bottom tab bar comes back
-                    // (it may have been hidden by an earlier Old UI build).
-                    NaConfig.INSTANCE.getHideBottomNavigationBar().setConfigBool(false);
-                }
-                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
-            } else if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
+            if (key.equals(NaConfig.INSTANCE.getEnableSaveDeletedMessages().getKey())) {
                 checkSaveDeletedRows();
             } else if (key.equals(NaConfig.INSTANCE.getDisableStories().getKey())) {
                 checkStoriesRows();
@@ -579,12 +566,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
         Utilities.globalQueue.postRunnable(() -> {
             try {
                 File dbFile = ApplicationLoader.applicationContext.getDatabasePath(AyuConstants.AYU_DATABASE);
-                File exportFile = new File(AndroidUtilities.getCacheDir(), "ayu-data.db");
-                try (Cursor cursor = AyuData.getDatabase().getOpenHelper().getWritableDatabase().query("PRAGMA wal_checkpoint(FULL)")) {
-                    if (cursor.moveToFirst() && cursor.getInt(0) != 0) {
-                        throw new IOException("Ayu database checkpoint is busy");
-                    }
-                }
+                File exportFile = new File(AndroidUtilities.getCacheDir(), AyuConstants.AYU_DATABASE_EXPORT);
+                AyuData.checkpointDatabase();
                 if (!AndroidUtilities.copyFile(dbFile, exportFile)) {
                     if (!exportFile.delete()) exportFile.deleteOnExit();
                     throw new IOException("Failed to copy Ayu database");

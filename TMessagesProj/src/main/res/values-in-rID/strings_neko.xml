@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-settings</string>
+    <string name="NekoSettings">Pengaturan-N</string>
     <string name="IPv6">Lebih suka IPv6</string>
     <string name="MessageMenu">Menu Pesan</string>
     <string name="HidePhone">Sembunyikan Nomor Telepon</string>
@@ -83,7 +83,7 @@
     <string name="SelectBetween">Pilih Rentang</string>
     <string name="ProviderDeepLTranslate">DeepL Terjemahan</string>
     <string name="ProviderMicrosoftTranslator">Bing Penerjemah</string>
-    <string name="DontSendGreetingSticker">Jangan Kirim Stiker Ucapan</string>
+    <string name="DontSendGreetingSticker">Nonaktifkan Stiker Sambutan</string>
     <string name="TakeGIFasVideo">Ambil GIF sebagai Video</string>
     <string name="HideTimeForSticker">Sembunyikan Waktu pada Stiker</string>
     <string name="hideGroupSticker">Sembunyikan Stiker Grup</string>

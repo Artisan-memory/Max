@@ -5,8 +5,6 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 
-import xyz.nextalone.nagram.NaConfig;
-
 import androidx.collection.LongSparseArray;
 
 import org.telegram.SQLite.SQLiteCursor;
@@ -277,11 +275,6 @@ public class TopicsController extends BaseController {
                     deletedTopics.add((long) newTopic.id);
                     continue;
                 }
-                // Max: a cached topic with an empty title is useless — skip it so
-                // it gets re-fetched fresh with its real name.
-                if (fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && TextUtils.isEmpty(newTopic.title)) {
-                    continue;
-                }
                 if (!topicsMap.containsKey(newTopic.id)) {
                     if (messagesMap != null) {
                         newTopic.topMessage = messagesMap.get(newTopic.top_message);
@@ -308,12 +301,6 @@ public class TopicsController extends BaseController {
                 } else if (!newTopic.isShort) {
                     TLRPC.TL_forumTopic oldTopic = topicsMap.get(newTopic.id);
                     if (oldTopic != null) {
-                        // Max: refresh a stale/empty cached title from fresh data.
-                        if (!fromCache && NaConfig.INSTANCE.getDisableTopicTitleCache().Bool() && !TextUtils.equals(oldTopic.title, newTopic.title)) {
-                            oldTopic.title = newTopic.title;
-                            getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_TITLE);
-                            changed = true;
-                        }
                         if (oldTopic.closed != newTopic.closed) {
                             oldTopic.closed = newTopic.closed;
                             getMessagesStorage().updateTopicData(-chatId, newTopic, TOPIC_FLAG_CLOSE);

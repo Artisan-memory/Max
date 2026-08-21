@@ -190,12 +190,6 @@ public class UsersAlertBase extends BottomSheet {
         listView.setAnimateEmptyView(true, RecyclerListView.EMPTY_VIEW_ANIMATION_TYPE_ALPHA);
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        AndroidUtilities.statusBarHeight = AndroidUtilities.getStatusBarHeight(getContext());
-    }
-
     protected ContainerView createContainerView(Context context) {
         return new ContainerView(context);
     }
@@ -539,6 +533,11 @@ public class UsersAlertBase extends BottomSheet {
                 if (top + backgroundPaddingTop + getTranslationY() < AndroidUtilities.statusBarHeight) {
                     statusBarHeight = (int) Math.min(AndroidUtilities.statusBarHeight, AndroidUtilities.statusBarHeight - top - backgroundPaddingTop - getTranslationY());
                 }
+            }
+
+            // some devices(Pixel 9 ~) may report large status bar insets
+            if (height < getMeasuredHeight()) {
+                height = getMeasuredHeight();
             }
 
             shadowDrawable.setBounds(0, top, getMeasuredWidth(), height);

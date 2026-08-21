@@ -111,27 +111,4 @@
     <string name="VideoPlayerDecoderPreferSW">Prefer SW</string>
     <string name="VideoPlayerDecoderHardware">HW Only</string>
     <string name="VideoPlayerDecoderPreferHW">Prefer HW</string>
-    <string name="ForceCopy">Force Copy</string>
-    <string name="AlwaysSaveChatOffset">Always Save Chat Offset</string>
-    <string name="DisableTopicTitleCache">Do not cache topic titles</string>
-    <string name="DisableTopicTitleCacheNotice">Forum topic titles will be refreshed from Telegram instead of reused from the local database.</string>
-    <string name="labelChannelUser">Label Channel Users</string>
-    <string name="CustomChannelLabel">Custom Channel Label</string>
-    <string name="CustomArtworkApi">Custom Artwork API</string>
-    <string name="IconDecoration">Icon Decoration</string>
-    <string name="DisableFlagSecure">Disable FLAG_SECURE</string>
-    <string name="DisableAutoWebLogin">Disable Auto Web Login</string>
-    <string name="ExternalStickerCache">Local Sticker and Emoji Cache</string>
-    <string name="ExternalStickerCacheHint">Choose a folder for cached stickers and emoji</string>
-    <string name="ExternalStickerCacheUsage">Persistent sticker and emoji cache usage</string>
-    <string name="ExternalStickerCacheRefreshAll">Cache All Account Stickers</string>
-    <string name="ExternalEmojiCacheRefreshAll">Cache All Account Emoji</string>
-    <string name="ExternalStickerCacheDeleteAll">Clear Local Sticker and Emoji Cache</string>
-    <string name="ExternalStickerCacheFolderRequired">Choose a cache folder first</string>
-    <string name="ExternalStickerCacheFolderReady">Sticker cache folder is ready</string>
-    <string name="ExternalStickerCacheFolderError">Cannot use this sticker cache folder</string>
-    <string name="ExternalStickerCacheSyncStarted">Sticker caching started in the background</string>
-    <string name="ExternalEmojiCacheSyncStarted">Emoji caching started in the background</string>
-    <string name="ExternalStickerCacheSyncQueued">Sticker downloads queued. Cache usage will update as files finish.</string>
-    <string name="ExternalEmojiCacheSyncQueued">Emoji downloads queued. Cache usage will update as files finish.</string>
 </resources>

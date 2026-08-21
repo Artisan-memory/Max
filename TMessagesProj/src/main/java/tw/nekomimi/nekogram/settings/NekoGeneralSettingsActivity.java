@@ -8,7 +8,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.os.SystemClock;
@@ -18,12 +17,10 @@ import android.view.View;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.ApplicationLoader;
-import tw.nekomimi.nekogram.helpers.AppRestartHelper;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
-import org.telegram.messenger.NotificationsService;
+import org.telegram.messenger.PushListenerController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UnifiedPushService;
@@ -318,18 +315,16 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
             } else if (key.equals(NekoConfig.useOSMDroidMap.getKey())) {
                 checkMapDriftingFixRows();
             } else if (key.equals(NaConfig.INSTANCE.getPushServiceType().getKey())) {
+                PushListenerController.reconcilePushRegistration();
                 if ((int) newValue == 0) {
                     AndroidUtil.setPushService(false);
-                    ApplicationLoader.startPushService();
                 } else {
                     NaConfig.INSTANCE.getPushServiceTypeInAppDialog().setConfigBool(false);
-                    AndroidUtilities.runOnUIThread(() -> context.stopService(new Intent(context, NotificationsService.class)));
                 }
                 checkPushServiceTypeRows();
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             } else if (key.equals(NaConfig.INSTANCE.getPushServiceTypeInAppDialog().getKey())) {
-                ApplicationLoader.applicationContext.stopService(new Intent(ApplicationLoader.applicationContext, NotificationsService.class));
-                ApplicationLoader.startPushService();
+                tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             } else if (key.equals(NaConfig.INSTANCE.getPushServiceTypeUnifiedGateway().getKey())) {
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESTART, null, null);
             } else if (key.equals(NaConfig.INSTANCE.getDisableCrashlyticsCollection().getKey())) {
@@ -383,14 +378,14 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
             } else if (key.equals(NaConfig.INSTANCE.getSaveToChatSubfolder().getKey())) {
                 listAdapter.notifyItemChanged(cellGroup.rows.indexOf(customSavePathRow));
             } else if (key.equals(NaConfig.INSTANCE.getMainTabsHideTitles().getKey())) {
-                parentLayout.rebuildAllFragmentViews(false, false);
+                parentLayout.rebuildFragments(0);
             } else if (key.equals(NaConfig.INSTANCE.getMainTabsHideContacts().getKey())) {
-                parentLayout.rebuildAllFragmentViews(false, false);
+                parentLayout.rebuildFragments(0);
             } else if (key.equals(NaConfig.INSTANCE.getHideBottomNavigationBar().getKey())) {
                 checkMainTabsRows();
-                parentLayout.rebuildAllFragmentViews(false, false);
+                parentLayout.rebuildFragments(0);
             } else if (key.equals(NaConfig.INSTANCE.getHideDialogsSearchField().getKey())) {
-                parentLayout.rebuildAllFragmentViews(false, false);
+                parentLayout.rebuildFragments(0);
             }
         };
 

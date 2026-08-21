@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NekoSettings">Max-settings</string>
+    <string name="NekoSettings">N-設定</string>
     <string name="IPv6">IPv6 を優先</string>
     <string name="MessageMenu">メッセージメニュー</string>
     <string name="HidePhone">電話番号を非表示</string>
@@ -83,7 +83,7 @@
     <string name="SelectBetween">範囲内のメッセージを選択</string>
     <string name="ProviderDeepLTranslate">DeepL 翻訳</string>
     <string name="ProviderMicrosoftTranslator">Bing 翻訳</string>
-    <string name="DontSendGreetingSticker">挨拶ステッカーを送信しない</string>
+    <string name="DontSendGreetingSticker">挨拶ステッカーを無効化</string>
     <string name="TakeGIFasVideo">GIF をビデオとして表示</string>
     <string name="HideTimeForSticker">ステッカーの送信時間を非表示</string>
     <string name="hideGroupSticker">グループステッカーを非表示</string>
