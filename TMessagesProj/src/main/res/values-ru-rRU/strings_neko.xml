@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">Увеличить скорость загрузки</string>
     <string name="mapDriftingFixForGoogleMaps">Исправить дрейф Google Карт в Китае</string>
     <string name="useOSMDroidMap">Использовать карту OSMDroid</string>
-    <string name="UnknownNekoSettingsOption">В «Настройках N» нет такой опции.</string>
+    <string name="UnknownNekoSettingsOption">В Max-settings нет такой опции.</string>
     <string name="PasscodeNeeded">Сначала необходимо включить блокировку паролем</string>
     <string name="PasscodeNeko">Пароль</string>
-    <string name="PasscodeShowInSettings">Показывать в «Настройках N»</string>
+    <string name="PasscodeShowInSettings">Показывать в Max-settings</string>
     <string name="PasscodeShowInSettingsAbout">После скрытия вы сможете открыть эту страницу **ТОЛЬКО** по ссылке:</string>
     <string name="PasscodeSet">Установить пароль</string>
     <string name="PasscodeEdit">Изменить пароль</string>
@@ -151,7 +151,7 @@
     <string name="ClearRecentChats">Очистить недавние чаты</string>
     <string name="ClearRecentChatAlert">Вы хотите очистить недавние чаты?</string>
     <string name="CloudConfig">Облачные настройки</string>
-    <string name="CloudConfigDesc">Сохраните ваши «Настройки N» в облаке Telegram.</string>
+    <string name="CloudConfigDesc">Сохраните ваши Max-settings в облаке Telegram.</string>
     <string name="CloudConfigSyncDate">Последняя синхронизация: %s, облако: %s</string>
     <string name="CloudConfigSyncDateNever">никогда</string>
     <string name="CloudConfigSync">Синхронизировать с облаком</string>
@@ -160,7 +160,7 @@
     <string name="CloudConfigRestoreShort">Восстановить</string>
     <string name="CloudConfigSyncing">Синхронизация...</string>
     <string name="CloudConfigAutoSync">Автосинхронизация</string>
-    <string name="CloudConfigAutoSyncDesc">Автоматическая синхронизация с облаком после изменений в «Настройках N».</string>
+    <string name="CloudConfigAutoSyncDesc">Автоматическая синхронизация с облаком после изменений в Max-settings.</string>
     <string name="CloudConfigSyncFailed">Не удалось синхронизировать настройки с облаком</string>
     <string name="CloudConfigRestoreFailed">Не удалось восстановить настройки из облака</string>
     <string name="CopyCallback">Копировать данные обратного вызова</string>

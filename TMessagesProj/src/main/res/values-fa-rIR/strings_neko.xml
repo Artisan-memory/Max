@@ -151,7 +151,7 @@
     <string name="ClearRecentChats">پاک کردن گفتگوهای اخیر</string>
     <string name="ClearRecentChatAlert">آیا می‌خواهید گفتگوهای اخیر خود را پاک کنید؟</string>
     <string name="CloudConfig">تنظیمات ابری</string>
-    <string name="CloudConfigDesc">ذخیره تنظیمات ناگرام</string>
+    <string name="CloudConfigDesc">ذخیره Max-settings</string>
     <string name="CloudConfigSyncDate">آخرین همگام‌سازی: %s، ابر: %s</string>
     <string name="CloudConfigSyncDateNever">هرگز</string>
     <string name="CloudConfigSync">همگام‌سازی با ابر</string>
@@ -160,7 +160,7 @@
     <string name="CloudConfigRestoreShort">بازیابی</string>
     <string name="CloudConfigSyncing">در حال همگام‌سازی...</string>
     <string name="CloudConfigAutoSync">همگام‌سازی خودکار</string>
-    <string name="CloudConfigAutoSyncDesc">همگام‌سازی خودکار تنظیمات پس از هر تغییر در تنظیمات ناگرام.</string>
+    <string name="CloudConfigAutoSyncDesc">همگام‌سازی خودکار تنظیمات پس از هر تغییر در Max-settings.</string>
     <string name="CloudConfigSyncFailed">همگام‌سازی تنظیمات با ابر ناموفق بود.</string>
     <string name="CloudConfigRestoreFailed">بازیابی تنظیمات از ابر ناموفق بود.</string>
     <string name="CopyCallback">کپی کردن داده Callback</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="XChannel">Kênh Nagram X</string>
+    <string name="XChannel">Kênh Max</string>
     <string name="EnableSaveDeletedMessages">Lưu tin nhắn đã xóa</string>
     <string name="DeletedMessage">đã xóa</string>
     <string name="EnableSaveEditsHistory">Lưu lịch sử chỉnh sửa</string>
@@ -101,7 +101,7 @@
     <string name="Other">Khác</string>
     <string name="RestartApp">Khởi động lại ứng dụng</string>
     <string name="ResetSettings">Đặt lại cài đặt</string>
-    <string name="ResetSettingsAlert">Bạn có chắc chắn muốn đặt lại tất cả cài đặt N-Settings không?</string>
+    <string name="ResetSettingsAlert">Bạn có chắc chắn muốn đặt lại tất cả cài đặt Max-settings không?</string>
     <string name="DontAutoPlayNextVoice">Không tự động phát tin nhắn thoại tiếp theo</string>
     <string name="SaveToChatSubfolder">Lưu tệp đính kèm theo tên đoạn chat</string>
     <string name="MessageColoredBackground">Nền tin nhắn nhiều màu</string>
@@ -296,8 +296,8 @@
     <string name="BackAnimationClassic">Cổ điển</string>
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">Dự đoán</string>
-    <string name="UnifiedPushNeverReceivedNotifications">Bạn chưa từng nhận được thông báo nào từ UnifiedPush kể từ khi Nagram X được khởi chạy.</string>
-    <string name="UnifiedPushLastReceivedNotification">Thông báo gần nhất nhận được qua UnifiedPush là từ %1$d giây trước.\n\nBạn đã nhận được %2$d thông báo kể từ khi Nagram X khởi động.</string>
+    <string name="UnifiedPushNeverReceivedNotifications">Bạn chưa từng nhận được thông báo nào từ UnifiedPush kể từ khi Max được khởi chạy.</string>
+    <string name="UnifiedPushLastReceivedNotification">Thông báo gần nhất nhận được qua UnifiedPush là từ %1$d giây trước.\n\nBạn đã nhận được %2$d thông báo kể từ khi Max khởi động.</string>
     <string name="StorageSettings">Bộ nhớ</string>
     <string name="TranslatorWithOriginalTextOff">Tắt</string>
     <string name="TranslatorWithOriginalTextOn">Bật</string>

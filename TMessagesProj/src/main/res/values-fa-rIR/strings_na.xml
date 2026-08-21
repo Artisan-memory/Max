@@ -9,7 +9,7 @@
     <string name="SendReactions">ارسال واکنش‌ها</string>
     <string name="ShowReactions">نمایش واکنش‌ها</string>
     <string name="CustomTitle">عنوان سفارشی</string>
-    <string name="CustomTitleHint">خالی بگذارید تا از Nagram X استفاده شود</string>
+    <string name="CustomTitleHint">خالی بگذارید تا از Max استفاده شود</string>
     <string name="CreateMono">ایجاد Monospace</string>
     <string name="CreateMonoLanguage">زبان کد</string>
     <string name="CopyPhoto">کپی‌ کردن عکس</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">افزودن انجمن</string>
     <string name="DecorationNone">هیچ</string>
     <string name="ChatDecoration">تزئین چت</string>
-    <string name="NeedChangeNekoSettings">بهتر است تنظیمات N را تغییر دهید</string>
+    <string name="NeedChangeNekoSettings">بهتر است Max-settings را تغییر دهید</string>
     <string name="DoNotUnarchiveBySwipe">غیرفعال کردن سوایپ برای بازگردانی از آرشیو</string>
     <string name="DefaultDeleteMenu">منوی حذف پیش‌فرض</string>
     <string name="DisableStories">غیرفعال کردن استوری‌ها</string>

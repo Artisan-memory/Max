@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">Aumento de velocidad de descarga</string>
     <string name="mapDriftingFixForGoogleMaps">Corregir la deriva de Google Maps en China</string>
     <string name="useOSMDroidMap">Usar mapa OSMDroid</string>
-    <string name="UnknownNekoSettingsOption">No existe tal opción en N-Settings.</string>
+    <string name="UnknownNekoSettingsOption">No existe tal opción en Max-settings.</string>
     <string name="PasscodeNeeded">Tienes que activar primero el código de acceso</string>
     <string name="PasscodeNeko">Código de acceso</string>
-    <string name="PasscodeShowInSettings">Mostrar en N-Ajustes</string>
+    <string name="PasscodeShowInSettings">Mostrar en Max-settings</string>
     <string name="PasscodeShowInSettingsAbout">Después de ocultarlo, **SÓLO puede** abrir esta página mediante enlace:</string>
     <string name="PasscodeSet">Establecer código de acceso</string>
     <string name="PasscodeEdit">Cambiar código de acceso</string>
@@ -151,7 +151,7 @@
     <string name="ClearRecentChats">Borrar chats recientes</string>
     <string name="ClearRecentChatAlert">¿Quieres borrar tus chats recientes?</string>
     <string name="CloudConfig">Ajustes de la nube</string>
-    <string name="CloudConfigDesc">Guarda tus N-ajustes en la nube de Telegram.</string>
+    <string name="CloudConfigDesc">Guarda tus Max-settings en la nube de Telegram.</string>
     <string name="CloudConfigSyncDate">Última sincronización: %s, nube: %s</string>
     <string name="CloudConfigSyncDateNever">nunca</string>
     <string name="CloudConfigSync">Sincronizar a la nube</string>
@@ -160,7 +160,7 @@
     <string name="CloudConfigRestoreShort">Restaurar</string>
     <string name="CloudConfigSyncing">Sincronizando...</string>
     <string name="CloudConfigAutoSync">Sincronización automática</string>
-    <string name="CloudConfigAutoSyncDesc">Sincronizar a la nube automáticamente después de hacer cambios en N-Ajustes.</string>
+    <string name="CloudConfigAutoSyncDesc">Sincronizar a la nube automáticamente después de hacer cambios en Max-settings.</string>
     <string name="CloudConfigSyncFailed">Error al sincronizar los ajustes en la nube</string>
     <string name="CloudConfigRestoreFailed">Error al restaurar los ajustes de la nube</string>
     <string name="CopyCallback">Copiar datos de retorno</string>

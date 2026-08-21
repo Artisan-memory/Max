@@ -9,7 +9,7 @@
     <string name="SendReactions">Kirim Reaksi</string>
     <string name="ShowReactions">Tampilkan Reaksi</string>
     <string name="CustomTitle">Judul Khusus</string>
-    <string name="CustomTitleHint">Biarkan kosong untuk menggunakan Nagram X</string>
+    <string name="CustomTitleHint">Biarkan kosong untuk menggunakan Max</string>
     <string name="CreateMono">Buat Monospace</string>
     <string name="CreateMonoLanguage">Bahasa Kode</string>
     <string name="CopyPhoto">Salin Foto</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">Tambah forum</string>
     <string name="DecorationNone">Tidak ada</string>
     <string name="ChatDecoration">Dekorasi Obrolan</string>
-    <string name="NeedChangeNekoSettings">Anda perlu mengubah Pengaturan-N</string>
+    <string name="NeedChangeNekoSettings">Anda perlu mengubah Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Nonaktifkan Geser untuk Membatalkan Arsip</string>
     <string name="DefaultDeleteMenu">Menu Hapus Default</string>
     <string name="DisableStories">Nonaktifkan Cerita</string>

@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">下载加速</string>
     <string name="mapDriftingFixForGoogleMaps">修复 Google 地图在中国的漂移问题</string>
     <string name="useOSMDroidMap">使用 OSMDroid 地图</string>
-    <string name="UnknownNekoSettingsOption">找不到这个 N-设置 选项。</string>
+    <string name="UnknownNekoSettingsOption">找不到这个 Max-settings 选项。</string>
     <string name="PasscodeNeeded">您必须先启用密码锁</string>
     <string name="PasscodeNeko">锁定码</string>
-    <string name="PasscodeShowInSettings">在 N-设置 中显示</string>
+    <string name="PasscodeShowInSettings">在 Max-settings 中显示</string>
     <string name="PasscodeShowInSettingsAbout">隐藏后，您**只能**通过该链接打开此页面：</string>
     <string name="PasscodeSet">设置锁定码</string>
     <string name="PasscodeEdit">更改锁定码</string>
@@ -152,7 +152,7 @@
     <string name="ClearRecentChats">清除最近聊天</string>
     <string name="ClearRecentChatAlert">您确定要清除您的最近聊天吗？</string>
     <string name="CloudConfig">云设置</string>
-    <string name="CloudConfigDesc">保存 N-设置 到 Telegram 云。</string>
+    <string name="CloudConfigDesc">保存 Max-settings 到 Telegram 云。</string>
     <string name="CloudConfigSyncDate">最后同步：%s，云端：%s</string>
     <string name="CloudConfigSyncDateNever">从未</string>
     <string name="CloudConfigSync">同步到云端</string>
@@ -161,7 +161,7 @@
     <string name="CloudConfigRestoreShort">恢复</string>
     <string name="CloudConfigSyncing">正在同步...</string>
     <string name="CloudConfigAutoSync">自动同步</string>
-    <string name="CloudConfigAutoSyncDesc">修改N-设置后自动同步到云端。</string>
+    <string name="CloudConfigAutoSyncDesc">修改Max-settings后自动同步到云端。</string>
     <string name="CloudConfigSyncFailed">无法将设置同步到云端</string>
     <string name="CloudConfigRestoreFailed">无法从云端恢复设置</string>
     <string name="CopyCallback">复制回调数据</string>

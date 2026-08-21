@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">Peningkatan Kecepatan Unduhan</string>
     <string name="mapDriftingFixForGoogleMaps">Perbaiki Pergerakan Google Maps di China</string>
     <string name="useOSMDroidMap">Gunakan Peta OSMDroid</string>
-    <string name="UnknownNekoSettingsOption">Tidak ada pilihan Pengaturan-N tersebut.</string>
+    <string name="UnknownNekoSettingsOption">Tidak ada pilihan Max-settings tersebut.</string>
     <string name="PasscodeNeeded">Anda harus mengaktifkan kode akses terlebih dahulu</string>
     <string name="PasscodeNeko">Kode akses</string>
-    <string name="PasscodeShowInSettings">Tampilkan di Pengaturan-N</string>
+    <string name="PasscodeShowInSettings">Tampilkan di Max-settings</string>
     <string name="PasscodeShowInSettingsAbout">Setelah menyembunyikannya, Anda **HANYA** dapat membuka halaman ini melalui tautan:</string>
     <string name="PasscodeSet">Atur kode akses</string>
     <string name="PasscodeEdit">Ubah kode akses</string>
@@ -152,7 +152,7 @@
     <string name="ClearRecentChats">Bersihkan obrolan terbaru</string>
     <string name="ClearRecentChatAlert">Apakah Anda ingin membersihkan obrolan terbaru Anda?</string>
     <string name="CloudConfig">Pengaturan Cloud</string>
-    <string name="CloudConfigDesc">Simpan Pengaturan-N Anda ke cloud Telegram.</string>
+    <string name="CloudConfigDesc">Simpan Max-settings Anda ke cloud Telegram.</string>
     <string name="CloudConfigSyncDate">Terakhir disinkronkan: %s, cloud: %s</string>
     <string name="CloudConfigSyncDateNever">tidak pernah</string>
     <string name="CloudConfigSync">Sinkronkan ke cloud</string>
@@ -161,7 +161,7 @@
     <string name="CloudConfigRestoreShort">Pulihkan</string>
     <string name="CloudConfigSyncing">Sinkronisasi...</string>
     <string name="CloudConfigAutoSync">Sinkronisasi otomatis</string>
-    <string name="CloudConfigAutoSyncDesc">Sinkronkan ke cloud secara otomatis setelah melakukan perubahan pada Pengaturan-N.</string>
+    <string name="CloudConfigAutoSyncDesc">Sinkronkan ke cloud secara otomatis setelah melakukan perubahan pada Max-settings.</string>
     <string name="CloudConfigSyncFailed">Gagal menyinkronkan pengaturan ke cloud</string>
     <string name="CloudConfigRestoreFailed">Gagal memulihkan pengaturan dari cloud</string>
     <string name="CopyCallback">Salin Data Callback</string>

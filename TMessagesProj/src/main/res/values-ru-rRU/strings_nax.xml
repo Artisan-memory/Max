@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="XChannel">Канал Nagram X</string>
+    <string name="XChannel">Канал Max</string>
     <string name="EnableSaveDeletedMessages">Сохранять удалённые сообщения</string>
     <string name="DeletedMessage">удалено</string>
     <string name="EnableSaveEditsHistory">Сохранять историю изменений</string>
@@ -109,7 +109,7 @@
     <string name="Other">Другое</string>
     <string name="RestartApp">Перезапустить приложение</string>
     <string name="ResetSettings">Сброс настроек</string>
-    <string name="ResetSettingsAlert">Вы уверены, что хотите сбросить все «Настройки N»?</string>
+    <string name="ResetSettingsAlert">Вы уверены, что хотите сбросить все Max-settings?</string>
     <string name="DontAutoPlayNextVoice">Не воспроизводить следующее голосовое сообщение автоматически</string>
     <string name="SaveToChatSubfolder">Сохранять вложения по названию чатов</string>
     <string name="MessageColoredBackground">Красочные фоны сообщений</string>
@@ -309,8 +309,8 @@
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">Предиктивная</string>
     <string name="AddToFilter">Добавить в фильтр</string>
-    <string name="UnifiedPushNeverReceivedNotifications">С момента запуска Nagram X вы не получали уведомлений с помощью UnifiedPush.</string>
-    <string name="UnifiedPushLastReceivedNotification">Последнее уведомление, полученное с помощью UnifiedPush, было %1$d секунд назад.\n\nС момента запуска Nagram X вы получили %2$d уведомлений.</string>
+    <string name="UnifiedPushNeverReceivedNotifications">С момента запуска Max вы не получали уведомлений с помощью UnifiedPush.</string>
+    <string name="UnifiedPushLastReceivedNotification">Последнее уведомление, полученное с помощью UnifiedPush, было %1$d секунд назад.\n\nС момента запуска Max вы получили %2$d уведомлений.</string>
     <string name="UnifiedPushCurrentEndpoint">Текущая конечная точка UnifiedPush: %1$s</string>
     <string name="PlayOnce">Играть один раз</string>
     <string name="StorageSettings">Хранилище</string>

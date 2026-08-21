@@ -9,7 +9,7 @@
     <string name="SendReactions">Gửi Phản ứng</string>
     <string name="ShowReactions">Hiện phản ứng</string>
     <string name="CustomTitle">Tùy chỉnh Tiêu Đề</string>
-    <string name="CustomTitleHint">Để trống để sử dụng Nagram X</string>
+    <string name="CustomTitleHint">Để trống để sử dụng Max</string>
     <string name="CreateMono">Tạo Monospace</string>
     <string name="CreateMonoLanguage">Ngôn ngữ code</string>
     <string name="CopyPhoto">Sao chép Ảnh</string>
@@ -48,7 +48,7 @@
     <string name="CheckAllForum">Thêm diễn đàn</string>
     <string name="DecorationNone">Không có</string>
     <string name="ChatDecoration">Bong bóng trò chuyện</string>
-    <string name="NeedChangeNekoSettings">Bạn cần thay đổi N-Settings</string>
+    <string name="NeedChangeNekoSettings">Bạn cần thay đổi Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Tắt tính năng vuốt để khôi phục</string>
     <string name="DefaultDeleteMenu">Menu Xóa Mặc định</string>
     <string name="DisableStories">Vô hiệu hóa Tin</string>

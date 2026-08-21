@@ -9,7 +9,7 @@
     <string name="SendReactions">Reakcje</string>
     <string name="ShowReactions">Pokaż reakcje</string>
     <string name="CustomTitle">Tytuł niestandardowy</string>
-    <string name="CustomTitleHint">Pozostaw puste, aby użyć Nagram X</string>
+    <string name="CustomTitleHint">Pozostaw puste, aby użyć Max</string>
     <string name="CreateMono">Utwórz przestrzeń mono</string>
     <string name="CreateMonoLanguage">Kod języka</string>
     <string name="CopyPhoto">Kopiuj zdjęcie</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">Dodaj forum</string>
     <string name="DecorationNone">Brak</string>
     <string name="ChatDecoration">Dekoracja czatu</string>
-    <string name="NeedChangeNekoSettings">Musisz zmienić ustawienia N</string>
+    <string name="NeedChangeNekoSettings">Musisz zmienić Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Wyłącz gest przywracania z archiwum</string>
     <string name="DefaultDeleteMenu">Domyślne menu usuwania</string>
     <string name="DisableStories">Wyłącz relacje</string>

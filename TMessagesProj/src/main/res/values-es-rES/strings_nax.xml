@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="XChannel">Canal de Nagram X</string>
+    <string name="XChannel">Canal de Max</string>
     <string name="EnableSaveDeletedMessages">Guardar Mensajes Borrados</string>
     <string name="DeletedMessage">eliminado</string>
     <string name="EnableSaveEditsHistory">Guardar Historial de Edición</string>
@@ -109,7 +109,7 @@
     <string name="Other">Otros</string>
     <string name="RestartApp">Reiniciar aplicación</string>
     <string name="ResetSettings">Restablecer Ajustes</string>
-    <string name="ResetSettingsAlert">¿Está seguro de que desea restablecer todos los N-Ajustes?</string>
+    <string name="ResetSettingsAlert">¿Está seguro de que desea restablecer todos los Max-settings?</string>
     <string name="DontAutoPlayNextVoice">No reproducir automáticamente el siguiente mensaje de voz</string>
     <string name="SaveToChatSubfolder">Guardar archivos adjuntos por nombre de chat</string>
     <string name="MessageColoredBackground">Fondos de mensajes de colores</string>
@@ -309,8 +309,8 @@
     <string name="BackAnimationSpring">Primavera</string>
     <string name="BackAnimationPredictive">Predictivo</string>
     <string name="AddToFilter">Añadir al filtro</string>
-    <string name="UnifiedPushNeverReceivedNotifications">Nunca recibiste notificaciones con UnifiedPush desde que se inició Nagram X.</string>
-    <string name="UnifiedPushLastReceivedNotification">La última notificación recibida con UnifiedPush fue hace %1$d segundos.\n\nHas recibido %2$d notificaciones desde que Nagram X se inició.</string>
+    <string name="UnifiedPushNeverReceivedNotifications">Nunca recibiste notificaciones con UnifiedPush desde que se inició Max.</string>
+    <string name="UnifiedPushLastReceivedNotification">La última notificación recibida con UnifiedPush fue hace %1$d segundos.\n\nHas recibido %2$d notificaciones desde que Max se inició.</string>
     <string name="UnifiedPushCurrentEndpoint">El endpoint UnifiedPush actual es: %1$s</string>
     <string name="PlayOnce">Reproducir una vez</string>
     <string name="StorageSettings">Almacenamiento</string>

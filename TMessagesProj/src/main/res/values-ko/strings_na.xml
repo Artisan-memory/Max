@@ -9,7 +9,7 @@
     <string name="SendReactions">반응 보내기</string>
     <string name="ShowReactions">반응 표시</string>
     <string name="CustomTitle">사용자 지정 제목</string>
-    <string name="CustomTitleHint">비워 두면 Nagram X를 사용합니다</string>
+    <string name="CustomTitleHint">비워 두면 Max를 사용합니다</string>
     <string name="CreateMono">고정폭 만들기</string>
     <string name="CreateMonoLanguage">코드 언어</string>
     <string name="CopyPhoto">사진 복사</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">포럼 추가</string>
     <string name="DecorationNone">없음</string>
     <string name="ChatDecoration">채팅 꾸미기</string>
-    <string name="NeedChangeNekoSettings">N-Settings를 변경해야 합니다</string>
+    <string name="NeedChangeNekoSettings">Max-settings를 변경해야 합니다</string>
     <string name="DoNotUnarchiveBySwipe">스와이프로 보관 해제 비활성화</string>
     <string name="DefaultDeleteMenu">기본 삭제 메뉴</string>
     <string name="DisableStories">스토리 비활성화</string>

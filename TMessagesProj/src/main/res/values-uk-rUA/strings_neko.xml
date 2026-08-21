@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">Збільшити швидкість завантаження</string>
     <string name="mapDriftingFixForGoogleMaps">Виправити дрейф карт Google в Китаї</string>
     <string name="useOSMDroidMap">Використовувати карти OSMDroid</string>
-    <string name="UnknownNekoSettingsOption">В «N-налаштуваннях» немає такої опції.</string>
+    <string name="UnknownNekoSettingsOption">В «Max-settings» немає такої опції.</string>
     <string name="PasscodeNeeded">Спочатку необхідно увімкнути код блокування</string>
     <string name="PasscodeNeko">Код блокування</string>
-    <string name="PasscodeShowInSettings">Показати в N-налаштуваннях</string>
+    <string name="PasscodeShowInSettings">Показати в Max-settings</string>
     <string name="PasscodeShowInSettingsAbout">Після приховування ви зможете відкрити цю сторінку **ЛИШЕ** за посиланням:</string>
     <string name="PasscodeSet">Встановити код розблокування</string>
     <string name="PasscodeEdit">Змінити код розблокування</string>
@@ -151,7 +151,7 @@
     <string name="ClearRecentChats">Очистити недавні чати</string>
     <string name="ClearRecentChatAlert">Ви хочете очистити останні чати?</string>
     <string name="CloudConfig">Налаштування хмарного Сховища</string>
-    <string name="CloudConfigDesc">Збережіть свої N-налаштування у хмарі Telegram.</string>
+    <string name="CloudConfigDesc">Збережіть свої Max-settings у хмарі Telegram.</string>
     <string name="CloudConfigSyncDate">Остання синхронізація: %s, хмара: %s</string>
     <string name="CloudConfigSyncDateNever">ніколи</string>
     <string name="CloudConfigSync">Синхронізувати до хмари</string>
@@ -160,7 +160,7 @@
     <string name="CloudConfigRestoreShort">Відновити</string>
     <string name="CloudConfigSyncing">Синхронізація...</string>
     <string name="CloudConfigAutoSync">Автоматична синхронізація</string>
-    <string name="CloudConfigAutoSyncDesc">Автоматично синхронізувати з хмарою після внесення змін до N-налаштувань.</string>
+    <string name="CloudConfigAutoSyncDesc">Автоматично синхронізувати з хмарою після внесення змін до Max-settings.</string>
     <string name="CloudConfigSyncFailed">Не вдалося синхронізувати налаштування з хмарою</string>
     <string name="CloudConfigRestoreFailed">Не вдалося відновити налаштування з хмари</string>
     <string name="CopyCallback">Копіювати дані зворотного виклику</string>

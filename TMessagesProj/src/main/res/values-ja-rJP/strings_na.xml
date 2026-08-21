@@ -9,7 +9,7 @@
     <string name="SendReactions">リアクションを送信</string>
     <string name="ShowReactions">リアクションメニューを表示</string>
     <string name="CustomTitle">カスタムタイトル</string>
-    <string name="CustomTitleHint">空白のままにすると、Nagram X が使用されます</string>
+    <string name="CustomTitleHint">空白のままにすると、Max が使用されます</string>
     <string name="CreateMono">等幅フォントを作成</string>
     <string name="CreateMonoLanguage">等幅フォントの言語</string>
     <string name="CopyPhoto">画像をコピー</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">すべてのトピックモードグループを追加</string>
     <string name="DecorationNone">なし</string>
     <string name="ChatDecoration">チャットデコレーション</string>
-    <string name="NeedChangeNekoSettings">この設定はN-設定によって上書きされているため、変更できません</string>
+    <string name="NeedChangeNekoSettings">この設定はMax-settingsによって上書きされているため、変更できません</string>
     <string name="DoNotUnarchiveBySwipe">スワイプによるアーカイブ解除を無効化</string>
     <string name="DefaultDeleteMenu">デフォルトの削除メニュー</string>
     <string name="DisableStories">ストーリー機能を無効化</string>

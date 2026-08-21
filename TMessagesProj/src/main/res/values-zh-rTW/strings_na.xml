@@ -9,7 +9,7 @@
     <string name="SendReactions">表情符號反應</string>
     <string name="ShowReactions">顯示表情符號反應選單</string>
     <string name="CustomTitle">自訂標題</string>
-    <string name="CustomTitleHint">留空則使用 Nagram X</string>
+    <string name="CustomTitleHint">留空則使用 Max</string>
     <string name="CreateMono">建立等寬</string>
     <string name="CreateMonoLanguage">等寬語言</string>
     <string name="CopyPhoto">複製圖片</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">新增所有話題模式的群組</string>
     <string name="DecorationNone">無</string>
     <string name="ChatDecoration">聊天框裝飾</string>
-    <string name="NeedChangeNekoSettings">此設定項已被 N-設定 覆寫</string>
+    <string name="NeedChangeNekoSettings">此設定項已被 Max-settings 覆寫</string>
     <string name="DoNotUnarchiveBySwipe">禁用滑動取消封存</string>
     <string name="DefaultDeleteMenu">預設訊息刪除選單</string>
     <string name="DisableStories">禁用動態功能</string>

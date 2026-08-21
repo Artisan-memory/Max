@@ -110,10 +110,10 @@
     <string name="enhancedFileLoader">Tăng tốc độ tải xuống</string>
     <string name="mapDriftingFixForGoogleMaps">Sửa lỗi google maps cho trung quốc</string>
     <string name="useOSMDroidMap">Sử dụng OSM map</string>
-    <string name="UnknownNekoSettingsOption">Không có tùy chọn N-Settings nào như vậy.</string>
+    <string name="UnknownNekoSettingsOption">Không có tùy chọn Max-settings nào như vậy.</string>
     <string name="PasscodeNeeded">Bạn cần kích hoạt mã khoá trước</string>
     <string name="PasscodeNeko">Mã khoá</string>
-    <string name="PasscodeShowInSettings">Hiển thị trong cài đặt Nagram</string>
+    <string name="PasscodeShowInSettings">Hiển thị trong Max-settings</string>
     <string name="PasscodeShowInSettingsAbout">Sau khi ẩn, bạn **chỉ có thể** mở trang này qua liên kết:</string>
     <string name="PasscodeSet">Đặt mã khoá</string>
     <string name="PasscodeEdit">Thay đổi mã khoá</string>
@@ -151,7 +151,7 @@
     <string name="ClearRecentChats">Xóa các cuộc trò chuyện gần đây</string>
     <string name="ClearRecentChatAlert">Bạn có muốn xóa các cuộc trò chuyện gần đây không?</string>
     <string name="CloudConfig">Cài đặt đám mây</string>
-    <string name="CloudConfigDesc">Lưu Cài đặt NagramX của bạn vào đám mây Telegram.</string>
+    <string name="CloudConfigDesc">Lưu Max-settings của bạn vào đám mây Telegram.</string>
     <string name="CloudConfigSyncDate">Lần đồng bộ cuối: %s, đám mây: %s</string>
     <string name="CloudConfigSyncDateNever">không bao giờ</string>
     <string name="CloudConfigSync">Đồng bộ lên cloud</string>
@@ -160,7 +160,7 @@
     <string name="CloudConfigRestoreShort">Khôi phục</string>
     <string name="CloudConfigSyncing">Đang đồng bộ hóa...</string>
     <string name="CloudConfigAutoSync">Tự động đồng bộ</string>
-    <string name="CloudConfigAutoSyncDesc">Tự động đồng bộ lên đám mây sau khi thực hiện thay đổi đối với N-Settings.</string>
+    <string name="CloudConfigAutoSyncDesc">Tự động đồng bộ lên đám mây sau khi thực hiện thay đổi đối với Max-settings.</string>
     <string name="CloudConfigSyncFailed">Lỗi đồng bộ lên cloud</string>
     <string name="CloudConfigRestoreFailed">Không thể khôi phục cài đặt từ cloud</string>
     <string name="CopyCallback">Sao chép dữ liệu gọi lại</string>

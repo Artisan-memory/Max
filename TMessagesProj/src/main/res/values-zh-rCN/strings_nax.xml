@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="XChannel">Nagram X 频道</string>
+    <string name="XChannel">Max 频道</string>
     <string name="EnableSaveDeletedMessages">保存已删除消息</string>
     <string name="DeletedMessage">已删除</string>
     <string name="EnableSaveEditsHistory">保存编辑历史</string>
@@ -109,7 +109,7 @@
     <string name="Other">其他</string>
     <string name="RestartApp">重启应用</string>
     <string name="ResetSettings">重置设置</string>
-    <string name="ResetSettingsAlert">您确定要重置所有 N-设置 吗？</string>
+    <string name="ResetSettingsAlert">您确定要重置所有 Max-settings 吗？</string>
     <string name="DontAutoPlayNextVoice">禁用自动播放下一条语音消息</string>
     <string name="SaveToChatSubfolder">按对话名称保存附件</string>
     <string name="MessageColoredBackground">多彩消息背景</string>
@@ -309,8 +309,8 @@
     <string name="BackAnimationSpring">Spring</string>
     <string name="BackAnimationPredictive">预测</string>
     <string name="AddToFilter">添加过滤器</string>
-    <string name="UnifiedPushNeverReceivedNotifications">自 Nagram X 启动后，您从未收到 UnifiedPush 的通知。</string>
-    <string name="UnifiedPushLastReceivedNotification">最后一次通过 UnifiedPush 接收到的通知是 %1$d 秒前。\n\n自 Nagram X 启动以来，您已收到 %2$d 条通知。</string>
+    <string name="UnifiedPushNeverReceivedNotifications">自 Max 启动后，您从未收到 UnifiedPush 的通知。</string>
+    <string name="UnifiedPushLastReceivedNotification">最后一次通过 UnifiedPush 接收到的通知是 %1$d 秒前。\n\n自 Max 启动以来，您已收到 %2$d 条通知。</string>
     <string name="UnifiedPushCurrentEndpoint">当前的 UnifiedPush 端点是：%1$s</string>
     <string name="PlayOnce">播放一次</string>
     <string name="StorageSettings">存储</string>

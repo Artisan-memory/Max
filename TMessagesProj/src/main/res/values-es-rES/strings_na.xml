@@ -9,7 +9,7 @@
     <string name="SendReactions">Enviar reacción</string>
     <string name="ShowReactions">Mostrar reacciones</string>
     <string name="CustomTitle">Título personalizado</string>
-    <string name="CustomTitleHint">Dejar en blanco para usar Nagram X</string>
+    <string name="CustomTitleHint">Dejar en blanco para usar Max</string>
     <string name="CreateMono">Crear Monoespacio</string>
     <string name="CreateMonoLanguage">Idioma del código</string>
     <string name="CopyPhoto">Copiar Foto</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">Añadir foro</string>
     <string name="DecorationNone">Ninguno</string>
     <string name="ChatDecoration">Decoración del chat</string>
-    <string name="NeedChangeNekoSettings">Necesitas cambiar N-Ajustes</string>
+    <string name="NeedChangeNekoSettings">Necesitas cambiar Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Deshabilitar Deslizar para Desarchivar</string>
     <string name="DefaultDeleteMenu">Menú de eliminación predeterminado</string>
     <string name="DisableStories">Deshabilitar historias</string>

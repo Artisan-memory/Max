@@ -9,7 +9,7 @@
     <string name="SendReactions">Надсилати реакції</string>
     <string name="ShowReactions">Показати реакції</string>
     <string name="CustomTitle">Свій заголовок</string>
-    <string name="CustomTitleHint">Залиште порожнім, щоб використовувати Nagram X</string>
+    <string name="CustomTitleHint">Залиште порожнім, щоб використовувати Max</string>
     <string name="CreateMono">Створити монопростір</string>
     <string name="CreateMonoLanguage">Мова коду</string>
     <string name="CopyPhoto">Копіювати фото</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">Додати форум</string>
     <string name="DecorationNone">Не обрано</string>
     <string name="ChatDecoration">Оформлення чатів</string>
-    <string name="NeedChangeNekoSettings">Потрібно змінити N-налаштування</string>
+    <string name="NeedChangeNekoSettings">Потрібно змінити Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Вимкнути функцію \"Проведення для розархівування\"</string>
     <string name="DefaultDeleteMenu">Меню видалення за замовчуванням</string>
     <string name="DisableStories">Вимкнути історії</string>

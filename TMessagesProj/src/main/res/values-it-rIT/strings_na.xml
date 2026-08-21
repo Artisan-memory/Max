@@ -9,7 +9,7 @@
     <string name="SendReactions">Manda Reazioni</string>
     <string name="ShowReactions">Mostra Reazioni</string>
     <string name="CustomTitle">Titolo Personalizzato</string>
-    <string name="CustomTitleHint">Lascia vuoto per usare Nagram X</string>
+    <string name="CustomTitleHint">Lascia vuoto per usare Max</string>
     <string name="CreateMono">Crea monospazio</string>
     <string name="CreateMonoLanguage">Linguaggio Codice</string>
     <string name="CopyPhoto">Copia foto</string>
@@ -49,7 +49,7 @@
     <string name="CheckAllForum">Aggiungi forum</string>
     <string name="DecorationNone">Nessuno</string>
     <string name="ChatDecoration">Decorazioni Chat</string>
-    <string name="NeedChangeNekoSettings">Hai bisogno di cambiare le N-Config</string>
+    <string name="NeedChangeNekoSettings">Hai bisogno di cambiare le Max-settings</string>
     <string name="DoNotUnarchiveBySwipe">Disabilita scorri per togliere dall\'archivio</string>
     <string name="DefaultDeleteMenu">Menù di Eliminazione Predefinito</string>
     <string name="DisableStories">Disabilita le Storie</string>
