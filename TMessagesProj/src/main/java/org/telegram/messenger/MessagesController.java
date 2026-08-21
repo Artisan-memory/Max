@@ -143,6 +143,7 @@ import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.filters.AyuFilter;
 import tw.nekomimi.nekogram.filters.ReactionFilter;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
+import tw.nekomimi.nekogram.helpers.ForumMemoryHelper;
 import tw.nekomimi.nekogram.helpers.LocalNameHelper;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.utils.AlertUtil;
@@ -7073,6 +7074,18 @@ public class MessagesController extends BaseController implements NotificationCe
         TLRPC.Chat oldChat = chats.get(chat.id);
         if (oldChat == chat) {
             return;
+        }
+        if (ChatObject.isForbidden(chat)) {
+            if (ForumMemoryHelper.isKnownForum(chat.id)) {
+                chat.forum = true;
+                chat.flags |= TLObject.FLAG_30;
+                chat.forum_tabs = ForumMemoryHelper.hasKnownForumTabs(chat.id);
+                if (chat.forum_tabs) {
+                    chat.flags2 |= TLObject.FLAG_19;
+                }
+            }
+        } else if (!chat.min) {
+            ForumMemoryHelper.remember(chat.id, chat.forum, chat.forum_tabs);
         }
         if (oldChat != null && !TextUtils.isEmpty(oldChat.username)) {
             objectsByUsernames.remove(oldChat.username.toLowerCase());

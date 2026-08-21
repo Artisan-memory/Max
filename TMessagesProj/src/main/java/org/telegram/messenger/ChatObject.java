@@ -1948,7 +1948,7 @@ public class ChatObject {
         return false;
     }
 
-    private static boolean isForbidden(TLRPC.Chat chat) {
+    public static boolean isForbidden(TLRPC.Chat chat) {
         return chat instanceof TLRPC.TL_chatForbidden || chat instanceof TLRPC.TL_channelForbidden || chat instanceof TLRPC.TL_communityForbidden;
     }
 
