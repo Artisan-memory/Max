@@ -558,6 +558,32 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    // Sync. Secrets live in SyncSecrets, not here: these values end up in an
+    // exported settings file, and a password has no business being in one.
+    val syncEnabled =
+        addConfig(
+            "SyncEnabled",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val syncServerUrl =
+        addConfig(
+            "SyncServerUrl",
+            ConfigItem.configTypeString,
+            ""
+        )
+    val syncCertFingerprint =
+        addConfig(
+            "SyncCertFingerprint",
+            ConfigItem.configTypeString,
+            ""
+        )
+    val syncWifiOnly =
+        addConfig(
+            "SyncWifiOnly",
+            ConfigItem.configTypeBool,
+            true
+        )
     val enableSaveEditsHistory =
         addConfig(
             "EnableSaveEditsHistory",

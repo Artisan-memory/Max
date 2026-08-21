@@ -353,4 +353,25 @@
     <string name="ImportAyuDB">Import Database</string>
     <string name="ImportAyuDBAlert">The current message database will be replaced. The app will restart after the import.</string>
     <string name="DisableSwipeToNext">Disable Swipe to Next</string>
+    <string name="MaxSync">Max Sync</string>
+    <string name="MaxSyncServer">Server</string>
+    <string name="MaxSyncEncryption">Encryption</string>
+    <string name="SyncServerUrl">Server address</string>
+    <string name="SyncCertFingerprint">Certificate fingerprint</string>
+    <string name="SyncEnabled">Sync deleted messages</string>
+    <string name="SyncWifiOnly">Wi-Fi only</string>
+    <string name="MaxSyncAccessPassword">Access password</string>
+    <string name="MaxSyncProxyToken">Proxy token</string>
+    <string name="MaxSyncProxyTokenNotice">Sent as a header your reverse proxy checks before the request reaches the server. Leave empty if you do not use one.</string>
+    <string name="MaxSyncPassphrase">Passphrase</string>
+    <string name="MaxSyncPassphraseNotice">Everything is encrypted with this before it leaves the device, and it is never sent to the server. Use the same phrase on every device. Lose it and the history cannot be recovered.</string>
+    <string name="MaxSyncEnabledNotice">Deleted messages are merged across your devices. Files upload once and download when you open them.</string>
+    <string name="MaxSyncWifiOnlyNotice">Never sync over mobile data.</string>
+    <string name="MaxSyncTestConnection">Test connection</string>
+    <string name="MaxSyncConnected">Connected</string>
+    <string name="MaxSyncNotConfigured">Set the server address and the access password first</string>
+    <string name="MaxSyncSecretSet">Set</string>
+    <string name="MaxSyncSecretUnset">Not set</string>
+    <string name="MaxSyncForget">Disconnect and forget server</string>
+    <string name="MaxSyncForgetNotice">Removes the address and the stored secrets from this device. Nothing is deleted on the server.</string>
 </resources>
