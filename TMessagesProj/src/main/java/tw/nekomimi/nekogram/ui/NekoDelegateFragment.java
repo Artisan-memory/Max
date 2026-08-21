@@ -439,6 +439,16 @@ public abstract class NekoDelegateFragment extends BaseFragment implements Notif
         AndroidUtil.openForView(messageObject, getParentActivity(), getResourceProvider());
     }
 
+    /**
+     * Media the viewer can page through, so swiping and the "n of m" counter work as they do in a
+     * chat. Subclasses that can enumerate their media should return it in display order; returning
+     * null opens the tapped message on its own.
+     */
+    @Nullable
+    protected ArrayList<MessageObject> getViewerMessages() {
+        return null;
+    }
+
     private boolean openInPhotoViewer(MessageObject messageObject) {
         if (getMessageListView() == null) {
             return false;
@@ -451,7 +461,25 @@ public abstract class NekoDelegateFragment extends BaseFragment implements Notif
             return false;
         }
         PhotoViewer.getInstance().setParentActivity(this);
+        ArrayList<MessageObject> viewerMessages = getViewerMessages();
+        int index = indexOfMessage(viewerMessages, messageObject);
+        if (index >= 0) {
+            return PhotoViewer.getInstance().openPhoto(viewerMessages, index, messageObject.getDialogId(), 0, 0, photoViewerProvider);
+        }
         return PhotoViewer.getInstance().openPhoto(messageObject, null, 0, 0, 0, photoViewerProvider);
+    }
+
+    private static int indexOfMessage(@Nullable ArrayList<MessageObject> messages, MessageObject target) {
+        if (messages == null) {
+            return -1;
+        }
+        for (int i = 0; i < messages.size(); i++) {
+            MessageObject message = messages.get(i);
+            if (message == target || message != null && message.getId() == target.getId()) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override

@@ -365,6 +365,40 @@ public class AyuViewDeleted extends NekoDelegateFragment {
     }
 
     @Override
+    protected ArrayList<MessageObject> getViewerMessages() {
+        ArrayList<MessageObject> media = new ArrayList<>();
+        for (int i = 0; i < filteredMessages.size(); i++) {
+            DeletedMessageFull full = filteredMessages.get(i);
+            if (!hasViewableMedia(full)) {
+                continue;
+            }
+            MessageObject msg = i < messageObjects.size() ? messageObjects.get(i) : null;
+            if (msg == null) {
+                msg = createMessageObject(full, true);
+                if (i < messageObjects.size()) {
+                    messageObjects.set(i, msg);
+                }
+            }
+            if (msg.type == MessageObject.TYPE_PHOTO || msg.isVideo() || msg.isGif()) {
+                media.add(msg);
+            }
+        }
+        return media;
+    }
+
+    /** Cheap pre-filter so only entries that can hold a picture or a video get parsed. */
+    private static boolean hasViewableMedia(DeletedMessageFull full) {
+        if (full == null || full.message == null || TextUtils.isEmpty(full.message.mediaPath)) {
+            return false;
+        }
+        if (full.message.documentType == AyuConstants.DOCUMENT_TYPE_PHOTO) {
+            return true;
+        }
+        String mime = full.message.mimeType;
+        return mime != null && (mime.startsWith("video/") || mime.equals("image/gif"));
+    }
+
+    @Override
     public View createView(Context context) {
         var peer = getMessagesController().getUserOrChat(dialogId);
         String name = switch (peer) {
