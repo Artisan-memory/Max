@@ -15278,23 +15278,30 @@ public class ChatActivity extends BaseFragment implements
         return getMessageHelper().sendMessagesAsCopy(messages, targetDialogId, null, getThreadMessage(), null, notify, scheduleDate, chatMode, quickReplyShortcut, getQuickReplyId(), payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams());
     }
 
-    /** The copy has to carry the file itself, so pull down whatever is not on disk before sending. */
+    /**
+     * The copy has to carry the file itself, so pull down whatever is not on disk before sending.
+     * Progress rides in a bulletin rather than a dialog: the chat stays usable meanwhile.
+     */
     private void downloadThenSendAsCopy(ArrayList<MessageObject> messages, ArrayList<MessageObject> missing, long targetDialogId, boolean notify, int scheduleDate, long payStars) {
         Context context = getParentActivity();
         if (context == null) {
             return;
         }
-        AlertDialog progress = new AlertDialog(context, AlertDialog.ALERT_TYPE_LOADING);
-        progress.setCanCancel(true);
+        Bulletin.ProgressLayout layout = new Bulletin.ProgressLayout(context, themeDelegate);
+        layout.textView.setText(LocaleController.formatString(R.string.ForwardDownloadingMedia, 1, missing.size()));
+        layout.setProgress(0);
+        Bulletin bulletin = Bulletin.make(this, layout, Bulletin.DURATION_PROLONG);
+
         ForwardMediaLoader loader = new ForwardMediaLoader(currentAccount, new ForwardMediaLoader.Callback() {
             @Override
             public void onProgress(int done, int total) {
-                progress.setTitle(LocaleController.formatString(R.string.ForwardDownloadingMedia, Math.min(done + 1, total), total));
+                layout.textView.setText(LocaleController.formatString(R.string.ForwardDownloadingMedia, Math.min(done + 1, total), total));
+                layout.setProgress(total == 0 ? 1f : done / (float) total);
             }
 
             @Override
             public void onFinished(boolean complete) {
-                progress.dismiss();
+                bulletin.hide();
                 if (!complete) {
                     return;
                 }
@@ -15303,8 +15310,12 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
         });
-        progress.setOnCancelListener(dialog -> loader.cancel());
-        progress.show();
+        layout.setButton(new Bulletin.UndoButton(context, true, themeDelegate)
+                .setText(getString(R.string.Cancel))
+                .setUndoAction(loader::cancel));
+        // stays up for as long as the download runs, not for a fixed few seconds
+        bulletin.setCanHideOnShow = false;
+        bulletin.show();
         loader.start(missing);
     }
 
