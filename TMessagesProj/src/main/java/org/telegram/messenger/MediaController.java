@@ -137,6 +137,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 import tw.nekomimi.nekogram.NekoConfig;
+import tw.nekomimi.nekogram.voice.VoiceChanger;
 import tw.nekomimi.nekogram.SaveToDownloadReceiver;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
 import xyz.nextalone.nagram.NaConfig;
@@ -1100,6 +1101,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
 
     private boolean audioRecorderPaused;
     private AudioRecord audioRecorder;
+    private VoiceChanger voiceChanger;
     public TLRPC.TL_document recordingAudio;
     private int recordingGuid = -1;
     private int recordingCurrentAccount;
@@ -1151,6 +1153,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
                 int len = audioRecorder.read(buffer, buffer.capacity());
                 if (len > 0) {
                     buffer.limit(len);
+                    if (voiceChanger != null) {
+                        voiceChanger.process(buffer, len);
+                    }
                     double sum = 0;
                     try {
                         long newSamplesCount = samplesCount + len / 2;
@@ -4782,6 +4787,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
 //                        MediaDataController.getInstance(recordingCurrentAccount).pushDraftVoiceMessage(recordDialogId, recordTopicId, null);
 //
                         audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, recordBufferSize);
+                voiceChanger = VoiceChanger.create(sampleRate);
                         recordStartTime = System.currentTimeMillis();
                         writtenFrame = 0;
                         samplesCount = 0;
@@ -4859,6 +4865,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
 
                 audioRecorderPaused = false;
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, recordBufferSize);
+                voiceChanger = VoiceChanger.create(sampleRate);
                 recordStartTime = System.currentTimeMillis();
                 recordTimeCount = 0;
                 writtenFrame = 0;

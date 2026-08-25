@@ -80,6 +80,7 @@ import org.telegram.messenger.ImageLoader;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
+import tw.nekomimi.nekogram.voice.VoiceChanger;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -2236,6 +2237,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private InstantCameraVideoEncoderOverlayHelper overlayHelper;
 
         private AudioRecord audioRecorder;
+        private VoiceChanger voiceChanger;
 
         private ArrayBlockingQueue<AudioBufferInfo> buffers = new ArrayBlockingQueue<>(10);
         private ArrayList<Bitmap> keyframeThumbs = new ArrayList<>();
@@ -2288,6 +2290,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                         ByteBuffer byteBuffer = buffer.buffer[a];
                         byteBuffer.rewind();
                         readResult = audioRecorder.read(byteBuffer, 2048);
+                        if (readResult > 0 && voiceChanger != null) {
+                            voiceChanger.process(byteBuffer, readResult);
+                        }
                         if (readResult > 0 && a % 2 == 0) {
                             byteBuffer.limit(readResult);
                             double s = 0;
@@ -3243,6 +3248,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 skippedTime = 0;
 
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+                voiceChanger = VoiceChanger.create(audioSampleRate);
                 audioRecorder.startRecording();
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("InstantCamera initied audio record with channels " + audioRecorder.getChannelCount() + " sample rate = " + audioRecorder.getSampleRate() + " bufferSize = " + bufferSize);

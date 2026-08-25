@@ -558,6 +558,13 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val voiceChangerEffect =
+        addConfig(
+            "VoiceChangerEffect",
+            ConfigItem.configTypeInt,
+            0
+        )
+
     // Sync. Secrets live in SyncSecrets, not here: these values end up in an
     // exported settings file, and a password has no business being in one.
     val syncEnabled =

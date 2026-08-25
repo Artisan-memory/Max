@@ -375,4 +375,14 @@
     <string name="MaxSyncForget">Disconnect and forget server</string>
     <string name="MaxSyncForgetNotice">Removes the address and the stored secrets from this device. Nothing is deleted on the server.</string>
     <string name="ForwardDownloadingMedia">Downloading %1$d of %2$d…</string>
+    <string name="VoiceChanger">Voice Changer</string>
+    <string name="VoiceChangerOff">Off</string>
+    <string name="VoiceChangerMan">Man</string>
+    <string name="VoiceChangerWoman">Woman</string>
+    <string name="VoiceChangerChipmunk">Chipmunk</string>
+    <string name="VoiceChangerMonster">Monster</string>
+    <string name="VoiceChangerRobot">Robot</string>
+    <string name="VoiceChangerEcho">Echo</string>
+    <string name="VoiceChangerCave">Cave</string>
+    <string name="VoiceChangerAlien">Alien</string>
 </resources>

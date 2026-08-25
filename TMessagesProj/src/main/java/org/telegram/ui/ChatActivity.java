@@ -389,6 +389,7 @@ import tw.nekomimi.nekogram.filters.ReactionFilter;
 import tw.nekomimi.nekogram.filters.RegexFilterEditActivity;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
 import tw.nekomimi.nekogram.helpers.ForwardMediaLoader;
+import tw.nekomimi.nekogram.voice.VoiceChanger;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.helpers.TranscribeHelper;
 import tw.nekomimi.nekogram.helpers.remote.EmojiHelper;
@@ -484,6 +485,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkbtn_report = 2041;
     private final static int nkbtn_clearDeleted = 2100;
     private final static int nkbtn_viewDeleted = 2101;
+    private final static int nkbtn_voiceChanger = 2102;
 
     public int shareAlertDebugMode = DEBUG_SHARE_ALERT_MODE_NORMAL;
     public boolean shareAlertDebugTopicsSlowMotion;
@@ -4126,6 +4128,8 @@ public class ChatActivity extends BaseFragment implements
                         messagePreviewParams.hideCaption = noForwardCaption;
                     }
                     openForward(true);
+                } else if (id == nkbtn_voiceChanger) {
+                    showVoiceChangerMenu();
                 } else if (id == share) {
                     share();
                 } else if (id == open_direct) {
@@ -4951,6 +4955,7 @@ public class ChatActivity extends BaseFragment implements
                     }
                 }
             }
+            headerItem.lazilyAddSubItem(nkbtn_voiceChanger, R.drawable.msg_voice_unmuted, getString(R.string.VoiceChanger));
             if (ChatObject.isMonoForum(currentChat) && ChatObject.canManageMonoForum(currentAccount, currentChat)) {
                 headerItem.lazilyAddSubItem(remove_fee, R.drawable.menu_paid_off, getString(R.string.DirectRemoveFee));
                 headerItem.lazilyAddSubItem(charge_fee, R.drawable.menu_feature_paid, getString(R.string.DirectChargeFee));
@@ -13031,6 +13036,24 @@ public class ChatActivity extends BaseFragment implements
             messages.add(forwardingMessage);
         }
         return messages;
+    }
+
+    private void showVoiceChangerMenu() {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        int current = VoiceChanger.currentEffect();
+        CharSequence[] items = new CharSequence[VoiceChanger.EFFECT_COUNT];
+        for (int i = 0; i < items.length; i++) {
+            String name = getString(VoiceChanger.nameOf(i));
+            items[i] = i == current ? "✓ " + name : name;
+        }
+        new AlertDialog.Builder(context, themeDelegate)
+                .setTitle(getString(R.string.VoiceChanger))
+                .setItems(items, (dialog, which) -> NaConfig.INSTANCE.getVoiceChangerEffect().setConfigInt(which))
+                .setNegativeButton(getString(R.string.Cancel), null)
+                .show();
     }
 
     public void openForward(boolean fromActionBar) {

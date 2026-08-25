@@ -10,6 +10,8 @@ package org.telegram.messenger.voip;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+
+import tw.nekomimi.nekogram.voice.VoiceChanger;
 import android.media.MediaRecorder;
 import android.media.audiofx.AcousticEchoCanceler;
 import android.media.audiofx.AudioEffect;
@@ -27,6 +29,7 @@ public class AudioRecordJNI {
 
 	private AudioRecord audioRecord;
 	private ByteBuffer buffer;
+	private VoiceChanger voiceChanger;
 	private boolean running;
 	private Thread thread;
 	private int bufferSize;
@@ -176,6 +179,7 @@ public class AudioRecordJNI {
 	}
 
 	private void startThread() {
+		voiceChanger = VoiceChanger.create(48000);
 		if (thread != null) {
 			throw new IllegalStateException("thread already started");
 		}
@@ -193,6 +197,9 @@ public class AudioRecordJNI {
 					if (!running) {
 						audioRecord.stop();
 						break;
+					}
+					if (voiceChanger != null) {
+						voiceChanger.process(buffer, 960 * 2);
 					}
 					nativeCallback(buffer);
 				} catch (Exception e) {
