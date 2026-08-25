@@ -388,6 +388,7 @@ import tw.nekomimi.nekogram.filters.AyuFilter;
 import tw.nekomimi.nekogram.filters.ReactionFilter;
 import tw.nekomimi.nekogram.filters.RegexFilterEditActivity;
 import tw.nekomimi.nekogram.helpers.ChatsHelper;
+import tw.nekomimi.nekogram.helpers.ForwardMediaLoader;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.helpers.TranscribeHelper;
 import tw.nekomimi.nekogram.helpers.remote.EmojiHelper;
@@ -15238,13 +15239,73 @@ public class ChatActivity extends BaseFragment implements
 
     /**
      * Content the source chat forbids forwarding cannot go through messages.forwardMessages, so
-     * re-send the local copy instead. Returns false when the messages forward normally.
+     * send it as our own message instead. Returns false when the messages forward normally.
      */
     private boolean forwardAsCopy(ArrayList<MessageObject> messages, long targetDialogId, boolean notify, int scheduleDate, long payStars) {
-        if (!getMessageHelper().shouldRepeatMessagesAsCopy(messages, currentChat)) {
+        if (!needsLocalForward(messages)) {
             return false;
         }
+        ArrayList<MessageObject> missing = ForwardMediaLoader.missing(messages);
+        if (missing.isEmpty()) {
+            return sendAsCopy(messages, targetDialogId, notify, scheduleDate, payStars);
+        }
+        downloadThenSendAsCopy(messages, missing, targetDialogId, notify, scheduleDate, payStars);
+        return true;
+    }
+
+    /**
+     * Whether any of these came from somewhere that blocks forwarding. Asks each message about its
+     * own chat rather than the one on screen, because the send often happens from the target chat.
+     */
+    private boolean needsLocalForward(ArrayList<MessageObject> messages) {
+        if (messages == null) {
+            return false;
+        }
+        for (MessageObject message : messages) {
+            if (message == null || message.messageOwner == null) {
+                continue;
+            }
+            if (message.messageOwner.noforwards
+                    || message.isAyuDeleted()
+                    || getMessagesController().isPeerNoForwards(message.getDialogId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean sendAsCopy(ArrayList<MessageObject> messages, long targetDialogId, boolean notify, int scheduleDate, long payStars) {
         return getMessageHelper().sendMessagesAsCopy(messages, targetDialogId, null, getThreadMessage(), null, notify, scheduleDate, chatMode, quickReplyShortcut, getQuickReplyId(), payStars, getSendMonoForumPeerId(), getSendMessageSuggestionParams());
+    }
+
+    /** The copy has to carry the file itself, so pull down whatever is not on disk before sending. */
+    private void downloadThenSendAsCopy(ArrayList<MessageObject> messages, ArrayList<MessageObject> missing, long targetDialogId, boolean notify, int scheduleDate, long payStars) {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        AlertDialog progress = new AlertDialog(context, AlertDialog.ALERT_TYPE_LOADING);
+        progress.setCanCancel(true);
+        ForwardMediaLoader loader = new ForwardMediaLoader(currentAccount, new ForwardMediaLoader.Callback() {
+            @Override
+            public void onProgress(int done, int total) {
+                progress.setTitle(LocaleController.formatString(R.string.ForwardDownloadingMedia, Math.min(done + 1, total), total));
+            }
+
+            @Override
+            public void onFinished(boolean complete) {
+                progress.dismiss();
+                if (!complete) {
+                    return;
+                }
+                if (!sendAsCopy(messages, targetDialogId, notify, scheduleDate, payStars)) {
+                    BulletinFactory.of(ChatActivity.this).createErrorBulletin(getString(R.string.PleaseDownload)).show();
+                }
+            }
+        });
+        progress.setOnCancelListener(dialog -> loader.cancel());
+        progress.show();
+        loader.start(missing);
     }
 
     public boolean shouldShowImport() {

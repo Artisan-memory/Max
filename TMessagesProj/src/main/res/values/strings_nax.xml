@@ -374,4 +374,5 @@
     <string name="MaxSyncSecretUnset">Not set</string>
     <string name="MaxSyncForget">Disconnect and forget server</string>
     <string name="MaxSyncForgetNotice">Removes the address and the stored secrets from this device. Nothing is deleted on the server.</string>
+    <string name="ForwardDownloadingMedia">Downloading %1$d of %2$d…</string>
 </resources>
