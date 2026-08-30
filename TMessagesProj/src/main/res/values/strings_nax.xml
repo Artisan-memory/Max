@@ -380,9 +380,10 @@
     <string name="VoiceChangerMan">Man</string>
     <string name="VoiceChangerWoman">Woman</string>
     <string name="VoiceChangerChipmunk">Chipmunk</string>
-    <string name="VoiceChangerMonster">Monster</string>
+    <string name="VoiceChangerDeep">Deep</string>
+    <string name="VoiceChangerChild">Child</string>
+    <string name="VoiceChangerDemon">Demon</string>
     <string name="VoiceChangerRobot">Robot</string>
     <string name="VoiceChangerEcho">Echo</string>
     <string name="VoiceChangerCave">Cave</string>
-    <string name="VoiceChangerAlien">Alien</string>
 </resources>

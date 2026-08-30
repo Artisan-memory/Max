@@ -107,8 +107,9 @@ public class ForwardMediaLoader implements NotificationCenter.NotificationCenter
         }
     }
 
+    /** Same size FileLoader.getPathToMessage resolves to, or the download lands somewhere else. */
     private static TLRPC.PhotoSize photoSize(MessageObject message) {
-        return FileLoader.getClosestPhotoSizeWithSize(message.photoThumbs, AndroidUtilities.getPhotoSize());
+        return FileLoader.getClosestPhotoSizeWithSize(message.photoThumbs, AndroidUtilities.getPhotoSize(true), false, null, true);
     }
 
     public void cancel() {
@@ -143,7 +144,7 @@ public class ForwardMediaLoader implements NotificationCenter.NotificationCenter
         }
         callback.onProgress(total - pending.size(), total);
         if (pending.isEmpty()) {
-            finish(true);
+            finish(missing(messages).isEmpty());
         }
     }
 

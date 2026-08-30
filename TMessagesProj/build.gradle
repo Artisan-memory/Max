@@ -173,7 +173,7 @@ android {
         }
     }
 
-    sourceSets.main.jniLibs.srcDirs = ['./jni/']
+    sourceSets.main.jniLibs.srcDirs = ['./jni/', './voicechanger/jniLibs/']
 
     namespace = 'org.telegram.messenger'
 }

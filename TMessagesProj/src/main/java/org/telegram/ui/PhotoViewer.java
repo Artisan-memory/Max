@@ -15176,6 +15176,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 }
                 title = getString(R.string.AttachDocument);
             }
+            // opened with an explicit list rather than shared media, so count within that list
+            if (countView != null && imagesArr.size() > 1 && totalImagesCount + totalImagesCountMerge == 0 && !needSearchImageInArr) {
+                countView.updateShow(true, animated);
+                countView.set(1 + switchingToIndex, imagesArr.size());
+            }
             if (DialogObject.isEncryptedDialog(currentDialogId) && !isEmbedVideo || noforwards) {
                 setItemVisible(sendItem, false, false);
             }

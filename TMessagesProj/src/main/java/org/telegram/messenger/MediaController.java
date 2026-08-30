@@ -4787,6 +4787,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
 //                        MediaDataController.getInstance(recordingCurrentAccount).pushDraftVoiceMessage(recordDialogId, recordTopicId, null);
 //
                         audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, recordBufferSize);
+                if (voiceChanger != null) {
+                    voiceChanger.release();
+                }
                 voiceChanger = VoiceChanger.create(sampleRate);
                         recordStartTime = System.currentTimeMillis();
                         writtenFrame = 0;
@@ -4865,6 +4868,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
 
                 audioRecorderPaused = false;
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, recordBufferSize);
+                if (voiceChanger != null) {
+                    voiceChanger.release();
+                }
                 voiceChanger = VoiceChanger.create(sampleRate);
                 recordStartTime = System.currentTimeMillis();
                 recordTimeCount = 0;

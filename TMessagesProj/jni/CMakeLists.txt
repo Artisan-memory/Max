@@ -342,6 +342,7 @@ add_library(${NATIVE_LIB} SHARED
         lottie.cpp
         TgNetWrapper.cpp
         NativeLoader.cpp
+        ../voicechanger/vc_jni.c
         exoplayer/flac_jni.cc
         exoplayer/flac_parser.cc
         exoplayer/opus_jni.cc
@@ -634,6 +635,7 @@ target_link_libraries(${NATIVE_LIB}
         EGL
         android
         OpenSLES
+        dl
         cpufeatures)
 
 #if (${ANDROID_ABI} STREQUAL "x86" OR ${ANDROID_ABI} STREQUAL "x86_64")

@@ -3248,7 +3248,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 skippedTime = 0;
 
                 audioRecorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
-                voiceChanger = VoiceChanger.create(audioSampleRate);
+                if (voiceChanger != null) {
+                    voiceChanger.release();
+                }
+                voiceChanger = VoiceChanger.create(audioSampleRate, VoiceChanger.LATENCY_ROUND);
                 audioRecorder.startRecording();
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("InstantCamera initied audio record with channels " + audioRecorder.getChannelCount() + " sample rate = " + audioRecorder.getSampleRate() + " bufferSize = " + bufferSize);

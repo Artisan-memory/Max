@@ -179,6 +179,9 @@ public class AudioRecordJNI {
 	}
 
 	private void startThread() {
+		if (voiceChanger != null) {
+			voiceChanger.release();
+		}
 		voiceChanger = VoiceChanger.create(48000);
 		if (thread != null) {
 			throw new IllegalStateException("thread already started");

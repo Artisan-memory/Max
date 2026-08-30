@@ -4,6 +4,8 @@
 .vscode
 *.aar
 *.so
+# the voice changer ships a prebuilt library rather than building one
+!TMessagesProj/voicechanger/jniLibs/**/*.so
 *.iml
 **/.DS_Store
 build/
