@@ -250,8 +250,16 @@ public abstract class AyuHistoryHook {
 
     private static MessageObject createMessageObject(int currentAccount, TLRPC.TL_message message, LongSparseArray<TLRPC.User> usersById, LongSparseArray<TLRPC.Chat> chatsById, MessagesController messagesController) {
         MessageObject messageObj = new MessageObject(currentAccount, message, usersById, chatsById, false, true);
-        messageObj.setIsRead();
-        messageObj.setContentIsRead();
+        // Incoming messages keep their real ids, so mixing them into the chat's message list can
+        // reach ChatActivity's scroll-driven read tracker (its "id <= maxPositiveUnreadId &&
+        // isUnread() && !isOut()" check), which would then ask the server to mark a message it has
+        // already deleted as read. Force those read to stay out of that path. Outgoing messages
+        // never trigger it, so leave their real unread/out flags from AyuMessageUtils.map() alone -
+        // forcing them here is what made every deleted outgoing message show a false double check.
+        if (!messageObj.isOut()) {
+            messageObj.setIsRead();
+            messageObj.setContentIsRead();
+        }
         return messageObj;
     }
 

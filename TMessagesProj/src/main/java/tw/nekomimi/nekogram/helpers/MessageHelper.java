@@ -315,6 +315,38 @@ public class MessageHelper extends BaseController {
         return message;
     }
 
+    /** Every message still cached for a dialog, for snapshotting before a whole-dialog wipe. */
+    public ArrayList<TLRPC.Message> getAllMessagesStorageMessages(long dialogId) {
+        ArrayList<TLRPC.Message> messages = null;
+        SQLiteCursor cursor = null;
+        try {
+            cursor = getMessagesStorage().getDatabase().queryFinalized(String.format(Locale.US, "SELECT data FROM messages_v2 WHERE uid = %d", dialogId));
+            while (cursor.next()) {
+                NativeByteBuffer data = cursor.byteBufferValue(0);
+                if (data != null) {
+                    TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                    if (message != null) {
+                        message.readAttachPath(data, UserConfig.getInstance(currentAccount).clientUserId);
+                        if (messages == null) {
+                            messages = new ArrayList<>();
+                        }
+                        messages.add(message);
+                    }
+                    data.reuse();
+                }
+            }
+            cursor.dispose();
+            cursor = null;
+        } catch (SQLiteException e) {
+            FileLog.e(e);
+        } finally {
+            if (cursor != null) {
+                cursor.dispose();
+            }
+        }
+        return messages;
+    }
+
     public ArrayList<TLRPC.Message> getMessagesStorageMessages(long dialogId, ArrayList<Integer> messageIds) {
         ArrayList<TLRPC.Message> messages = null;
         SQLiteCursor cursor = null;

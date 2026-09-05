@@ -10274,6 +10274,33 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
+    /**
+     * Deleting a whole dialog (Delete Chat, Clear History) goes straight to
+     * MessagesStorage.deleteDialog and drops every row for it - unlike single/bulk message
+     * deletion, nothing here reads the messages first, so the AyuGram archive never saw them.
+     * Queue the snapshot on the same storage queue deleteDialog uses internally: FIFO ordering
+     * guarantees this capture finishes before the row wipe it precedes even starts.
+     */
+    private void captureDialogForAyuBeforeDelete(long did) {
+        if (!NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool() || DialogObject.isEncryptedDialog(did)) {
+            return;
+        }
+        boolean forum = isForum(did);
+        getMessagesStorage().getStorageQueue().postRunnable(() -> {
+            ArrayList<TLRPC.Message> messages = MessageHelper.getInstance(currentAccount).getAllMessagesStorageMessages(did);
+            if (messages == null || messages.isEmpty()) {
+                return;
+            }
+            var ayuMessagesController = AyuMessagesController.getInstance();
+            int requestCatchTime = (int) (System.currentTimeMillis() / 1000);
+            for (TLRPC.Message msg : messages) {
+                long topicId = MessageObject.getTopicId(currentAccount, msg, forum);
+                var prefs = new AyuSavePreferences(msg, currentAccount, did, topicId, msg.id, requestCatchTime);
+                ayuMessagesController.onMessageDeleted(prefs);
+            }
+        });
+    }
+
     protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId) {
         if (onlyHistory == 3 && NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool()) {
             return;
@@ -10282,6 +10309,7 @@ public class MessagesController extends BaseController implements NotificationCe
             if (did == getUserConfig().getClientUserId()) {
                 getSavedMessagesController().deleteAllDialogs();
             }
+            captureDialogForAyuBeforeDelete(did);
             getMessagesStorage().deleteDialog(did, onlyHistory);
             return;
         }
@@ -10328,6 +10356,7 @@ public class MessagesController extends BaseController implements NotificationCe
             if (did == getUserConfig().getClientUserId()) {
                 getSavedMessagesController().deleteAllDialogs();
             }
+            captureDialogForAyuBeforeDelete(did);
             getMessagesStorage().deleteDialog(did, onlyHistory);
             TLRPC.Dialog dialog = dialogs_dict.get(did);
             if (onlyHistory == 0 || onlyHistory == 3) {
